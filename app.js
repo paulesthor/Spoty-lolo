@@ -146,8 +146,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     googleLoginBtn.addEventListener('click', async () => {
         authMessage.textContent = 'Redirection vers Google...';
+        
+        // MODIFICATION POUR GITHUB PAGES :
+        // On définit explicitement l'URL de retour sur l'adresse actuelle du site
+        const redirectUrl = window.location.origin + window.location.pathname;
+
         const { data, error } = await supabase.auth.signInWithOAuth({
-            provider: 'google'
+            provider: 'google',
+            options: {
+                redirectTo: redirectUrl
+            }
         });
         if (error) authMessage.textContent = "Erreur : " + error.message;
     });
@@ -168,7 +176,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const fetchLibrary = async () => {
         if (!currentUser) return;
-        // UPDATE : Filtre par user_id
         const { data, error } = await supabase.from('partitions').select('*').eq('user_id', currentUser.id);
         if (error) {
             console.error(error);
@@ -473,7 +480,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     
                     const { data: urlData } = supabase.storage.from('pdfs').getPublicUrl(fileName);
 
-                    // UPDATE : Ajout user_id
                     await supabase.from('partitions').insert([{
                         titre: fTitre, nom_artiste: fArtiste, url_pdf: urlData.publicUrl,
                         url_cover: fCover || null, style: fStyle || null, annee: fAnnee || null,
@@ -530,7 +536,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const { data: urlData } = supabase.storage.from('pdfs').getPublicUrl(fileName);
 
-        // UPDATE : Ajout user_id
         const { error: dbError } = await supabase.from('partitions').insert([{
             titre: e.target.titre.value,
             nom_artiste: e.target.artiste.value,
@@ -546,7 +551,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (dbError) alert(dbError.message);
         else {
             addForm.reset();
-            coverPreview.src = 'https://placehold.co/100/2a3f54/FFF?text=Pochette';
+            coverPreview.src = 'https://via.placeholder.com/100x100.png?text=?';
             window.location.hash = 'library';
             fetchLibrary();
         }
@@ -610,7 +615,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     const fetchPlaylists = async () => {
-        // UPDATE : Filtre par user_id
         const { data } = await supabase.from('playlists').select('*').eq('user_id', currentUser.id);
         if (data) {
             playlistsListUl.innerHTML = data.map(p => `<li data-id="${p.id}" class="playlist-item">${p.nom_playlist}</li>`).join('');
@@ -713,7 +717,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     createPlaylistForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        // UPDATE : Ajout user_id
         await supabase.from('playlists').insert([{ 
             nom_playlist: e.target.nom_playlist.value, 
             partitions: [],
@@ -756,7 +759,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
 
         } else {
-            // UPDATE : Filtre par user_id
             const { data: pls } = await supabase.from('playlists').select('*').eq('user_id', currentUser.id);
             if(!pls.length) { alert('Créez une playlist d\'abord.'); return; }
             
@@ -791,7 +793,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(!allPartitions) return;
         statsTotalPartitions.textContent = allPartitions.length;
         statsTotalArtistes.textContent = new Set(allPartitions.map(p => p.nom_artiste)).size;
-        // UPDATE : Filtre par user_id
         const { count } = await supabase.from('playlists').select('*', { count: 'exact', head: true }).eq('user_id', currentUser.id);
         statsTotalPlaylists.textContent = count || 0;
         
@@ -828,7 +829,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(viewId==='stats-view') renderStatsView();
     };
     
-    // CORRECTION NAVIGATION
+    // NAVIGATION
     navLinks.forEach(l => l.addEventListener('click', (e) => { 
         e.preventDefault(); 
         const viewId = e.currentTarget.dataset.view;
@@ -855,7 +856,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     modalCloseBtn.addEventListener('click', () => modal.style.display = 'none');
     window.addEventListener('click', (e) => { if(e.target === modal) modal.style.display = 'none'; });
 
-    // START
     sortSelect.addEventListener('change', (e) => { currentSort = e.target.value; sortAndDisplayPartitions(); });
     searchInput.addEventListener('input', sortAndDisplayPartitions);
     checkSession();
