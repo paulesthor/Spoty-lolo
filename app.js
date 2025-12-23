@@ -264,7 +264,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             div.className = 'grid-item music-item';
             div.dataset.id = p.id;
             
-            // ICI : On affiche le drapeau uniquement dans la grille
             const flagHtml = p.is_flagged ? '<span class="flag-icon">!</span>' : '';
             
             div.innerHTML = `
@@ -279,13 +278,42 @@ document.addEventListener('DOMContentLoaded', async () => {
                 document.querySelectorAll(`.music-item[data-id="${p.id}"]`).forEach(i => i.classList.add('selected'));
                 renderDetailsPanel(p.id);
             };
+
+            const toggleFlag = async () => {
+                // Basculer l'état local
+                p.is_flagged = !p.is_flagged;
+
+                // Mise à jour visuelle immédiate (DOM)
+                const existingFlag = div.querySelector('.flag-icon');
+                if (p.is_flagged && !existingFlag) {
+                    const span = document.createElement('span');
+                    span.className = 'flag-icon';
+                    span.textContent = '!';
+                    div.insertBefore(span, div.firstChild);
+                } else if (!p.is_flagged && existingFlag) {
+                    existingFlag.remove();
+                }
+
+                // Mise à jour du panneau de détails (si affiché)
+                const checkbox = document.getElementById(`flag-checkbox-${p.id}`);
+                if (checkbox) checkbox.checked = p.is_flagged;
+
+                // Sauvegarde DB silencieuse
+                await supabase.from('partitions').update({ is_flagged: p.is_flagged }).eq('id', p.id);
+            };
+
             const handleOpen = () => { if(p.url_pdf) window.open(p.url_pdf, '_blank'); };
 
+            // Vue Liste : Comportement classique
             tr.addEventListener('click', handleSelect);
             tr.addEventListener('dblclick', handleOpen);
             musicTableBody.appendChild(tr);
 
-            div.addEventListener('click', handleSelect);
+            // Vue Grille : Comportement modifié (Select + Flag Toggle)
+            div.addEventListener('click', () => {
+                handleSelect(); // On garde la sélection pour voir les infos
+                toggleFlag();   // On bascule le "!"
+            });
             div.addEventListener('dblclick', handleOpen);
             gridViewContainer.appendChild(div);
         });
@@ -300,7 +328,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         const p = allPartitions.find(x => x.id == id);
         if (!p) return;
 
-        // ICI : Pas de drapeau sur la grande pochette
         detailsPanel.innerHTML = `
             <div class="cover-art"><img src="${p.url_cover || 'https://placehold.co/600/2a3f54/FFF?text=Pochette'}" alt="Jaquette"></div>
             <div class="info">
@@ -325,7 +352,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         checkbox.addEventListener('change', async (e) => {
             const isChecked = e.target.checked;
             p.is_flagged = isChecked;
-            displayPartitions(allPartitions); 
+            const scrollPos = gridViewContainer.scrollTop;
+            sortAndDisplayPartitions(); 
+            gridViewContainer.scrollTop = scrollPos;
             await supabase.from('partitions').update({ is_flagged: isChecked }).eq('id', p.id);
         });
 
@@ -603,30 +632,67 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     const openEditModal = (p) => {
+        // MODIFICATION : Formulaire d'édition avec pochette et champs optionnels
         modalBody.innerHTML = `
             <h3>Modifier</h3>
             <form id="edit-form">
-                <div class="form-group"><label>Titre</label><input type="text" name="titre" value="${p.titre}" required></div>
-                <div class="form-group"><label>Artiste</label><input type="text" name="nom_artiste" value="${p.nom_artiste}" required></div>
-                <div class="form-group"><label>Style</label><input type="text" name="style" value="${p.style || ''}"></div>
-                <div class="form-group"><label>Année</label><input type="number" name="annee" value="${p.annee || ''}"></div>
+                <div class="form-group"><label>Titre</label><input type="text" id="edit-titre" name="titre" value="${p.titre}" required></div>
+                <div class="form-group"><label>Artiste</label><input type="text" id="edit-artiste" name="nom_artiste" value="${p.nom_artiste}" required></div>
+                
+                <div class="form-group">
+                    <label>Pochette</label>
+                    <div style="display:flex; align-items:center; gap:15px; background:rgba(255,255,255,0.05); padding:10px; border-radius:6px;">
+                         <img id="edit-cover-preview" src="${p.url_cover || 'https://via.placeholder.com/60x60?text=?'}" style="width:60px; height:60px; object-fit:cover; border-radius:4px;">
+                         <button type="button" id="edit-search-btn" class="btn"><i class="fas fa-search"></i> Changer</button>
+                         <input type="hidden" id="edit-url-cover" name="url_cover" value="${p.url_cover || ''}">
+                    </div>
+                </div>
+
+                <div class="form-group"><label>Style (Optionnel)</label><input type="text" name="style" value="${p.style || ''}"></div>
+                <div class="form-group"><label>Année (Optionnel)</label><input type="number" name="annee" value="${p.annee || ''}"></div>
                 <button type="submit" class="btn btn-accent" style="width:100%">Sauvegarder</button>
             </form>
         `;
+        
         modal.style.display = 'flex';
+
+        // Logique changement pochette
+        document.getElementById('edit-search-btn').addEventListener('click', () => {
+            const t = document.getElementById('edit-titre').value;
+            const a = document.getElementById('edit-artiste').value;
+            const btn = document.getElementById('edit-search-btn');
+            
+            if(!t || !a) { alert('Remplissez titre et artiste d\'abord'); return; }
+            
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            performDeezerSearch(`${a} ${t}`, (res) => {
+                if(res) {
+                    document.getElementById('edit-cover-preview').src = res.cover;
+                    document.getElementById('edit-url-cover').value = res.cover;
+                } else {
+                    alert('Aucune pochette trouvée');
+                }
+                btn.innerHTML = '<i class="fas fa-search"></i> Changer';
+            });
+        });
+
         document.getElementById('edit-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const formData = new FormData(e.target);
             showLoading('Mise à jour...');
+            
             const { error } = await supabase.from('partitions').update({
                 titre: formData.get('titre'),
                 nom_artiste: formData.get('nom_artiste'),
-                style: formData.get('style'),
-                annee: formData.get('annee')
+                style: formData.get('style') || null, // Optionnel : null si vide
+                annee: formData.get('annee') || null,   // Optionnel : null si vide
+                url_cover: formData.get('url_cover')
             }).eq('id', p.id);
+            
             hideLoading();
             modal.style.display = 'none';
             if (error) alert(error.message);
+            else fetchLibrary(); // Rafraichir
         });
     };
 
@@ -753,12 +819,34 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('add-music-to-playlist-btn').addEventListener('click', () => openPlaylistModal(pid, true));
 
         const setupSelection = (item) => {
-            item.addEventListener('click', () => {
+            item.addEventListener('click', async () => {
                 playlistContentContainer.querySelectorAll('.selected').forEach(i => i.classList.remove('selected'));
                 item.classList.add('selected');
                 const id = item.dataset.id;
                 playlistContentContainer.querySelectorAll(`[data-id="${id}"]`).forEach(el => el.classList.add('selected'));
                 renderPlaylistDetailsPanel(id, pid, allData);
+                
+                // MODIFICATION PLAYLIST: Toggle flag au clic
+                // Récupération de l'état actuel (car 'p' n'est pas accessible ici directement comme dans l'autre fonction)
+                const { data: currentP } = await supabase.from('partitions').select('is_flagged').eq('id', id).single();
+                if(currentP) {
+                    const newStatus = !currentP.is_flagged;
+                    
+                    // Update DOM (Playlists Grid)
+                    const existingFlag = item.querySelector('.flag-icon');
+                    if(newStatus && !existingFlag) {
+                        const span = document.createElement('span'); span.className='flag-icon'; span.textContent='!'; item.insertBefore(span, item.firstChild);
+                    } else if(!newStatus && existingFlag) {
+                        existingFlag.remove();
+                    }
+                    
+                    // Sync Details Panel Checkbox
+                    const cb = document.getElementById(`pl-flag-checkbox-${id}`);
+                    if(cb) cb.checked = newStatus;
+                    
+                    // Save
+                    await supabase.from('partitions').update({ is_flagged: newStatus }).eq('id', id);
+                }
             });
             item.addEventListener('dblclick', async () => {
                 const { data: p } = await supabase.from('partitions').select('*').eq('id', item.dataset.id).single();
