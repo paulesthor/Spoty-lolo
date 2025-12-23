@@ -65,7 +65,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let allPartitions = [];
     let currentSort = 'titre_asc';
     let currentViewMode = 'grid'; 
-    let currentPlaylistViewMode = 'grid'; // NOUVEAU : État de la vue playlist
+    let currentPlaylistViewMode = 'grid'; 
     let currentUser = null; 
 
     // =======================================================
@@ -147,16 +147,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     googleLoginBtn.addEventListener('click', async () => {
         authMessage.textContent = 'Redirection vers Google...';
-        
-        // MODIFICATION POUR GITHUB PAGES :
-        // On définit explicitement l'URL de retour sur l'adresse actuelle du site
         const redirectUrl = window.location.origin + window.location.pathname;
-
         const { data, error } = await supabase.auth.signInWithOAuth({
             provider: 'google',
-            options: {
-                redirectTo: redirectUrl
-            }
+            options: { redirectTo: redirectUrl }
         });
         if (error) authMessage.textContent = "Erreur : " + error.message;
     });
@@ -264,12 +258,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             const tr = document.createElement('tr');
             tr.className = 'music-item';
             tr.dataset.id = p.id;
-            tr.innerHTML = `<td>${p.titre}</td><td>${p.nom_artiste}</td><td>${p.style || ''}</td><td>${p.annee || ''}</td>`;
+            tr.innerHTML = `<td>${p.titre} ${p.is_flagged ? '<i class="fas fa-exclamation-circle" style="color:#ef4444; margin-left:5px;"></i>' : ''}</td><td>${p.nom_artiste}</td><td>${p.style || ''}</td><td>${p.annee || ''}</td>`;
             
             const div = document.createElement('div');
             div.className = 'grid-item music-item';
             div.dataset.id = p.id;
+            
+            // MODIFICATION : Ajout de la bulle conditionnelle "!"
+            const flagHtml = p.is_flagged ? '<span class="flag-icon">!</span>' : '';
+            
             div.innerHTML = `
+                ${flagHtml}
                 <img src="${p.url_cover || 'https://placehold.co/150/2a3f54/FFF?text=...'}" alt="Pochette">
                 <div class="title">${p.titre}</div>
                 <div class="artist">${p.nom_artiste}</div>
@@ -301,12 +300,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         const p = allPartitions.find(x => x.id == id);
         if (!p) return;
 
+        // MODIFICATION : Ajout du checkbox dans le HTML
         detailsPanel.innerHTML = `
             <div class="cover-art"><img src="${p.url_cover || 'https://placehold.co/600/2a3f54/FFF?text=Pochette'}" alt="Jaquette"></div>
             <div class="info">
                 <h2>${p.titre}</h2>
                 <div class="artist">${p.nom_artiste}</div>
                 <div class="meta"><span>Style: ${p.style || '-'}</span><br><span>Année: ${p.annee || '-'}</span></div>
+                
+                <label class="flag-toggle-container">
+                    <input type="checkbox" id="flag-checkbox-${p.id}" ${p.is_flagged ? 'checked' : ''}>
+                    <span style="font-weight:bold; color:var(--text-color);">Marquer comme Important (!)</span>
+                </label>
             </div>
             <div class="actions">
                 <a href="${p.url_pdf}" target="_blank" class="btn btn-accent" style="text-align:center; display:block;"><i class="fas fa-file-pdf"></i> Ouvrir le PDF</a>
@@ -315,6 +320,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <button class="btn btn-danger" id="del-btn"><i class="fas fa-trash"></i> Supprimer</button>
             </div>
         `;
+
+        // MODIFICATION : Écouteur sur la checkbox pour sauvegarder
+        const checkbox = document.getElementById(`flag-checkbox-${p.id}`);
+        checkbox.addEventListener('change', async (e) => {
+            const isChecked = e.target.checked;
+            // Mise à jour locale immédiate pour réactivité
+            p.is_flagged = isChecked;
+            displayPartitions(allPartitions); // Rafraichir la grille pour voir l'icone
+            
+            // Sauvegarde DB
+            await supabase.from('partitions').update({ is_flagged: isChecked }).eq('id', p.id);
+        });
 
         document.getElementById('del-btn').addEventListener('click', () => deletePartition(p.id, p.url_pdf));
         document.getElementById('edit-btn').addEventListener('click', () => openEditModal(p));
@@ -485,7 +502,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                         titre: fTitre, nom_artiste: fArtiste, url_pdf: urlData.publicUrl,
                         url_cover: fCover || null, style: fStyle || null, annee: fAnnee || null,
                         date_ajout: new Date(),
-                        user_id: currentUser.id
+                        user_id: currentUser.id,
+                        is_flagged: false // Default
                     }]);
                 } catch (err) { console.error("Erreur globale", err); }
             }
@@ -545,7 +563,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             url_cover: e.target.url_cover.value,
             url_pdf: urlData.publicUrl,
             date_ajout: new Date(),
-            user_id: currentUser.id
+            user_id: currentUser.id,
+            is_flagged: false
         }]);
 
         hideLoading();
@@ -620,17 +639,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (data) {
             playlistsListUl.innerHTML = data.map(p => `<li data-id="${p.id}" class="playlist-item">${p.nom_playlist}</li>`).join('');
             
-            // MODIFICATION: Logique pour mémoriser la playlist active
             const savedPlaylistId = localStorage.getItem('lastPlaylistId');
             
             playlistsListUl.querySelectorAll('li').forEach(li => li.addEventListener('click', () => {
                 playlistsListUl.querySelectorAll('.active').forEach(i => i.classList.remove('active'));
                 li.classList.add('active');
-                localStorage.setItem('lastPlaylistId', li.dataset.id); // Sauvegarde
+                localStorage.setItem('lastPlaylistId', li.dataset.id);
                 loadPlaylistContent(li.dataset.id, data);
             }));
 
-            // Sélection par défaut : Soit celle sauvegardée, soit la première
             if(data.length > 0) {
                 let activeLi = null;
                 if (savedPlaylistId) {
@@ -638,7 +655,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
                 
                 if (!activeLi) {
-                    activeLi = playlistsListUl.querySelector('li'); // Repli sur le premier
+                    activeLi = playlistsListUl.querySelector('li'); 
                 }
                 
                 if (activeLi) {
@@ -654,7 +671,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         const pl = allData.find(x => x.id == pid);
         const ids = pl.partitions || [];
         
-        // MODIFICATION: Préparation des vues (Grille et Liste)
         let gridHtml = '';
         let listHtml = '';
         
@@ -662,16 +678,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             const { data: parts } = await supabase.from('partitions').select('*').in('id', ids);
             if(parts && parts.length > 0) {
                 
-                // Construction Vue Grille
+                // MODIFICATION : Ajout bulle "!" dans la grille playlist
                 gridHtml = `<div id="pl-grid-view" class="playlist-grid-container" style="display:${currentPlaylistViewMode === 'grid' ? 'grid' : 'none'};">` + parts.map(p => `
                     <div class="grid-item music-item playlist-item-grid" data-id="${p.id}">
+                        ${p.is_flagged ? '<span class="flag-icon">!</span>' : ''}
                         <img src="${p.url_cover || 'https://placehold.co/150/2a3f54/FFF?text=...'}" alt="Pochette">
                         <div class="title">${p.titre}</div>
                         <div class="artist">${p.nom_artiste}</div>
                     </div>
                 `).join('') + `</div>`;
 
-                // Construction Vue Liste (Tableau)
+                // MODIFICATION : Ajout icone "!" dans la liste playlist
                 listHtml = `
                     <div id="pl-list-view" class="music-list" style="display:${currentPlaylistViewMode === 'list' ? 'block' : 'none'}; margin-top:20px;">
                         <table>
@@ -679,7 +696,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <tbody>
                                 ${parts.map(p => `
                                     <tr class="music-item playlist-item-list" data-id="${p.id}">
-                                        <td>${p.titre}</td><td>${p.nom_artiste}</td><td>${p.style || ''}</td><td>${p.annee || ''}</td>
+                                        <td>${p.titre} ${p.is_flagged ? '<i class="fas fa-exclamation-circle" style="color:#ef4444; margin-left:5px;"></i>' : ''}</td>
+                                        <td>${p.nom_artiste}</td><td>${p.style || ''}</td><td>${p.annee || ''}</td>
                                     </tr>
                                 `).join('')}
                             </tbody>
@@ -711,7 +729,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             ${listHtml}
         `;
 
-        // MODIFICATION: Listeners pour Switcher Vue
         document.getElementById('pl-btn-view-list').addEventListener('click', () => {
             currentPlaylistViewMode = 'list';
             document.getElementById('pl-list-view').style.display = 'block';
@@ -731,7 +748,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('delete-playlist-btn').addEventListener('click', async () => {
              if(confirm(`Supprimer la playlist "${pl.nom_playlist}" ?`)) {
                  await supabase.from('playlists').delete().eq('id', pid);
-                 localStorage.removeItem('lastPlaylistId'); // MODIFICATION: Reset memory on delete
+                 localStorage.removeItem('lastPlaylistId'); 
                  fetchPlaylists(); 
                  playlistContentContainer.innerHTML='<p style="padding:20px;">Sélectionnez une playlist.</p>';
                  if(playlistDetailsPanel) {
@@ -741,14 +758,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         document.getElementById('add-music-to-playlist-btn').addEventListener('click', () => openPlaylistModal(pid, true));
 
-        // MODIFICATION: Logic Selection (Applique aux éléments Grille ET Liste)
         const setupSelection = (item) => {
             item.addEventListener('click', () => {
-                // Remove selected from both lists
                 playlistContentContainer.querySelectorAll('.selected').forEach(i => i.classList.remove('selected'));
-                // Highlight clicked one
                 item.classList.add('selected');
-                // Also highlight counterpart (if I click in list, highlight in grid too)
                 const id = item.dataset.id;
                 playlistContentContainer.querySelectorAll(`[data-id="${id}"]`).forEach(el => el.classList.add('selected'));
                 renderPlaylistDetailsPanel(id, pid, allData);
@@ -767,18 +780,37 @@ document.addEventListener('DOMContentLoaded', async () => {
         const { data: p } = await supabase.from('partitions').select('*').eq('id', partitionId).single();
         if(!p || !playlistDetailsPanel) return;
 
+        // MODIFICATION : Ajout du checkbox dans le panel playlist
         playlistDetailsPanel.innerHTML = `
             <div class="cover-art"><img src="${p.url_cover || 'https://placehold.co/600/2a3f54/FFF?text=Pochette'}" alt="Jaquette"></div>
             <div class="info">
                 <h2>${p.titre}</h2>
                 <div class="artist">${p.nom_artiste}</div>
                 <div class="meta"><span>Style: ${p.style || '-'}</span><br><span>Année: ${p.annee || '-'}</span></div>
+                
+                 <label class="flag-toggle-container">
+                    <input type="checkbox" id="pl-flag-checkbox-${p.id}" ${p.is_flagged ? 'checked' : ''}>
+                    <span style="font-weight:bold; color:var(--text-color);">Marquer comme Important (!)</span>
+                </label>
             </div>
             <div class="actions">
                 <a href="${p.url_pdf}" target="_blank" class="btn btn-accent" style="text-align:center; display:block;"><i class="fas fa-file-pdf"></i> Ouvrir le PDF</a>
                 <button class="btn btn-danger" id="remove-from-pl-btn"><i class="fas fa-minus-circle"></i> Retirer de la playlist</button>
             </div>
         `;
+        
+        // MODIFICATION : Écouteur sur la checkbox playlist
+        const checkbox = document.getElementById(`pl-flag-checkbox-${p.id}`);
+        checkbox.addEventListener('change', async (e) => {
+            const isChecked = e.target.checked;
+            
+            // Mise à jour DB
+            await supabase.from('partitions').update({ is_flagged: isChecked }).eq('id', p.id);
+            
+            // Rechargement pour voir l'effet sur la grille playlist
+            const { data: updatedData } = await supabase.from('playlists').select('*');
+            loadPlaylistContent(playlistId, updatedData);
+        });
 
         document.getElementById('remove-from-pl-btn').addEventListener('click', async () => {
             const pl = allPlaylistsData.find(x => x.id == playlistId);
@@ -837,7 +869,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
 
         } else {
-            // UPDATE : Filtre par user_id
             const { data: pls } = await supabase.from('playlists').select('*').eq('user_id', currentUser.id);
             if(!pls.length) { alert('Créez une playlist d\'abord.'); return; }
             
@@ -872,7 +903,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(!allPartitions) return;
         statsTotalPartitions.textContent = allPartitions.length;
         statsTotalArtistes.textContent = new Set(allPartitions.map(p => p.nom_artiste)).size;
-        // UPDATE : Filtre par user_id
         const { count } = await supabase.from('playlists').select('*', { count: 'exact', head: true }).eq('user_id', currentUser.id);
         statsTotalPlaylists.textContent = count || 0;
         
@@ -909,7 +939,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(viewId==='stats-view') renderStatsView();
     };
     
-    // CORRECTION NAVIGATION
+    // NAVIGATION
     navLinks.forEach(l => l.addEventListener('click', (e) => { 
         e.preventDefault(); 
         const viewId = e.currentTarget.dataset.view;
@@ -936,7 +966,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     modalCloseBtn.addEventListener('click', () => modal.style.display = 'none');
     window.addEventListener('click', (e) => { if(e.target === modal) modal.style.display = 'none'; });
 
-    // START
     sortSelect.addEventListener('change', (e) => { currentSort = e.target.value; sortAndDisplayPartitions(); });
     searchInput.addEventListener('input', sortAndDisplayPartitions);
     checkSession();
