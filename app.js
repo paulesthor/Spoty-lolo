@@ -264,7 +264,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             div.className = 'grid-item music-item';
             div.dataset.id = p.id;
             
-            // MODIFICATION : Ajout de la bulle conditionnelle "!"
+            // ICI : On affiche le drapeau uniquement dans la grille
             const flagHtml = p.is_flagged ? '<span class="flag-icon">!</span>' : '';
             
             div.innerHTML = `
@@ -300,7 +300,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const p = allPartitions.find(x => x.id == id);
         if (!p) return;
 
-        // MODIFICATION : Ajout du checkbox dans le HTML
+        // ICI : Pas de drapeau sur la grande pochette
         detailsPanel.innerHTML = `
             <div class="cover-art"><img src="${p.url_cover || 'https://placehold.co/600/2a3f54/FFF?text=Pochette'}" alt="Jaquette"></div>
             <div class="info">
@@ -321,15 +321,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             </div>
         `;
 
-        // MODIFICATION : Écouteur sur la checkbox pour sauvegarder
         const checkbox = document.getElementById(`flag-checkbox-${p.id}`);
         checkbox.addEventListener('change', async (e) => {
             const isChecked = e.target.checked;
-            // Mise à jour locale immédiate pour réactivité
             p.is_flagged = isChecked;
-            displayPartitions(allPartitions); // Rafraichir la grille pour voir l'icone
-            
-            // Sauvegarde DB
+            displayPartitions(allPartitions); 
             await supabase.from('partitions').update({ is_flagged: isChecked }).eq('id', p.id);
         });
 
@@ -503,7 +499,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         url_cover: fCover || null, style: fStyle || null, annee: fAnnee || null,
                         date_ajout: new Date(),
                         user_id: currentUser.id,
-                        is_flagged: false // Default
+                        is_flagged: false
                     }]);
                 } catch (err) { console.error("Erreur globale", err); }
             }
@@ -678,7 +674,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const { data: parts } = await supabase.from('partitions').select('*').in('id', ids);
             if(parts && parts.length > 0) {
                 
-                // MODIFICATION : Ajout bulle "!" dans la grille playlist
                 gridHtml = `<div id="pl-grid-view" class="playlist-grid-container" style="display:${currentPlaylistViewMode === 'grid' ? 'grid' : 'none'};">` + parts.map(p => `
                     <div class="grid-item music-item playlist-item-grid" data-id="${p.id}">
                         ${p.is_flagged ? '<span class="flag-icon">!</span>' : ''}
@@ -688,7 +683,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                 `).join('') + `</div>`;
 
-                // MODIFICATION : Ajout icone "!" dans la liste playlist
                 listHtml = `
                     <div id="pl-list-view" class="music-list" style="display:${currentPlaylistViewMode === 'list' ? 'block' : 'none'}; margin-top:20px;">
                         <table>
@@ -780,7 +774,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         const { data: p } = await supabase.from('partitions').select('*').eq('id', partitionId).single();
         if(!p || !playlistDetailsPanel) return;
 
-        // MODIFICATION : Ajout du checkbox dans le panel playlist
         playlistDetailsPanel.innerHTML = `
             <div class="cover-art"><img src="${p.url_cover || 'https://placehold.co/600/2a3f54/FFF?text=Pochette'}" alt="Jaquette"></div>
             <div class="info">
@@ -799,15 +792,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             </div>
         `;
         
-        // MODIFICATION : Écouteur sur la checkbox playlist
         const checkbox = document.getElementById(`pl-flag-checkbox-${p.id}`);
         checkbox.addEventListener('change', async (e) => {
             const isChecked = e.target.checked;
             
-            // Mise à jour DB
             await supabase.from('partitions').update({ is_flagged: isChecked }).eq('id', p.id);
             
-            // Rechargement pour voir l'effet sur la grille playlist
             const { data: updatedData } = await supabase.from('playlists').select('*');
             loadPlaylistContent(playlistId, updatedData);
         });
