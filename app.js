@@ -65,6 +65,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let allPartitions = [];
     let currentSort = 'titre_asc';
     let currentViewMode = 'grid'; 
+    let currentPlaylistViewMode = 'grid'; // NOUVEAU : État de la vue playlist
     let currentUser = null; 
 
     // =======================================================
@@ -618,14 +619,33 @@ document.addEventListener('DOMContentLoaded', async () => {
         const { data } = await supabase.from('playlists').select('*').eq('user_id', currentUser.id);
         if (data) {
             playlistsListUl.innerHTML = data.map(p => `<li data-id="${p.id}" class="playlist-item">${p.nom_playlist}</li>`).join('');
+            
+            // MODIFICATION: Logique pour mémoriser la playlist active
+            const savedPlaylistId = localStorage.getItem('lastPlaylistId');
+            
             playlistsListUl.querySelectorAll('li').forEach(li => li.addEventListener('click', () => {
                 playlistsListUl.querySelectorAll('.active').forEach(i => i.classList.remove('active'));
                 li.classList.add('active');
+                localStorage.setItem('lastPlaylistId', li.dataset.id); // Sauvegarde
                 loadPlaylistContent(li.dataset.id, data);
             }));
-            if(data.length > 0 && !document.querySelector('.playlist-item.active')) {
-                playlistsListUl.querySelector('li').classList.add('active');
-                loadPlaylistContent(data[0].id, data);
+
+            // Sélection par défaut : Soit celle sauvegardée, soit la première
+            if(data.length > 0) {
+                let activeLi = null;
+                if (savedPlaylistId) {
+                    activeLi = playlistsListUl.querySelector(`li[data-id="${savedPlaylistId}"]`);
+                }
+                
+                if (!activeLi) {
+                    activeLi = playlistsListUl.querySelector('li'); // Repli sur le premier
+                }
+                
+                if (activeLi) {
+                    activeLi.classList.add('active');
+                    localStorage.setItem('lastPlaylistId', activeLi.dataset.id);
+                    loadPlaylistContent(activeLi.dataset.id, data);
+                }
             }
         }
     };
@@ -634,35 +654,84 @@ document.addEventListener('DOMContentLoaded', async () => {
         const pl = allData.find(x => x.id == pid);
         const ids = pl.partitions || [];
         
-        let gridHtml = '<p style="padding:20px;">Cette playlist est vide.</p>';
+        // MODIFICATION: Préparation des vues (Grille et Liste)
+        let gridHtml = '';
+        let listHtml = '';
         
         if(ids.length > 0) {
             const { data: parts } = await supabase.from('partitions').select('*').in('id', ids);
             if(parts && parts.length > 0) {
-                gridHtml = `<div class="playlist-grid-container">` + parts.map(p => `
+                
+                // Construction Vue Grille
+                gridHtml = `<div id="pl-grid-view" class="playlist-grid-container" style="display:${currentPlaylistViewMode === 'grid' ? 'grid' : 'none'};">` + parts.map(p => `
                     <div class="grid-item music-item playlist-item-grid" data-id="${p.id}">
                         <img src="${p.url_cover || 'https://placehold.co/150/2a3f54/FFF?text=...'}" alt="Pochette">
                         <div class="title">${p.titre}</div>
                         <div class="artist">${p.nom_artiste}</div>
                     </div>
                 `).join('') + `</div>`;
+
+                // Construction Vue Liste (Tableau)
+                listHtml = `
+                    <div id="pl-list-view" class="music-list" style="display:${currentPlaylistViewMode === 'list' ? 'block' : 'none'}; margin-top:20px;">
+                        <table>
+                            <thead><tr><th>Titre</th><th>Artiste</th><th>Style</th><th>Année</th></tr></thead>
+                            <tbody>
+                                ${parts.map(p => `
+                                    <tr class="music-item playlist-item-list" data-id="${p.id}">
+                                        <td>${p.titre}</td><td>${p.nom_artiste}</td><td>${p.style || ''}</td><td>${p.annee || ''}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            } else {
+                gridHtml = '<p style="padding:20px;">Cette playlist est vide.</p>';
             }
+        } else {
+            gridHtml = '<p style="padding:20px;">Cette playlist est vide.</p>';
         }
 
         playlistContentContainer.innerHTML = `
             <div class="playlist-actions-header">
                 <h2>${pl.nom_playlist}</h2>
-                <div class="actions">
-                    <button class="btn btn-accent" id="add-music-to-playlist-btn"><i class="fas fa-plus"></i> Ajouter des titres</button>
-                    <button class="btn btn-danger" id="delete-playlist-btn"><i class="fas fa-trash"></i> Supprimer la Playlist</button>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <div class="view-switcher" style="margin-right:15px;">
+                        <button id="pl-btn-view-list" class="btn-icon ${currentPlaylistViewMode === 'list' ? 'active' : ''}" title="Liste"><i class="fas fa-list"></i></button>
+                        <button id="pl-btn-view-grid" class="btn-icon ${currentPlaylistViewMode === 'grid' ? 'active' : ''}" title="Grille"><i class="fas fa-th-large"></i></button>
+                    </div>
+                    <div class="actions">
+                        <button class="btn btn-accent" id="add-music-to-playlist-btn"><i class="fas fa-plus"></i> Ajouter des titres</button>
+                        <button class="btn btn-danger" id="delete-playlist-btn"><i class="fas fa-trash"></i> Supprimer la Playlist</button>
+                    </div>
                 </div>
             </div>
             ${gridHtml}
+            ${listHtml}
         `;
+
+        // MODIFICATION: Listeners pour Switcher Vue
+        document.getElementById('pl-btn-view-list').addEventListener('click', () => {
+            currentPlaylistViewMode = 'list';
+            document.getElementById('pl-list-view').style.display = 'block';
+            if(document.getElementById('pl-grid-view')) document.getElementById('pl-grid-view').style.display = 'none';
+            document.getElementById('pl-btn-view-list').classList.add('active');
+            document.getElementById('pl-btn-view-grid').classList.remove('active');
+        });
+
+        document.getElementById('pl-btn-view-grid').addEventListener('click', () => {
+            currentPlaylistViewMode = 'grid';
+            if(document.getElementById('pl-list-view')) document.getElementById('pl-list-view').style.display = 'none';
+            if(document.getElementById('pl-grid-view')) document.getElementById('pl-grid-view').style.display = 'grid';
+            document.getElementById('pl-btn-view-grid').classList.add('active');
+            document.getElementById('pl-btn-view-list').classList.remove('active');
+        });
 
         document.getElementById('delete-playlist-btn').addEventListener('click', async () => {
              if(confirm(`Supprimer la playlist "${pl.nom_playlist}" ?`)) {
                  await supabase.from('playlists').delete().eq('id', pid);
+                 localStorage.removeItem('lastPlaylistId'); // MODIFICATION: Reset memory on delete
                  fetchPlaylists(); 
                  playlistContentContainer.innerHTML='<p style="padding:20px;">Sélectionnez une playlist.</p>';
                  if(playlistDetailsPanel) {
@@ -672,17 +741,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         document.getElementById('add-music-to-playlist-btn').addEventListener('click', () => openPlaylistModal(pid, true));
 
-        playlistContentContainer.querySelectorAll('.playlist-item-grid').forEach(item => {
+        // MODIFICATION: Logic Selection (Applique aux éléments Grille ET Liste)
+        const setupSelection = (item) => {
             item.addEventListener('click', () => {
+                // Remove selected from both lists
                 playlistContentContainer.querySelectorAll('.selected').forEach(i => i.classList.remove('selected'));
+                // Highlight clicked one
                 item.classList.add('selected');
-                renderPlaylistDetailsPanel(item.dataset.id, pid, allData);
+                // Also highlight counterpart (if I click in list, highlight in grid too)
+                const id = item.dataset.id;
+                playlistContentContainer.querySelectorAll(`[data-id="${id}"]`).forEach(el => el.classList.add('selected'));
+                renderPlaylistDetailsPanel(id, pid, allData);
             });
             item.addEventListener('dblclick', async () => {
                 const { data: p } = await supabase.from('partitions').select('*').eq('id', item.dataset.id).single();
                 if(p && p.url_pdf) window.open(p.url_pdf, '_blank');
             });
-        });
+        };
+
+        playlistContentContainer.querySelectorAll('.playlist-item-grid').forEach(setupSelection);
+        playlistContentContainer.querySelectorAll('.playlist-item-list').forEach(setupSelection);
     };
 
     const renderPlaylistDetailsPanel = async (partitionId, playlistId, allPlaylistsData) => {
@@ -759,6 +837,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
 
         } else {
+            // UPDATE : Filtre par user_id
             const { data: pls } = await supabase.from('playlists').select('*').eq('user_id', currentUser.id);
             if(!pls.length) { alert('Créez une playlist d\'abord.'); return; }
             
@@ -793,6 +872,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(!allPartitions) return;
         statsTotalPartitions.textContent = allPartitions.length;
         statsTotalArtistes.textContent = new Set(allPartitions.map(p => p.nom_artiste)).size;
+        // UPDATE : Filtre par user_id
         const { count } = await supabase.from('playlists').select('*', { count: 'exact', head: true }).eq('user_id', currentUser.id);
         statsTotalPlaylists.textContent = count || 0;
         
@@ -829,7 +909,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(viewId==='stats-view') renderStatsView();
     };
     
-    // NAVIGATION
+    // CORRECTION NAVIGATION
     navLinks.forEach(l => l.addEventListener('click', (e) => { 
         e.preventDefault(); 
         const viewId = e.currentTarget.dataset.view;
@@ -856,6 +936,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     modalCloseBtn.addEventListener('click', () => modal.style.display = 'none');
     window.addEventListener('click', (e) => { if(e.target === modal) modal.style.display = 'none'; });
 
+    // START
     sortSelect.addEventListener('change', (e) => { currentSort = e.target.value; sortAndDisplayPartitions(); });
     searchInput.addEventListener('input', sortAndDisplayPartitions);
     checkSession();
