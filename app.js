@@ -255,11 +255,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         partitions.forEach(p => {
+            // Vue Liste
             const tr = document.createElement('tr');
             tr.className = 'music-item';
             tr.dataset.id = p.id;
             tr.innerHTML = `<td>${p.titre} ${p.is_flagged ? '<i class="fas fa-exclamation-circle" style="color:#ef4444; margin-left:5px;"></i>' : ''}</td><td>${p.nom_artiste}</td><td>${p.style || ''}</td><td>${p.annee || ''}</td>`;
             
+            // Vue Grille
             const div = document.createElement('div');
             div.className = 'grid-item music-item';
             div.dataset.id = p.id;
@@ -280,10 +282,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             };
 
             const toggleFlag = async () => {
-                // Basculer l'état local
                 p.is_flagged = !p.is_flagged;
-
-                // Mise à jour visuelle immédiate (DOM)
+                
+                // Update DOM direct pour réactivité instantanée
                 const existingFlag = div.querySelector('.flag-icon');
                 if (p.is_flagged && !existingFlag) {
                     const span = document.createElement('span');
@@ -294,27 +295,45 @@ document.addEventListener('DOMContentLoaded', async () => {
                     existingFlag.remove();
                 }
 
-                // Mise à jour du panneau de détails (si affiché)
+                // Sync avec le panneau de détails
                 const checkbox = document.getElementById(`flag-checkbox-${p.id}`);
                 if (checkbox) checkbox.checked = p.is_flagged;
 
-                // Sauvegarde DB silencieuse
                 await supabase.from('partitions').update({ is_flagged: p.is_flagged }).eq('id', p.id);
             };
 
             const handleOpen = () => { if(p.url_pdf) window.open(p.url_pdf, '_blank'); };
 
-            // Vue Liste : Comportement classique
+            // Listeners Vue Liste
             tr.addEventListener('click', handleSelect);
             tr.addEventListener('dblclick', handleOpen);
             musicTableBody.appendChild(tr);
 
-            // Vue Grille : Comportement modifié (Select + Flag Toggle)
-            div.addEventListener('click', () => {
-                handleSelect(); // On garde la sélection pour voir les infos
-                toggleFlag();   // On bascule le "!"
+            // Listeners Vue Grille (Gestion Clic vs Double Clic)
+            let clickTimer = null;
+
+            div.addEventListener('click', (e) => {
+                handleSelect(); // Sélection immédiate
+                
+                if (clickTimer) {
+                    clearTimeout(clickTimer);
+                    clickTimer = null;
+                }
+                
+                clickTimer = setTimeout(() => {
+                    toggleFlag(); // Bascule le drapeau si pas de 2ème clic
+                    clickTimer = null;
+                }, 250);
             });
-            div.addEventListener('dblclick', handleOpen);
+
+            div.addEventListener('dblclick', (e) => {
+                if (clickTimer) {
+                    clearTimeout(clickTimer); // Annule le basculement du drapeau
+                    clickTimer = null;
+                }
+                handleOpen(); // Ouvre le PDF
+            });
+
             gridViewContainer.appendChild(div);
         });
         
@@ -632,7 +651,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     const openEditModal = (p) => {
-        // MODIFICATION : Formulaire d'édition avec pochette et champs optionnels
+        // MODAL EDITION MISE A JOUR
         modalBody.innerHTML = `
             <h3>Modifier</h3>
             <form id="edit-form">
@@ -656,7 +675,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         modal.style.display = 'flex';
 
-        // Logique changement pochette
         document.getElementById('edit-search-btn').addEventListener('click', () => {
             const t = document.getElementById('edit-titre').value;
             const a = document.getElementById('edit-artiste').value;
@@ -684,15 +702,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             const { error } = await supabase.from('partitions').update({
                 titre: formData.get('titre'),
                 nom_artiste: formData.get('nom_artiste'),
-                style: formData.get('style') || null, // Optionnel : null si vide
-                annee: formData.get('annee') || null,   // Optionnel : null si vide
+                style: formData.get('style') || null, 
+                annee: formData.get('annee') || null,   
                 url_cover: formData.get('url_cover')
             }).eq('id', p.id);
             
             hideLoading();
             modal.style.display = 'none';
             if (error) alert(error.message);
-            else fetchLibrary(); // Rafraichir
+            else fetchLibrary();
         });
     };
 
@@ -819,43 +837,65 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('add-music-to-playlist-btn').addEventListener('click', () => openPlaylistModal(pid, true));
 
         const setupSelection = (item) => {
+            let clickTimer = null;
+
             item.addEventListener('click', async () => {
+                // Sélection immédiate
                 playlistContentContainer.querySelectorAll('.selected').forEach(i => i.classList.remove('selected'));
                 item.classList.add('selected');
                 const id = item.dataset.id;
                 playlistContentContainer.querySelectorAll(`[data-id="${id}"]`).forEach(el => el.classList.add('selected'));
                 renderPlaylistDetailsPanel(id, pid, allData);
                 
-                // MODIFICATION PLAYLIST: Toggle flag au clic
-                // Récupération de l'état actuel (car 'p' n'est pas accessible ici directement comme dans l'autre fonction)
-                const { data: currentP } = await supabase.from('partitions').select('is_flagged').eq('id', id).single();
-                if(currentP) {
-                    const newStatus = !currentP.is_flagged;
-                    
-                    // Update DOM (Playlists Grid)
-                    const existingFlag = item.querySelector('.flag-icon');
-                    if(newStatus && !existingFlag) {
-                        const span = document.createElement('span'); span.className='flag-icon'; span.textContent='!'; item.insertBefore(span, item.firstChild);
-                    } else if(!newStatus && existingFlag) {
-                        existingFlag.remove();
-                    }
-                    
-                    // Sync Details Panel Checkbox
-                    const cb = document.getElementById(`pl-flag-checkbox-${id}`);
-                    if(cb) cb.checked = newStatus;
-                    
-                    // Save
-                    await supabase.from('partitions').update({ is_flagged: newStatus }).eq('id', id);
+                // Gestion du flag avec délai
+                if (clickTimer) {
+                    clearTimeout(clickTimer);
+                    clickTimer = null;
                 }
+                
+                clickTimer = setTimeout(async () => {
+                    const { data: currentP } = await supabase.from('partitions').select('is_flagged').eq('id', id).single();
+                    if(currentP) {
+                        const newStatus = !currentP.is_flagged;
+                        
+                        const existingFlag = item.querySelector('.flag-icon');
+                        if(newStatus && !existingFlag) {
+                            const span = document.createElement('span'); span.className='flag-icon'; span.textContent='!'; item.insertBefore(span, item.firstChild);
+                        } else if(!newStatus && existingFlag) {
+                            existingFlag.remove();
+                        }
+                        
+                        const cb = document.getElementById(`pl-flag-checkbox-${id}`);
+                        if(cb) cb.checked = newStatus;
+                        
+                        await supabase.from('partitions').update({ is_flagged: newStatus }).eq('id', id);
+                    }
+                    clickTimer = null;
+                }, 250);
             });
+
             item.addEventListener('dblclick', async () => {
+                if(clickTimer) { clearTimeout(clickTimer); clickTimer = null; }
                 const { data: p } = await supabase.from('partitions').select('*').eq('id', item.dataset.id).single();
                 if(p && p.url_pdf) window.open(p.url_pdf, '_blank');
             });
         };
 
         playlistContentContainer.querySelectorAll('.playlist-item-grid').forEach(setupSelection);
-        playlistContentContainer.querySelectorAll('.playlist-item-list').forEach(setupSelection);
+        // Pour la liste, on garde le comportement classique (clic simple = select, pas de flag)
+        playlistContentContainer.querySelectorAll('.playlist-item-list').forEach(item => {
+             item.addEventListener('click', () => {
+                playlistContentContainer.querySelectorAll('.selected').forEach(i => i.classList.remove('selected'));
+                item.classList.add('selected');
+                const id = item.dataset.id;
+                playlistContentContainer.querySelectorAll(`[data-id="${id}"]`).forEach(el => el.classList.add('selected'));
+                renderPlaylistDetailsPanel(id, pid, allData);
+             });
+             item.addEventListener('dblclick', async () => {
+                const { data: p } = await supabase.from('partitions').select('*').eq('id', item.dataset.id).single();
+                if(p && p.url_pdf) window.open(p.url_pdf, '_blank');
+             });
+        });
     };
 
     const renderPlaylistDetailsPanel = async (partitionId, playlistId, allPlaylistsData) => {
