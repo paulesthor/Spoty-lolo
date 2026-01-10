@@ -12,7 +12,7 @@
     --highlight-color: #4a6fa5;
     --font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     
-    /* Variables neutres pour la transition du thème */
+    /* Variables neutres pour la transition */
     --backdrop-blur: 0px;
     --glass-border: 1px solid transparent;
 }
@@ -43,12 +43,21 @@ body {
 .logo { display: flex; align-items: center; font-size: 1.2rem; color: var(--primary-color); }
 .logo img { height: 35px; margin-right: 10px; }
 
+nav { display: flex; align-items: center; }
 nav a {
     color: var(--text-muted); text-decoration: none; margin-left: 25px;
     font-weight: bold; padding: 8px 0; transition: all 0.2s ease-in-out;
 }
 nav a:hover { color: var(--text-color); }
 nav a.active { color: var(--primary-color); border-bottom: 2px solid var(--primary-color); }
+
+/* STYLE DU SWITCH TOGGLE */
+.theme-switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+.theme-switch input { opacity: 0; width: 0; height: 0; }
+.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
+.slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+input:checked + .slider { background-color: var(--accent-color); }
+input:checked + .slider:before { transform: translateX(20px); }
 
 /* =======================================================
    3. LAYOUT GÉNÉRAL (ORIGINAL)
@@ -77,16 +86,9 @@ nav a.active { color: var(--primary-color); border-bottom: 2px solid var(--prima
 .details-view { width: 350px; display: flex; flex-direction: column; gap: 20px; position: sticky; top: 0; }
 
 .controls {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    flex-wrap: wrap;
-    background-color: var(--card-color); 
-    border: 1px solid var(--highlight-color); 
-    padding: 15px; 
-    border-radius: 8px; 
-    margin-bottom: 20px; 
-    transition: all 0.3s ease;
+    display: flex; align-items: center; gap: 15px; flex-wrap: wrap;
+    background-color: var(--card-color); border: 1px solid var(--highlight-color); 
+    padding: 15px; border-radius: 8px; margin-bottom: 20px; transition: all 0.3s ease;
 }
 .search-bar { display: flex; align-items: center; background-color: var(--bg-color); padding: 8px 12px; border-radius: 5px; flex-grow: 1; }
 .search-bar i { color: var(--text-muted); }
@@ -113,37 +115,25 @@ nav a.active { color: var(--primary-color); border-bottom: 2px solid var(--prima
     gap: 25px; padding-top: 10px;
 }
 .grid-item {
-    position: relative;
-    background-color: var(--card-color);
-    padding: 15px; 
-    border-radius: 12px; 
-    text-align: left; 
-    cursor: pointer;
-    transition: all 0.2s ease;
-    border: 1px solid var(--highlight-color); 
+    position: relative; background-color: var(--card-color);
+    padding: 15px; border-radius: 12px; text-align: left; cursor: pointer;
+    transition: all 0.2s ease; border: 1px solid var(--highlight-color); 
     box-shadow: 0 2px 4px rgba(0,0,0,0.2); 
 }
 
 .grid-item:hover {
-    background-color: var(--highlight-color);
-    border-color: var(--primary-color);
-    transform: translateY(-4px); 
-    box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+    background-color: var(--highlight-color); border-color: var(--primary-color);
+    transform: translateY(-4px); box-shadow: 0 8px 16px rgba(0,0,0,0.3);
 }
 
 .grid-item.selected {
-    border-color: var(--primary-color);
-    background-color: rgba(56, 189, 248, 0.1); 
+    border-color: var(--primary-color); background-color: rgba(56, 189, 248, 0.1); 
     box-shadow: 0 0 0 1px var(--primary-color); 
 }
 
 .grid-item img {
-    width: 100%;
-    aspect-ratio: 1;
-    object-fit: cover;
-    border-radius: 8px; 
-    margin-bottom: 12px;
-    border: 1px solid rgba(255,255,255,0.05); 
+    width: 100%; aspect-ratio: 1; object-fit: cover;
+    border-radius: 8px; margin-bottom: 12px; border: 1px solid rgba(255,255,255,0.05); 
 }
 .grid-item .title { font-weight: bold; color: var(--text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .grid-item .artist { font-size: 0.9em; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -156,177 +146,60 @@ nav a.active { color: var(--primary-color); border-bottom: 2px solid var(--prima
 .details-view .actions { margin-top: auto; display: flex; flex-direction: column; gap: 10px; }
 
 /* =======================================================
-   5. PAGE AJOUTER & BOUTONS (ORIGINAL)
+   5. AJOUT & LOGIN (ORIGINAL)
    ======================================================= */
-.form-container { max-width: 800px; margin: 0 auto; }
-.form-container h2 { margin-bottom: 20px; color: var(--primary-color); }
+.form-container.card { max-width: 800px; margin: 0 auto; }
 .form-group { margin-bottom: 20px; }
-.form-group label { display: block; margin-bottom: 8px; font-weight: bold; color: var(--text-muted); }
-.form-group input { width: 100%; padding: 12px; background-color: var(--bg-color); border: 1px solid var(--highlight-color); border-radius: 5px; color: var(--text-color); font-size: 1rem; }
+.form-group input { width: 100%; padding: 12px; background-color: var(--bg-color); border: 1px solid var(--highlight-color); border-radius: 5px; color: var(--text-color); }
 
-.btn {
-    padding: 12px 20px; border: none; border-radius: 5px;
-    background-color: var(--highlight-color); color: var(--text-color);
-    font-size: 1rem; font-weight: bold; cursor: pointer; transition: background-color 0.2s ease;
-    display: inline-flex; align-items: center; justify-content: center; gap: 10px;
-}
-.btn:hover { filter: brightness(1.2); }
-.btn-accent { background-color: var(--accent-color); color: white; }
-.btn-danger { background-color: var(--danger-color); color: white; }
-.btn-icon { background: none; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer; }
-.btn-icon:hover { color: var(--text-color); }
-
-/* =======================================================
-   6. PLAYLISTS (ORIGINAL)
-   ======================================================= */
-.playlists-layout { display: flex; gap: 25px; align-items: flex-start; height: 100%; }
-.playlists-sidebar { width: 300px; flex-shrink: 0; display: flex; flex-direction: column; max-height: 100%; }
-.playlist-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-.playlists-sidebar ul { list-style: none; overflow-y: auto; flex-grow: 1; }
-.playlists-sidebar li { padding: 15px; border-radius: 5px; cursor: pointer; transition: background-color 0.2s ease; border-bottom: 1px solid var(--highlight-color); }
-.playlists-sidebar li:hover { background-color: var(--highlight-color); }
-.playlists-sidebar li.active { background-color: var(--primary-color); font-weight: bold; color: white; }
-.playlist-center { flex-grow: 1; display: flex; flex-direction: column; height: 100%; overflow: hidden; min-width: 0; }
-.playlist-actions-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 2px solid var(--highlight-color); padding-bottom: 15px; }
-.playlist-content-scroll { overflow-y: auto; flex-grow: 1; padding-right: 5px; }
-
-/* =======================================================
-   7. STATISTIQUES (ORIGINAL)
-   ======================================================= */
-.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px; }
-.kpi-card { position: relative; padding-top: 40px; }
-.kpi-card h3 { position: absolute; top: 15px; left: 25px; color: var(--text-muted); font-size: 1rem; }
-.kpi-value { font-size: 3rem; font-weight: bold; color: var(--primary-color); }
-.kpi-icon { position: absolute; bottom: 20px; right: 25px; font-size: 4rem; color: var(--highlight-color); opacity: 0.3; }
-.chart-container { height: 300px; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.1); border-radius: 5px; }
-
-/* =======================================================
-   8. MODALE D'IMPORT (CORRECTION DU SCROLL & SWAP)
-   ======================================================= */
-.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.8); display: none; justify-content: center; align-items: center; z-index: 1000; }
-.modal-content { background-color: var(--card-color); padding: 30px; border-radius: 10px; width: 500px; max-width: 90%; position: relative; }
-.modal-close { position: absolute; top: 15px; right: 20px; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); }
-
-.modal-content.large-modal { 
-    width: 900px; max-width: 95vw; height: 85vh; max-height: 800px; padding: 0; display: flex; flex-direction: column; overflow: hidden; 
-}
-.modal-content.large-modal #modal-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-#global-import-form { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
-.import-header-panel { background-color: var(--card-color); padding: 20px 25px; border-bottom: 2px solid var(--highlight-color); flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; }
-.import-header-panel h2 { color: var(--primary-color); margin: 0; }
-.import-scroll-area { flex-grow: 1; overflow-y: auto; padding: 20px; background-color: rgba(0,0,0,0.2); min-height: 0; }
-.import-footer-panel { background-color: var(--card-color); padding: 15px 25px; border-top: 1px solid var(--highlight-color); display: flex; justify-content: flex-end; gap: 15px; flex-shrink: 0; }
-.import-card { background-color: var(--card-color); border-radius: 8px; padding: 15px; margin-bottom: 15px; display: flex; gap: 20px; align-items: flex-start; border: 1px solid var(--highlight-color); }
-.import-card-cover { width: 90px; height: 90px; flex-shrink: 0; position: relative; border-radius: 6px; overflow: hidden; }
-.import-card-cover img { width: 100%; height: 100%; object-fit: cover; }
-.import-card-cover button { position: absolute; bottom: 0; left: 0; width: 100%; background: rgba(0, 0, 0, 0.7); color: white; border: none; font-size: 0.7rem; padding: 5px; cursor: pointer; }
-.import-card-details { flex-grow: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-.import-field-group { display: flex; flex-direction: column; }
-.import-field-group label { font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 5px; }
-.import-field-group input { background-color: rgba(0, 0, 0, 0.2); border: 1px solid var(--highlight-color); border-radius: 5px; padding: 8px; color: var(--text-color); }
-.import-remove-btn { background: none; border: none; color: var(--danger-color); font-size: 1.2rem; cursor: pointer; }
-.import-card.removed { opacity: 0.4; filter: grayscale(1); pointer-events: none; }
-
-.swap-btn-custom {
-    position: absolute; right: 5px; top: 50%; transform: translateY(-50%); width: 36px; height: 36px; border-radius: 50%;
-    background-color: var(--card-color); border: 2px solid var(--primary-color); color: var(--primary-color);
-    display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 20;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.6); transition: all 0.2s ease;
-}
-.swap-btn-custom:hover { background-color: var(--primary-color); color: white; transform: translateY(-50%) scale(1.1); }
-
-.playlist-selection-container { display: flex; flex-direction: column; gap: 10px; max-height: 50vh; overflow-y: auto; padding-right: 5px; }
-.playlist-option { background-color: rgba(0, 0, 0, 0.2); border: 1px solid var(--highlight-color); border-radius: 8px; padding: 15px 20px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s; }
-.playlist-option:hover { background-color: var(--highlight-color); border-color: var(--primary-color); }
-.playlist-checkbox-item { background-color: var(--bg-color); padding: 10px; border-radius: 5px; margin-bottom: 5px; display: flex; align-items: center; gap: 10px; cursor: pointer; }
-
-/* =======================================================
-   9. LOGIN (ORIGINAL)
-   ======================================================= */
 #auth-view {
     position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-    z-index: 2000; background-color: #000;
-    display: flex; justify-content: center; align-items: center;
+    z-index: 2000; background-color: #000; display: flex; justify-content: center; align-items: center;
 }
-.auth-container { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; }
 .auth-card {
     width: 420px; padding: 50px 40px; background: rgba(255, 255, 255, 0.03); 
     border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px; text-align: center;
 }
-.auth-logo img { height: 60px; width: auto; margin-bottom: 30px; }
-.auth-title { font-size: 1.5rem; font-weight: 700; margin-bottom: 10px; color: white; }
-.auth-subtitle { color: var(--text-muted); font-size: 0.95rem; margin-bottom: 40px; }
-.google-btn {
-    width: 100%; background-color: white; color: #1f2937; font-weight: 600; font-size: 1rem; padding: 14px;
-    border-radius: 12px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 12px;
-}
-.google-btn img { height: 20px; width: 20px; }
 
 /* =======================================================
-   10. MOBILE & UTILS (ORIGINAL)
+   6. MOBILE & UTILS (ORIGINAL)
    ======================================================= */
 @media screen and (max-width: 900px) {
     .library-page-container { flex-direction: column; }
     .details-view { width: 100%; position: static; order: -1; margin-bottom: 20px; }
-    .playlists-layout { flex-direction: column; overflow: visible; height: auto; }
+    .playlists-layout { flex-direction: column; height: auto; }
     .playlists-sidebar { width: 100%; max-height: 250px; margin-bottom: 20px; }
-    .playlists-sidebar ul { display: flex; overflow-x: auto; gap: 10px; padding-bottom: 10px; }
-    .playlists-sidebar li { white-space: nowrap; margin: 0; }
 }
 
-::-webkit-scrollbar { width: 8px; }
-::-webkit-scrollbar-track { background: var(--bg-color); }
-::-webkit-scrollbar-thumb { background: var(--highlight-color); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: var(--primary-color); }
-
-#loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.7); z-index: 2000; display: none; flex-direction: column; justify-content: center; align-items: center; color: white; font-size: 1.5rem; }
-.spinner { border: 8px solid #f3f3f3; border-top: 8px solid var(--primary-color); border-radius: 50%; width: 60px; height: 60px; animation: spin 1s linear infinite; margin-bottom: 20px; }
-@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-/* Marquage (!) */
 .flag-icon {
     position: absolute; top: 5px; right: 5px; width: 24px; height: 24px; background-color: #ef4444; color: white; font-weight: bold;
     border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.5); z-index: 20; font-size: 14px; pointer-events: none; 
 }
-.flag-toggle-container {
-    margin-top: 15px; padding: 10px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px;
-    display: flex; align-items: center; gap: 10px; cursor: pointer; color: inherit;
-}
-.flag-toggle-container input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; accent-color: #ef4444; }
 
 
 /* =======================================================
    =======================================================
-   ★ THEME LIQUID GLASS (STABLE CHAOS + LISIBILITÉ SELECT) ★
+   ★ THEME LIQUID GLASS (CORRIGÉ POUR LE SWITCH) ★
    =======================================================
    ======================================================= */
 
-body {
+/* TOUT doit être préfixé par body.theme-liquid pour permettre le retour en arrière */
+
+body.theme-liquid {
     background-color: #0f172a !important; 
-    
-    /* Image SVG Lignes (Couche 1) */
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000' preserveAspectRatio='none'%3E%3Cpath d='M0,300 C200,500 800,100 1000,300' stroke='rgba(56, 189, 248, 0.08)' stroke-width='2' fill='none'/%3E%3Cpath d='M0,600 C300,400 700,800 1000,600' stroke='rgba(56, 189, 248, 0.06)' stroke-width='2' fill='none'/%3E%3Cpath d='M0,800 C400,900 600,700 1000,800' stroke='rgba(56, 189, 248, 0.05)' stroke-width='2' fill='none'/%3E%3C/svg%3E") !important;
     background-size: 150% 150% !important;
-    background-position: center !important;
-    background-repeat: no-repeat !important;
     background-attachment: fixed !important;
     animation: stableDrift 30s ease-in-out infinite alternate !important;
     
-    position: relative; z-index: 0; overflow-x: hidden;
-    
-    --text-color: #f1f5f9; 
-    --text-muted: #94a3b8;
     --primary-color: #60a5fa; 
     --accent-color: #38bdf8;
-    
     --glass-bg: rgba(255, 255, 255, 0.005);
     --backdrop-blur: blur(1px);
     --glass-border: 1px solid rgba(255, 255, 255, 0.15);
-    
-    color: var(--text-color);
 }
 
-body::before {
+body.theme-liquid::before {
     content: ''; position: fixed; top: -50%; left: -50%; width: 200%; height: 200%;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000' preserveAspectRatio='none'%3E%3Cpath d='M0,300 C200,500 800,100 1000,300' stroke='rgba(56, 189, 248, 0.05)' stroke-width='2' fill='none'/%3E%3Cpath d='M0,600 C300,400 700,800 1000,600' stroke='rgba(56, 189, 248, 0.04)' stroke-width='2' fill='none'/%3E%3C/svg%3E");
     background-size: 120% 120%;
@@ -334,113 +207,65 @@ body::before {
     z-index: -2; pointer-events: none; opacity: 0.7;
 }
 
-body::after {
+body.theme-liquid::after {
     content: ''; position: fixed; bottom: -20%; right: -20%; width: 80vw; height: 80vw;
-    background: radial-gradient(circle, rgba(14, 165, 233, 0.15) 0%, transparent 60%),
-                radial-gradient(circle at 0% 0%, rgba(59, 130, 246, 0.15) 0%, transparent 60%);
-    filter: blur(60px); z-index: -1;
-    animation: pulseGlow 15s infinite alternate;
+    background: radial-gradient(circle, rgba(14, 165, 233, 0.15) 0%, transparent 60%);
+    filter: blur(60px); z-index: -1; animation: pulseGlow 15s infinite alternate;
 }
 
 @keyframes stableDrift {
     0% { background-position: 50% 50%; }
-    33% { background-position: 60% 40%; }
-    66% { background-position: 40% 60%; }
-    100% { background-position: 50% 50%; }
+    100% { background-position: 60% 40%; }
 }
 
 @keyframes chaosDrift {
-    0% { transform: rotate(0deg) scale(1) translate(0, 0); }
-    50% { transform: rotate(5deg) scale(1.1) translate(-5%, 5%); }
-    100% { transform: rotate(-3deg) scale(1) translate(5%, -5%); }
+    0% { transform: rotate(0deg) scale(1); }
+    100% { transform: rotate(5deg) scale(1.1); }
 }
 
-@keyframes pulseGlow {
-    0% { opacity: 0.5; transform: scale(1); }
-    100% { opacity: 0.8; transform: scale(1.1); }
-}
+/* --- APPLICATION DU STYLE VERRE (SEULEMENT EN MODE LIQUID) --- */
 
-/* --- APPLICATION UNIFORME --- */
-
-.main-header,
-.card,
-.controls,
-.playlists-sidebar,
-.grid-item,
-.modal-content,
-.details-view,
-#auth-view .auth-card,
-.form-container.card {
+body.theme-liquid .main-header,
+body.theme-liquid .card,
+body.theme-liquid .controls,
+body.theme-liquid .playlists-sidebar,
+body.theme-liquid .grid-item,
+body.theme-liquid .modal-content,
+body.theme-liquid .details-view,
+body.theme-liquid .auth-card {
     background: var(--glass-bg) !important;
-    background-color: var(--glass-bg) !important;
     border: var(--glass-border) !important;
     backdrop-filter: var(--backdrop-blur) !important;
     -webkit-backdrop-filter: var(--backdrop-blur) !important;
     box-shadow: none !important;
-    border-radius: 16px !important;
-    color: white !important;
 }
 
-.main-header {
-    border-radius: 0 !important;
-    border-top: none !important; border-left: none !important; border-right: none !important;
-    margin-bottom: 20px;
+body.theme-liquid .main-header { border-radius: 0 !important; border-top: none !important; margin-bottom: 20px; }
+
+body.theme-liquid h1, body.theme-liquid h2, body.theme-liquid h3, body.theme-liquid .title { 
+    color: #ffffff !important; text-shadow: 0 0 10px rgba(96, 165, 250, 0.2); 
 }
 
-h1, h2, h3, .title, .page-title { 
-    color: #ffffff !important; 
-    text-shadow: 0 0 10px rgba(96, 165, 250, 0.2); 
-}
-
-/* --- CORRECTIF SELECT (Tri) --- */
-select {
+/* Correction Lisibilité Select */
+body.theme-liquid select {
     background-color: rgba(255, 255, 255, 0.05) !important;
+    color: white !important;
     border: 1px solid rgba(255, 255, 255, 0.2) !important;
-    color: white !important;
-    cursor: pointer;
-    appearance: none;
-    padding-right: 30px;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='white' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 10px center;
 }
 
-select option {
-    background-color: #0f172a !important; 
-    color: white !important;
-}
+body.theme-liquid select option { background-color: #0f172a !important; color: white !important; }
 
-input, 
-.search-bar, 
-.view-switcher {
+body.theme-liquid input, body.theme-liquid .search-bar, body.theme-liquid .view-switcher {
     background: rgba(255, 255, 255, 0.05) !important;
     border: 1px solid rgba(255, 255, 255, 0.2) !important;
-    color: white !important;
-    border-radius: 8px !important;
 }
 
-input:focus, select:focus {
-    border-color: var(--primary-color) !important;
-    box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.2) !important;
-}
-
-.playlists-sidebar li { border-bottom: 1px solid rgba(255, 255, 255, 0.05); color: #94a3b8; }
-.playlists-sidebar li:hover { background: rgba(255, 255, 255, 0.08) !important; color: white; }
-.playlists-sidebar li.active {
+body.theme-liquid .playlists-sidebar li.active {
     background: rgba(59, 130, 246, 0.2) !important;
-    border: 1px solid rgba(59, 130, 246, 0.5) !important; color: white;
+    border: 1px solid rgba(59, 130, 246, 0.5) !important;
 }
 
-.music-list th { color: var(--accent-color) !important; border-bottom: 1px solid rgba(255,255,255,0.1) !important; }
-.music-list td { border-bottom: 1px solid rgba(255,255,255,0.05) !important; }
-.music-list tr:hover { background: rgba(255,255,255,0.05) !important; }
-
-.grid-item:hover {
+body.theme-liquid .grid-item:hover {
     background: rgba(255, 255, 255, 0.08) !important;
-    transform: translateY(-4px);
     box-shadow: 0 10px 30px rgba(0,0,0,0.3) !important;
 }
-
-::-webkit-scrollbar-track { background: transparent !important; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1) !important; border-radius: 10px !important; }
-::-webkit-scrollbar-thumb:hover { background: var(--primary-color) !important; }
