@@ -11,6 +11,10 @@
     --danger-color: #e74c3c;
     --highlight-color: #4a6fa5;
     --font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    
+    /* Variables neutres pour la transition du thème */
+    --backdrop-blur: 0px;
+    --glass-border: 1px solid transparent;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -22,6 +26,7 @@ body {
     font-size: 16px;
     height: 100vh;
     display: flex; flex-direction: column;
+    transition: background-color 0.5s ease, color 0.3s ease;
 }
 
 /* =======================================================
@@ -32,6 +37,7 @@ body {
     padding: 15px 30px; background-color: var(--card-color);
     border-bottom: 2px solid var(--highlight-color);
     flex-shrink: 0;
+    transition: all 0.3s ease;
 }
 
 .logo { display: flex; align-items: center; font-size: 1.2rem; color: var(--primary-color); }
@@ -59,6 +65,8 @@ nav a.active { color: var(--primary-color); border-bottom: 2px solid var(--prima
     border-radius: 8px;
     padding: 25px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+    border: var(--glass-border);
 }
 
 /* =======================================================
@@ -78,13 +86,14 @@ nav a.active { color: var(--primary-color); border-bottom: 2px solid var(--prima
     padding: 15px; 
     border-radius: 8px; 
     margin-bottom: 20px; 
+    transition: all 0.3s ease;
 }
 .search-bar { display: flex; align-items: center; background-color: var(--bg-color); padding: 8px 12px; border-radius: 5px; flex-grow: 1; }
 .search-bar i { color: var(--text-muted); }
 .search-bar input { background: none; border: none; outline: none; color: var(--text-color); margin-left: 10px; width: 100%; font-size: 1rem; }
 
 .view-switcher { display: flex; background-color: var(--bg-color); border-radius: 5px; overflow: hidden; }
-.view-switcher .btn-icon { padding: 8px 12px; border-radius: 0; background-color: transparent; }
+.view-switcher .btn-icon { padding: 8px 12px; border-radius: 0; background-color: transparent; border: none; }
 .view-switcher .btn-icon.active { background-color: var(--primary-color); color: white; }
 
 .import-actions { display: flex; gap: 10px; }
@@ -104,7 +113,7 @@ nav a.active { color: var(--primary-color); border-bottom: 2px solid var(--prima
     gap: 25px; padding-top: 10px;
 }
 .grid-item {
-    position: relative; /* MODIFICATION : ESSENTIEL POUR LE "!" */
+    position: relative;
     background-color: var(--card-color);
     padding: 15px; 
     border-radius: 12px; 
@@ -198,61 +207,15 @@ nav a.active { color: var(--primary-color); border-bottom: 2px solid var(--prima
 .modal-content { background-color: var(--card-color); padding: 30px; border-radius: 10px; width: 500px; max-width: 90%; position: relative; }
 .modal-close { position: absolute; top: 15px; right: 20px; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); }
 
-/* --- CORRECTIF MODALE LARGE --- */
 .modal-content.large-modal { 
-    width: 900px; 
-    max-width: 95vw; 
-    height: 85vh; 
-    max-height: 800px; 
-    padding: 0; 
-    display: flex; 
-    flex-direction: column; 
-    overflow: hidden; 
+    width: 900px; max-width: 95vw; height: 85vh; max-height: 800px; padding: 0; display: flex; flex-direction: column; overflow: hidden; 
 }
-
-.modal-content.large-modal #modal-body {
-    flex: 1; 
-    min-height: 0; 
-    display: flex; 
-    flex-direction: column;
-}
-
-#global-import-form { 
-    display: flex; 
-    flex-direction: column; 
-    height: 100%; 
-    overflow: hidden; 
-}
-
-.import-header-panel { 
-    background-color: var(--card-color); 
-    padding: 20px 25px; 
-    border-bottom: 2px solid var(--highlight-color); 
-    flex-shrink: 0; 
-    display: flex; 
-    justify-content: space-between; 
-    align-items: center; 
-}
+.modal-content.large-modal #modal-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+#global-import-form { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+.import-header-panel { background-color: var(--card-color); padding: 20px 25px; border-bottom: 2px solid var(--highlight-color); flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; }
 .import-header-panel h2 { color: var(--primary-color); margin: 0; }
-
-.import-scroll-area { 
-    flex-grow: 1; 
-    overflow-y: auto; 
-    padding: 20px; 
-    background-color: rgba(0,0,0,0.2); 
-    min-height: 0;
-}
-
-.import-footer-panel { 
-    background-color: var(--card-color); 
-    padding: 15px 25px; 
-    border-top: 1px solid var(--highlight-color); 
-    display: flex; 
-    justify-content: flex-end; 
-    gap: 15px; 
-    flex-shrink: 0; 
-}
-
+.import-scroll-area { flex-grow: 1; overflow-y: auto; padding: 20px; background-color: rgba(0,0,0,0.2); min-height: 0; }
+.import-footer-panel { background-color: var(--card-color); padding: 15px 25px; border-top: 1px solid var(--highlight-color); display: flex; justify-content: flex-end; gap: 15px; flex-shrink: 0; }
 .import-card { background-color: var(--card-color); border-radius: 8px; padding: 15px; margin-bottom: 15px; display: flex; gap: 20px; align-items: flex-start; border: 1px solid var(--highlight-color); }
 .import-card-cover { width: 90px; height: 90px; flex-shrink: 0; position: relative; border-radius: 6px; overflow: hidden; }
 .import-card-cover img { width: 100%; height: 100%; object-fit: cover; }
@@ -265,30 +228,12 @@ nav a.active { color: var(--primary-color); border-bottom: 2px solid var(--prima
 .import-card.removed { opacity: 0.4; filter: grayscale(1); pointer-events: none; }
 
 .swap-btn-custom {
-    position: absolute;
-    right: 5px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background-color: var(--card-color); 
-    border: 2px solid var(--primary-color);
-    color: var(--primary-color);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    z-index: 20;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.6);
-    transition: all 0.2s ease;
+    position: absolute; right: 5px; top: 50%; transform: translateY(-50%); width: 36px; height: 36px; border-radius: 50%;
+    background-color: var(--card-color); border: 2px solid var(--primary-color); color: var(--primary-color);
+    display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 20;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.6); transition: all 0.2s ease;
 }
-
-.swap-btn-custom:hover {
-    background-color: var(--primary-color);
-    color: white;
-    transform: translateY(-50%) scale(1.1);
-}
+.swap-btn-custom:hover { background-color: var(--primary-color); color: white; transform: translateY(-50%) scale(1.1); }
 
 .playlist-selection-container { display: flex; flex-direction: column; gap: 10px; max-height: 50vh; overflow-y: auto; padding-right: 5px; }
 .playlist-option { background-color: rgba(0, 0, 0, 0.2); border: 1px solid var(--highlight-color); border-radius: 8px; padding: 15px 20px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s; }
@@ -296,47 +241,29 @@ nav a.active { color: var(--primary-color); border-bottom: 2px solid var(--prima
 .playlist-checkbox-item { background-color: var(--bg-color); padding: 10px; border-radius: 5px; margin-bottom: 5px; display: flex; align-items: center; gap: 10px; cursor: pointer; }
 
 /* =======================================================
-   9. LOGIN (DESIGN GLASSMORPHISM)
+   9. LOGIN (ORIGINAL)
    ======================================================= */
 #auth-view {
     position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
     z-index: 2000; background-color: #000;
-    background-image: 
-        radial-gradient(circle at 20% 50%, rgba(56, 189, 248, 0.15), transparent 25%),
-        radial-gradient(circle at 80% 30%, rgba(168, 85, 247, 0.15), transparent 25%);
     display: flex; justify-content: center; align-items: center;
 }
 .auth-container { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; }
 .auth-card {
-    width: 420px; padding: 50px 40px;
-    background: rgba(255, 255, 255, 0.03); 
-    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 24px;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-    text-align: center;
+    width: 420px; padding: 50px 40px; background: rgba(255, 255, 255, 0.03); 
+    border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px; text-align: center;
 }
-.auth-logo {
-    font-size: 2rem; font-weight: 800; color: white;
-    display: flex; align-items: center; justify-content: center; gap: 15px;
-    margin-bottom: 30px; letter-spacing: -0.5px;
-}
-.auth-logo img { height: 60px; width: auto; }
+.auth-logo img { height: 60px; width: auto; margin-bottom: 30px; }
 .auth-title { font-size: 1.5rem; font-weight: 700; margin-bottom: 10px; color: white; }
 .auth-subtitle { color: var(--text-muted); font-size: 0.95rem; margin-bottom: 40px; }
 .google-btn {
-    width: 100%; background-color: white; color: #1f2937;
-    font-weight: 600; font-size: 1rem; padding: 14px;
-    border-radius: 12px; border: none; cursor: pointer;
-    display: flex; align-items: center; justify-content: center; gap: 12px;
-    transition: transform 0.2s, box-shadow 0.2s;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    width: 100%; background-color: white; color: #1f2937; font-weight: 600; font-size: 1rem; padding: 14px;
+    border-radius: 12px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 12px;
 }
-.google-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); background-color: #f8fafc; }
 .google-btn img { height: 20px; width: 20px; }
 
 /* =======================================================
-   10. MOBILE
+   10. MOBILE & UTILS (ORIGINAL)
    ======================================================= */
 @media screen and (max-width: 900px) {
     .library-page-container { flex-direction: column; }
@@ -345,9 +272,6 @@ nav a.active { color: var(--primary-color); border-bottom: 2px solid var(--prima
     .playlists-sidebar { width: 100%; max-height: 250px; margin-bottom: 20px; }
     .playlists-sidebar ul { display: flex; overflow-x: auto; gap: 10px; padding-bottom: 10px; }
     .playlists-sidebar li { white-space: nowrap; margin: 0; }
-    .import-card { flex-direction: column; }
-    .import-card-cover { width: 100%; height: 150px; }
-    .import-card-details { grid-template-columns: 1fr; }
 }
 
 ::-webkit-scrollbar { width: 8px; }
@@ -359,51 +283,164 @@ nav a.active { color: var(--primary-color); border-bottom: 2px solid var(--prima
 .spinner { border: 8px solid #f3f3f3; border-top: 8px solid var(--primary-color); border-radius: 50%; width: 60px; height: 60px; animation: spin 1s linear infinite; margin-bottom: 20px; }
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-/* =========================================
-   STYLE POUR LE MARQUAGE (!)
-   ========================================= */
-
-/* L'icône "!" rouge sur la pochette */
+/* Marquage (!) */
 .flag-icon {
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    width: 24px;
-    height: 24px;
-    background-color: #ef4444; 
-    color: white;
-    font-weight: bold;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.5);
-    z-index: 20; /* Augmenté pour être sûr */
-    font-size: 14px;
-    pointer-events: none; 
+    position: absolute; top: 5px; right: 5px; width: 24px; height: 24px; background-color: #ef4444; color: white; font-weight: bold;
+    border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.5); z-index: 20; font-size: 14px; pointer-events: none; 
 }
-
-/* Le bouton à cocher dans le panneau de détails */
 .flag-toggle-container {
-    margin-top: 15px;
-    padding: 10px;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 6px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    cursor: pointer;
-    color: inherit;
+    margin-top: 15px; padding: 10px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px;
+    display: flex; align-items: center; gap: 10px; cursor: pointer; color: inherit;
+}
+.flag-toggle-container input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; accent-color: #ef4444; }
+
+
+/* =======================================================
+   =======================================================
+   ★ THEME LIQUID GLASS (STABLE CHAOS + LISIBILITÉ SELECT) ★
+   =======================================================
+   ======================================================= */
+
+body {
+    background-color: #0f172a !important; 
+    
+    /* Image SVG Lignes (Couche 1) */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000' preserveAspectRatio='none'%3E%3Cpath d='M0,300 C200,500 800,100 1000,300' stroke='rgba(56, 189, 248, 0.08)' stroke-width='2' fill='none'/%3E%3Cpath d='M0,600 C300,400 700,800 1000,600' stroke='rgba(56, 189, 248, 0.06)' stroke-width='2' fill='none'/%3E%3Cpath d='M0,800 C400,900 600,700 1000,800' stroke='rgba(56, 189, 248, 0.05)' stroke-width='2' fill='none'/%3E%3C/svg%3E") !important;
+    background-size: 150% 150% !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+    background-attachment: fixed !important;
+    animation: stableDrift 30s ease-in-out infinite alternate !important;
+    
+    position: relative; z-index: 0; overflow-x: hidden;
+    
+    --text-color: #f1f5f9; 
+    --text-muted: #94a3b8;
+    --primary-color: #60a5fa; 
+    --accent-color: #38bdf8;
+    
+    --glass-bg: rgba(255, 255, 255, 0.005);
+    --backdrop-blur: blur(1px);
+    --glass-border: 1px solid rgba(255, 255, 255, 0.15);
+    
+    color: var(--text-color);
 }
 
-.flag-toggle-container:hover {
-    background: rgba(255,255,255,0.1);
+body::before {
+    content: ''; position: fixed; top: -50%; left: -50%; width: 200%; height: 200%;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000' preserveAspectRatio='none'%3E%3Cpath d='M0,300 C200,500 800,100 1000,300' stroke='rgba(56, 189, 248, 0.05)' stroke-width='2' fill='none'/%3E%3Cpath d='M0,600 C300,400 700,800 1000,600' stroke='rgba(56, 189, 248, 0.04)' stroke-width='2' fill='none'/%3E%3C/svg%3E");
+    background-size: 120% 120%;
+    animation: chaosDrift 25s ease-in-out infinite alternate;
+    z-index: -2; pointer-events: none; opacity: 0.7;
 }
 
-.flag-toggle-container input[type="checkbox"] {
-    width: 18px;
-    height: 18px;
-    cursor: pointer;
-    accent-color: #ef4444; 
+body::after {
+    content: ''; position: fixed; bottom: -20%; right: -20%; width: 80vw; height: 80vw;
+    background: radial-gradient(circle, rgba(14, 165, 233, 0.15) 0%, transparent 60%),
+                radial-gradient(circle at 0% 0%, rgba(59, 130, 246, 0.15) 0%, transparent 60%);
+    filter: blur(60px); z-index: -1;
+    animation: pulseGlow 15s infinite alternate;
 }
+
+@keyframes stableDrift {
+    0% { background-position: 50% 50%; }
+    33% { background-position: 60% 40%; }
+    66% { background-position: 40% 60%; }
+    100% { background-position: 50% 50%; }
+}
+
+@keyframes chaosDrift {
+    0% { transform: rotate(0deg) scale(1) translate(0, 0); }
+    50% { transform: rotate(5deg) scale(1.1) translate(-5%, 5%); }
+    100% { transform: rotate(-3deg) scale(1) translate(5%, -5%); }
+}
+
+@keyframes pulseGlow {
+    0% { opacity: 0.5; transform: scale(1); }
+    100% { opacity: 0.8; transform: scale(1.1); }
+}
+
+/* --- APPLICATION UNIFORME --- */
+
+.main-header,
+.card,
+.controls,
+.playlists-sidebar,
+.grid-item,
+.modal-content,
+.details-view,
+#auth-view .auth-card,
+.form-container.card {
+    background: var(--glass-bg) !important;
+    background-color: var(--glass-bg) !important;
+    border: var(--glass-border) !important;
+    backdrop-filter: var(--backdrop-blur) !important;
+    -webkit-backdrop-filter: var(--backdrop-blur) !important;
+    box-shadow: none !important;
+    border-radius: 16px !important;
+    color: white !important;
+}
+
+.main-header {
+    border-radius: 0 !important;
+    border-top: none !important; border-left: none !important; border-right: none !important;
+    margin-bottom: 20px;
+}
+
+h1, h2, h3, .title, .page-title { 
+    color: #ffffff !important; 
+    text-shadow: 0 0 10px rgba(96, 165, 250, 0.2); 
+}
+
+/* --- CORRECTIF SELECT (Tri) --- */
+select {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    color: white !important;
+    cursor: pointer;
+    appearance: none;
+    padding-right: 30px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='white' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+}
+
+select option {
+    background-color: #0f172a !important; 
+    color: white !important;
+}
+
+input, 
+.search-bar, 
+.view-switcher {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    color: white !important;
+    border-radius: 8px !important;
+}
+
+input:focus, select:focus {
+    border-color: var(--primary-color) !important;
+    box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.2) !important;
+}
+
+.playlists-sidebar li { border-bottom: 1px solid rgba(255, 255, 255, 0.05); color: #94a3b8; }
+.playlists-sidebar li:hover { background: rgba(255, 255, 255, 0.08) !important; color: white; }
+.playlists-sidebar li.active {
+    background: rgba(59, 130, 246, 0.2) !important;
+    border: 1px solid rgba(59, 130, 246, 0.5) !important; color: white;
+}
+
+.music-list th { color: var(--accent-color) !important; border-bottom: 1px solid rgba(255,255,255,0.1) !important; }
+.music-list td { border-bottom: 1px solid rgba(255,255,255,0.05) !important; }
+.music-list tr:hover { background: rgba(255,255,255,0.05) !important; }
+
+.grid-item:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+    transform: translateY(-4px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3) !important;
+}
+
+::-webkit-scrollbar-track { background: transparent !important; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1) !important; border-radius: 10px !important; }
+::-webkit-scrollbar-thumb:hover { background: var(--primary-color) !important; }
