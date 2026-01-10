@@ -21,12 +21,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const googleLoginBtn = document.getElementById('google-login-btn');
     const authMessage = document.getElementById('auth-message');
 
-    // UI Globale
+    // UI Globale & Thème
     const loadingOverlay = document.getElementById('loading-overlay');
     const loadingText = document.getElementById('loading-text');
     const modal = document.getElementById('generic-modal');
     const modalBody = document.getElementById('modal-body');
     const modalCloseBtn = modal.querySelector('.modal-close');
+    const themeToggle = document.getElementById('theme-toggle');
     
     // Navigation
     const navLinks = document.querySelectorAll('.nav-link');
@@ -67,6 +68,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentViewMode = 'grid'; 
     let currentPlaylistViewMode = 'grid'; 
     let currentUser = null; 
+
+    // =======================================================
+    // |                 GESTION DU THEME                    |
+    // =======================================================
+    
+    // Charger le thème sauvegardé
+    const savedTheme = localStorage.getItem('spoty_theme');
+    if (savedTheme === 'liquid') {
+        document.body.classList.add('theme-liquid');
+        if(themeToggle) themeToggle.checked = true;
+    }
+
+    // Listener sur le switch
+    if(themeToggle) {
+        themeToggle.addEventListener('change', (e) => {
+            if(e.target.checked) {
+                document.body.classList.add('theme-liquid');
+                localStorage.setItem('spoty_theme', 'liquid');
+            } else {
+                document.body.classList.remove('theme-liquid');
+                localStorage.setItem('spoty_theme', 'classic');
+            }
+        });
+    }
 
     // =======================================================
     // |                 FONCTIONS UTILITAIRES               |
@@ -250,7 +275,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         gridViewContainer.innerHTML = '';
         
         if (partitions.length === 0) {
-            detailsPanel.innerHTML = `<h3>Vide...</h3><p>Aucune partition trouvée.</p>`;
+            detailsPanel.innerHTML = `<div class="empty-state"><i class="fas fa-search"></i><p>Aucun résultat</p></div>`;
             return;
         }
 
@@ -283,22 +308,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const toggleFlag = async () => {
                 p.is_flagged = !p.is_flagged;
-                
-                // Update DOM direct pour réactivité instantanée
+                // Update DOM instantané
                 const existingFlag = div.querySelector('.flag-icon');
                 if (p.is_flagged && !existingFlag) {
-                    const span = document.createElement('span');
-                    span.className = 'flag-icon';
-                    span.textContent = '!';
-                    div.insertBefore(span, div.firstChild);
+                    const span = document.createElement('span'); span.className = 'flag-icon'; span.textContent = '!'; div.insertBefore(span, div.firstChild);
                 } else if (!p.is_flagged && existingFlag) {
                     existingFlag.remove();
                 }
-
-                // Sync avec le panneau de détails
                 const checkbox = document.getElementById(`flag-checkbox-${p.id}`);
                 if (checkbox) checkbox.checked = p.is_flagged;
-
                 await supabase.from('partitions').update({ is_flagged: p.is_flagged }).eq('id', p.id);
             };
 
@@ -309,29 +327,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             tr.addEventListener('dblclick', handleOpen);
             musicTableBody.appendChild(tr);
 
-            // Listeners Vue Grille (Gestion Clic vs Double Clic)
+            // Listeners Vue Grille
             let clickTimer = null;
-
             div.addEventListener('click', (e) => {
-                handleSelect(); // Sélection immédiate
-                
-                if (clickTimer) {
-                    clearTimeout(clickTimer);
-                    clickTimer = null;
-                }
-                
-                clickTimer = setTimeout(() => {
-                    toggleFlag(); // Bascule le drapeau si pas de 2ème clic
-                    clickTimer = null;
-                }, 250);
+                handleSelect(); 
+                if (clickTimer) { clearTimeout(clickTimer); clickTimer = null; }
+                clickTimer = setTimeout(() => { toggleFlag(); clickTimer = null; }, 250);
             });
-
             div.addEventListener('dblclick', (e) => {
-                if (clickTimer) {
-                    clearTimeout(clickTimer); // Annule le basculement du drapeau
-                    clickTimer = null;
-                }
-                handleOpen(); // Ouvre le PDF
+                if (clickTimer) { clearTimeout(clickTimer); clickTimer = null; }
+                handleOpen();
             });
 
             gridViewContainer.appendChild(div);
@@ -648,15 +653,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         const { error } = await supabase.from('partitions').delete().eq('id', id);
         hideLoading();
         if (error) alert(error.message);
+        else {
+            fetchLibrary();
+            detailsPanel.innerHTML = '<div class="empty-state"><i class="fas fa-trash"></i><p>Supprimé</p></div>';
+        }
     };
 
     const openEditModal = (p) => {
-        // MODAL EDITION MISE A JOUR
         modalBody.innerHTML = `
             <h3>Modifier</h3>
             <form id="edit-form">
-                <div class="form-group"><label>Titre</label><input type="text" id="edit-titre" name="titre" value="${p.titre}" required></div>
-                <div class="form-group"><label>Artiste</label><input type="text" id="edit-artiste" name="nom_artiste" value="${p.nom_artiste}" required></div>
+                <div class="form-group"><label>Titre</label><input type="text" id="edit-titre" name="titre" value="${p.titre}" required class="glass-input"></div>
+                <div class="form-group"><label>Artiste</label><input type="text" id="edit-artiste" name="nom_artiste" value="${p.nom_artiste}" required class="glass-input"></div>
                 
                 <div class="form-group">
                     <label>Pochette</label>
@@ -667,8 +675,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                 </div>
 
-                <div class="form-group"><label>Style (Optionnel)</label><input type="text" name="style" value="${p.style || ''}"></div>
-                <div class="form-group"><label>Année (Optionnel)</label><input type="number" name="annee" value="${p.annee || ''}"></div>
+                <div class="form-group"><label>Style (Optionnel)</label><input type="text" name="style" value="${p.style || ''}" class="glass-input"></div>
+                <div class="form-group"><label>Année (Optionnel)</label><input type="number" name="annee" value="${p.annee || ''}" class="glass-input"></div>
                 <button type="submit" class="btn btn-accent" style="width:100%">Sauvegarder</button>
             </form>
         `;
@@ -828,9 +836,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                  await supabase.from('playlists').delete().eq('id', pid);
                  localStorage.removeItem('lastPlaylistId'); 
                  fetchPlaylists(); 
-                 playlistContentContainer.innerHTML='<p style="padding:20px;">Sélectionnez une playlist.</p>';
+                 playlistContentContainer.innerHTML='<div class="empty-state"><p>Sélectionnez une playlist.</p></div>';
                  if(playlistDetailsPanel) {
-                     playlistDetailsPanel.innerHTML = '<div style="text-align:center; padding-top:50px; color:#bdc3c7;"><i class="fas fa-compact-disc" style="font-size:3rem; margin-bottom:20px;"></i><p>Sélectionnez un titre</p></div>';
+                     playlistDetailsPanel.innerHTML = '<div class="empty-state"><i class="fas fa-compact-disc"></i><p>Sélectionnez un titre</p></div>';
                  }
              }
         });
@@ -838,42 +846,31 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const setupSelection = (item) => {
             let clickTimer = null;
-
             item.addEventListener('click', async () => {
-                // Sélection immédiate
                 playlistContentContainer.querySelectorAll('.selected').forEach(i => i.classList.remove('selected'));
                 item.classList.add('selected');
                 const id = item.dataset.id;
                 playlistContentContainer.querySelectorAll(`[data-id="${id}"]`).forEach(el => el.classList.add('selected'));
                 renderPlaylistDetailsPanel(id, pid, allData);
                 
-                // Gestion du flag avec délai
-                if (clickTimer) {
-                    clearTimeout(clickTimer);
-                    clickTimer = null;
-                }
-                
+                if (clickTimer) { clearTimeout(clickTimer); clickTimer = null; }
                 clickTimer = setTimeout(async () => {
                     const { data: currentP } = await supabase.from('partitions').select('is_flagged').eq('id', id).single();
                     if(currentP) {
                         const newStatus = !currentP.is_flagged;
-                        
                         const existingFlag = item.querySelector('.flag-icon');
                         if(newStatus && !existingFlag) {
                             const span = document.createElement('span'); span.className='flag-icon'; span.textContent='!'; item.insertBefore(span, item.firstChild);
                         } else if(!newStatus && existingFlag) {
                             existingFlag.remove();
                         }
-                        
                         const cb = document.getElementById(`pl-flag-checkbox-${id}`);
                         if(cb) cb.checked = newStatus;
-                        
                         await supabase.from('partitions').update({ is_flagged: newStatus }).eq('id', id);
                     }
                     clickTimer = null;
                 }, 250);
             });
-
             item.addEventListener('dblclick', async () => {
                 if(clickTimer) { clearTimeout(clickTimer); clickTimer = null; }
                 const { data: p } = await supabase.from('partitions').select('*').eq('id', item.dataset.id).single();
@@ -882,7 +879,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
 
         playlistContentContainer.querySelectorAll('.playlist-item-grid').forEach(setupSelection);
-        // Pour la liste, on garde le comportement classique (clic simple = select, pas de flag)
         playlistContentContainer.querySelectorAll('.playlist-item-list').forEach(item => {
              item.addEventListener('click', () => {
                 playlistContentContainer.querySelectorAll('.selected').forEach(i => i.classList.remove('selected'));
@@ -923,9 +919,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const checkbox = document.getElementById(`pl-flag-checkbox-${p.id}`);
         checkbox.addEventListener('change', async (e) => {
             const isChecked = e.target.checked;
-            
             await supabase.from('partitions').update({ is_flagged: isChecked }).eq('id', p.id);
-            
             const { data: updatedData } = await supabase.from('playlists').select('*');
             loadPlaylistContent(playlistId, updatedData);
         });
@@ -939,7 +933,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             const { data: updatedData } = await supabase.from('playlists').select('*');
             loadPlaylistContent(playlistId, updatedData);
-            playlistDetailsPanel.innerHTML = '<div style="text-align:center; padding-top:50px; color:#bdc3c7;"><i class="fas fa-compact-disc" style="font-size:3rem; margin-bottom:20px;"></i><p>Sélectionnez un titre</p></div>';
+            playlistDetailsPanel.innerHTML = '<div class="empty-state"><i class="fas fa-compact-disc"></i><p>Sélectionnez un titre</p></div>';
         });
     };
 
