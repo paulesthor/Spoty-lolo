@@ -41,6 +41,10 @@
             <span>Spoti-Lolo</span>
         </div>
         <nav>
+            <label class="theme-switch" title="Changer de thème" style="margin-right: 20px;">
+                <input type="checkbox" id="theme-toggle-checkbox">
+                <span class="slider"></span>
+            </label>
             <a href="#library" class="nav-link active" data-view="library-view">Bibliothèque</a>
             <a href="#add" class="nav-link" data-view="add-view">Ajouter</a>
             <a href="#playlists" class="nav-link" data-view="playlists-view">Playlists</a>
@@ -201,5 +205,25 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="app.js"></script>
+
+    <script>
+        const themeToggle = document.getElementById('theme-toggle-checkbox');
+        
+        // Charger la préférence au démarrage
+        if (localStorage.getItem('theme') === 'liquid') {
+            document.body.classList.add('theme-liquid');
+            themeToggle.checked = true;
+        }
+
+        themeToggle.addEventListener('change', () => {
+            if (themeToggle.checked) {
+                document.body.classList.add('theme-liquid');
+                localStorage.setItem('theme', 'liquid');
+            } else {
+                document.body.classList.remove('theme-liquid');
+                localStorage.setItem('theme', 'classic');
+            }
+        });
+    </script>
 </body>
 </html>
