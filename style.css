@@ -1,5 +1,5 @@
 /* =======================================================
-   1. VARIABLES & RESET (BASE ORIGINALE)
+   1. VARIABLES & RESET
    ======================================================= */
 :root {
     --bg-color: #1a2a3a;
@@ -25,7 +25,7 @@ body {
 }
 
 /* =======================================================
-   2. HEADER & NAVIGATION (ORIGINAL)
+   2. HEADER & NAVIGATION
    ======================================================= */
 .main-header {
     display: flex; justify-content: space-between; align-items: center;
@@ -45,12 +45,12 @@ nav a:hover { color: var(--text-color); }
 nav a.active { color: var(--primary-color); border-bottom: 2px solid var(--primary-color); }
 
 /* =======================================================
-   3. LAYOUT GÉNÉRAL (ORIGINAL)
+   3. LAYOUT GÉNÉRAL (SCROLL ICI)
    ======================================================= */
 .main-container {
     padding: 25px;
     height: calc(100vh - 70px); 
-    overflow-y: auto; 
+    overflow-y: auto; /* C'est ici que le scroll se fait */
     position: relative;
 }
 
@@ -62,11 +62,39 @@ nav a.active { color: var(--primary-color); border-bottom: 2px solid var(--prima
 }
 
 /* =======================================================
-   4. BIBLIOTHÈQUE (ORIGINAL)
+   4. BIBLIOTHÈQUE & DETAILS (CORRIGÉ)
    ======================================================= */
-.library-page-container { display: flex; gap: 25px; align-items: flex-start; height: 100%; }
-.library-view { flex: 1; display: flex; flex-direction: column; gap: 25px; min-width: 0; height: 100%; }
-.details-view { width: 350px; display: flex; flex-direction: column; gap: 20px; position: sticky; top: 0; }
+.library-page-container { 
+    display: flex; 
+    gap: 25px; 
+    align-items: flex-start; /* Important pour le sticky */
+    /* Pas de height: 100% ici, on laisse grandir */
+}
+
+.library-view { 
+    flex: 1; 
+    display: flex; 
+    flex-direction: column; 
+    gap: 25px; 
+    min-width: 0; 
+    /* Pas de height: 100% ici non plus */
+}
+
+/* PANNEAU DETAILS FIXE */
+.details-view { 
+    width: 260px; /* Taille réduite */
+    display: flex; 
+    flex-direction: column; 
+    gap: 20px; 
+    
+    /* Le Sticky Magic */
+    position: sticky; 
+    top: 0; 
+    
+    /* Au cas où le panneau est plus grand que l'écran */
+    max-height: calc(100vh - 100px); 
+    overflow-y: auto;
+}
 
 .controls {
     display: flex;
@@ -90,7 +118,9 @@ nav a.active { color: var(--primary-color); border-bottom: 2px solid var(--prima
 .import-actions { display: flex; gap: 10px; }
 
 /* Table */
-.music-list { overflow-y: auto; max-height: 75vh; }
+.music-list { 
+    /* Pas de max-height fixe pour laisser la page scroller */
+}
 .music-list table { width: 100%; border-collapse: collapse; }
 .music-list th, .music-list td { padding: 15px; text-align: left; border-bottom: 1px solid var(--highlight-color); }
 .music-list th { font-size: 0.9rem; text-transform: uppercase; color: var(--text-muted); }
@@ -104,7 +134,7 @@ nav a.active { color: var(--primary-color); border-bottom: 2px solid var(--prima
     gap: 25px; padding-top: 10px;
 }
 .grid-item {
-    position: relative; /* MODIFICATION : ESSENTIEL POUR LE "!" */
+    position: relative;
     background-color: var(--card-color);
     padding: 15px; 
     border-radius: 12px; 
@@ -147,7 +177,7 @@ nav a.active { color: var(--primary-color); border-bottom: 2px solid var(--prima
 .details-view .actions { margin-top: auto; display: flex; flex-direction: column; gap: 10px; }
 
 /* =======================================================
-   5. PAGE AJOUTER & BOUTONS (ORIGINAL)
+   5. PAGE AJOUTER & BOUTONS
    ======================================================= */
 .form-container { max-width: 800px; margin: 0 auto; }
 .form-container h2 { margin-bottom: 20px; color: var(--primary-color); }
@@ -168,7 +198,7 @@ nav a.active { color: var(--primary-color); border-bottom: 2px solid var(--prima
 .btn-icon:hover { color: var(--text-color); }
 
 /* =======================================================
-   6. PLAYLISTS (ORIGINAL)
+   6. PLAYLISTS
    ======================================================= */
 .playlists-layout { display: flex; gap: 25px; align-items: flex-start; height: 100%; }
 .playlists-sidebar { width: 300px; flex-shrink: 0; display: flex; flex-direction: column; max-height: 100%; }
@@ -182,7 +212,7 @@ nav a.active { color: var(--primary-color); border-bottom: 2px solid var(--prima
 .playlist-content-scroll { overflow-y: auto; flex-grow: 1; padding-right: 5px; }
 
 /* =======================================================
-   7. STATISTIQUES (ORIGINAL)
+   7. STATISTIQUES
    ======================================================= */
 .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px; }
 .kpi-card { position: relative; padding-top: 40px; }
@@ -192,66 +222,20 @@ nav a.active { color: var(--primary-color); border-bottom: 2px solid var(--prima
 .chart-container { height: 300px; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.1); border-radius: 5px; }
 
 /* =======================================================
-   8. MODALE D'IMPORT (CORRECTION DU SCROLL & SWAP)
+   8. MODALE D'IMPORT & RECHERCHE
    ======================================================= */
 .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.8); display: none; justify-content: center; align-items: center; z-index: 1000; }
 .modal-content { background-color: var(--card-color); padding: 30px; border-radius: 10px; width: 500px; max-width: 90%; position: relative; }
 .modal-close { position: absolute; top: 15px; right: 20px; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); }
 
-/* --- CORRECTIF MODALE LARGE --- */
-.modal-content.large-modal { 
-    width: 900px; 
-    max-width: 95vw; 
-    height: 85vh; 
-    max-height: 800px; 
-    padding: 0; 
-    display: flex; 
-    flex-direction: column; 
-    overflow: hidden; 
-}
-
-.modal-content.large-modal #modal-body {
-    flex: 1; 
-    min-height: 0; 
-    display: flex; 
-    flex-direction: column;
-}
-
-#global-import-form { 
-    display: flex; 
-    flex-direction: column; 
-    height: 100%; 
-    overflow: hidden; 
-}
-
-.import-header-panel { 
-    background-color: var(--card-color); 
-    padding: 20px 25px; 
-    border-bottom: 2px solid var(--highlight-color); 
-    flex-shrink: 0; 
-    display: flex; 
-    justify-content: space-between; 
-    align-items: center; 
-}
+/* --- MODALE LARGE --- */
+.modal-content.large-modal { width: 900px; max-width: 95vw; height: 85vh; max-height: 800px; padding: 0; display: flex; flex-direction: column; overflow: hidden; }
+.modal-content.large-modal #modal-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+#global-import-form { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+.import-header-panel { background-color: var(--card-color); padding: 20px 25px; border-bottom: 2px solid var(--highlight-color); flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; }
 .import-header-panel h2 { color: var(--primary-color); margin: 0; }
-
-.import-scroll-area { 
-    flex-grow: 1; 
-    overflow-y: auto; 
-    padding: 20px; 
-    background-color: rgba(0,0,0,0.2); 
-    min-height: 0;
-}
-
-.import-footer-panel { 
-    background-color: var(--card-color); 
-    padding: 15px 25px; 
-    border-top: 1px solid var(--highlight-color); 
-    display: flex; 
-    justify-content: flex-end; 
-    gap: 15px; 
-    flex-shrink: 0; 
-}
+.import-scroll-area { flex-grow: 1; overflow-y: auto; padding: 20px; background-color: rgba(0,0,0,0.2); min-height: 0; }
+.import-footer-panel { background-color: var(--card-color); padding: 15px 25px; border-top: 1px solid var(--highlight-color); display: flex; justify-content: flex-end; gap: 15px; flex-shrink: 0; }
 
 .import-card { background-color: var(--card-color); border-radius: 8px; padding: 15px; margin-bottom: 15px; display: flex; gap: 20px; align-items: flex-start; border: 1px solid var(--highlight-color); }
 .import-card-cover { width: 90px; height: 90px; flex-shrink: 0; position: relative; border-radius: 6px; overflow: hidden; }
@@ -264,31 +248,8 @@ nav a.active { color: var(--primary-color); border-bottom: 2px solid var(--prima
 .import-remove-btn { background: none; border: none; color: var(--danger-color); font-size: 1.2rem; cursor: pointer; }
 .import-card.removed { opacity: 0.4; filter: grayscale(1); pointer-events: none; }
 
-.swap-btn-custom {
-    position: absolute;
-    right: 5px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background-color: var(--card-color); 
-    border: 2px solid var(--primary-color);
-    color: var(--primary-color);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    z-index: 20;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.6);
-    transition: all 0.2s ease;
-}
-
-.swap-btn-custom:hover {
-    background-color: var(--primary-color);
-    color: white;
-    transform: translateY(-50%) scale(1.1);
-}
+.swap-btn-custom { position: absolute; right: 5px; top: 50%; transform: translateY(-50%); width: 36px; height: 36px; border-radius: 50%; background-color: var(--card-color); border: 2px solid var(--primary-color); color: var(--primary-color); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 20; box-shadow: 0 4px 8px rgba(0,0,0,0.6); transition: all 0.2s ease; }
+.swap-btn-custom:hover { background-color: var(--primary-color); color: white; transform: translateY(-50%) scale(1.1); }
 
 .playlist-selection-container { display: flex; flex-direction: column; gap: 10px; max-height: 50vh; overflow-y: auto; padding-right: 5px; }
 .playlist-option { background-color: rgba(0, 0, 0, 0.2); border: 1px solid var(--highlight-color); border-radius: 8px; padding: 15px 20px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s; }
@@ -296,42 +257,16 @@ nav a.active { color: var(--primary-color); border-bottom: 2px solid var(--prima
 .playlist-checkbox-item { background-color: var(--bg-color); padding: 10px; border-radius: 5px; margin-bottom: 5px; display: flex; align-items: center; gap: 10px; cursor: pointer; }
 
 /* =======================================================
-   9. LOGIN (DESIGN GLASSMORPHISM)
+   9. LOGIN
    ======================================================= */
-#auth-view {
-    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-    z-index: 2000; background-color: #000;
-    background-image: 
-        radial-gradient(circle at 20% 50%, rgba(56, 189, 248, 0.15), transparent 25%),
-        radial-gradient(circle at 80% 30%, rgba(168, 85, 247, 0.15), transparent 25%);
-    display: flex; justify-content: center; align-items: center;
-}
+#auth-view { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 2000; background-color: #000; background-image: radial-gradient(circle at 20% 50%, rgba(56, 189, 248, 0.15), transparent 25%), radial-gradient(circle at 80% 30%, rgba(168, 85, 247, 0.15), transparent 25%); display: flex; justify-content: center; align-items: center; }
 .auth-container { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; }
-.auth-card {
-    width: 420px; padding: 50px 40px;
-    background: rgba(255, 255, 255, 0.03); 
-    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 24px;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-    text-align: center;
-}
-.auth-logo {
-    font-size: 2rem; font-weight: 800; color: white;
-    display: flex; align-items: center; justify-content: center; gap: 15px;
-    margin-bottom: 30px; letter-spacing: -0.5px;
-}
+.auth-card { width: 420px; padding: 50px 40px; background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); text-align: center; }
+.auth-logo { font-size: 2rem; font-weight: 800; color: white; display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 30px; letter-spacing: -0.5px; }
 .auth-logo img { height: 60px; width: auto; }
 .auth-title { font-size: 1.5rem; font-weight: 700; margin-bottom: 10px; color: white; }
 .auth-subtitle { color: var(--text-muted); font-size: 0.95rem; margin-bottom: 40px; }
-.google-btn {
-    width: 100%; background-color: white; color: #1f2937;
-    font-weight: 600; font-size: 1rem; padding: 14px;
-    border-radius: 12px; border: none; cursor: pointer;
-    display: flex; align-items: center; justify-content: center; gap: 12px;
-    transition: transform 0.2s, box-shadow 0.2s;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-}
+.google-btn { width: 100%; background-color: white; color: #1f2937; font-weight: 600; font-size: 1rem; padding: 14px; border-radius: 12px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 12px; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
 .google-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); background-color: #f8fafc; }
 .google-btn img { height: 20px; width: 20px; }
 
@@ -340,7 +275,7 @@ nav a.active { color: var(--primary-color); border-bottom: 2px solid var(--prima
    ======================================================= */
 @media screen and (max-width: 900px) {
     .library-page-container { flex-direction: column; }
-    .details-view { width: 100%; position: static; order: -1; margin-bottom: 20px; }
+    .details-view { width: 100%; position: static; order: -1; margin-bottom: 20px; max-height: none; overflow: visible; }
     .playlists-layout { flex-direction: column; overflow: visible; height: auto; }
     .playlists-sidebar { width: 100%; max-height: 250px; margin-bottom: 20px; }
     .playlists-sidebar ul { display: flex; overflow-x: auto; gap: 10px; padding-bottom: 10px; }
@@ -362,48 +297,7 @@ nav a.active { color: var(--primary-color); border-bottom: 2px solid var(--prima
 /* =========================================
    STYLE POUR LE MARQUAGE (!)
    ========================================= */
-
-/* L'icône "!" rouge sur la pochette */
-.flag-icon {
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    width: 24px;
-    height: 24px;
-    background-color: #ef4444; 
-    color: white;
-    font-weight: bold;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.5);
-    z-index: 20; /* Augmenté pour être sûr */
-    font-size: 14px;
-    pointer-events: none; 
-}
-
-/* Le bouton à cocher dans le panneau de détails */
-.flag-toggle-container {
-    margin-top: 15px;
-    padding: 10px;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 6px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    cursor: pointer;
-    color: inherit;
-}
-
-.flag-toggle-container:hover {
-    background: rgba(255,255,255,0.1);
-}
-
-.flag-toggle-container input[type="checkbox"] {
-    width: 18px;
-    height: 18px;
-    cursor: pointer;
-    accent-color: #ef4444; 
-}
+.flag-icon { position: absolute; top: 5px; right: 5px; width: 24px; height: 24px; background-color: #ef4444; color: white; font-weight: bold; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.5); z-index: 20; font-size: 14px; pointer-events: none; }
+.flag-toggle-container { margin-top: 15px; padding: 10px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; display: flex; align-items: center; gap: 10px; cursor: pointer; color: inherit; }
+.flag-toggle-container:hover { background: rgba(255,255,255,0.1); }
+.flag-toggle-container input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; accent-color: #ef4444; }
