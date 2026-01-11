@@ -62,11 +62,26 @@ nav a.active { color: var(--primary-color); border-bottom: 2px solid var(--prima
 }
 
 /* =======================================================
-   4. BIBLIOTHÈQUE (ORIGINAL)
+   4. BIBLIOTHÈQUE (MODIFIE : LARGEUR REDUITE + STICKY SECURISE)
    ======================================================= */
 .library-page-container { display: flex; gap: 25px; align-items: flex-start; height: 100%; }
 .library-view { flex: 1; display: flex; flex-direction: column; gap: 25px; min-width: 0; height: 100%; }
-.details-view { width: 350px; display: flex; flex-direction: column; gap: 20px; position: sticky; top: 0; }
+
+/* --- MODIFICATION ICI UNIQUEMENT --- */
+.details-view { 
+    width: 260px; /* Largeur réduite (était 350px) */
+    display: flex; 
+    flex-direction: column; 
+    gap: 20px; 
+    
+    /* Positionnement Sticky (Collant) */
+    position: sticky; 
+    top: 0; 
+    align-self: flex-start; /* Assure que l'élément ne s'étire pas et reste collé en haut */
+    max-height: 100%; /* Empêche le panneau de dépasser la zone visible */
+    overflow-y: auto; /* Permet de scroller DANS le panneau si l'écran est trop petit */
+}
+/* ----------------------------------- */
 
 .controls {
     display: flex;
@@ -104,7 +119,7 @@ nav a.active { color: var(--primary-color); border-bottom: 2px solid var(--prima
     gap: 25px; padding-top: 10px;
 }
 .grid-item {
-    position: relative; /* MODIFICATION : ESSENTIEL POUR LE "!" */
+    position: relative;
     background-color: var(--card-color);
     padding: 15px; 
     border-radius: 12px; 
