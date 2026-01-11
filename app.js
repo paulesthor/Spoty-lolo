@@ -716,162 +716,200 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const fetchPlaylists = async () => {
         const { data } = await supabase.from('playlists').select('*').eq('user_id', currentUser.id);
-        if (data) {
-            playlistsListUl.innerHTML = data.map(p => `<li data-id="${p.id}" class="playlist-item">${p.nom_playlist}</li>`).join('');
-            
-            const savedPlaylistId = localStorage.getItem('lastPlaylistId');
-            
-            playlistsListUl.querySelectorAll('li').forEach(li => li.addEventListener('click', () => {
-                playlistsListUl.querySelectorAll('.active').forEach(i => i.classList.remove('active'));
-                li.classList.add('active');
-                localStorage.setItem('lastPlaylistId', li.dataset.id);
-                loadPlaylistContent(li.dataset.id, data);
-            }));
+        
+        // On combine les playlists réelles avec notre playlist virtuelle
+        // On utilise un ID spécial 'special-flagged'
+        const smartPlaylist = { 
+            id: 'special-flagged', 
+            nom_playlist: 'A travailler', 
+            is_smart: true 
+        };
 
-            if(data.length > 0) {
-                let activeLi = null;
-                if (savedPlaylistId) {
-                    activeLi = playlistsListUl.querySelector(`li[data-id="${savedPlaylistId}"]`);
-                }
-                
-                if (!activeLi) {
-                    activeLi = playlistsListUl.querySelector('li'); 
-                }
-                
-                if (activeLi) {
-                    activeLi.classList.add('active');
-                    localStorage.setItem('lastPlaylistId', activeLi.dataset.id);
-                    loadPlaylistContent(activeLi.dataset.id, data);
-                }
-            }
+        const displayList = data ? [smartPlaylist, ...data] : [smartPlaylist];
+
+        playlistsListUl.innerHTML = displayList.map(p => {
+            const icon = p.id === 'special-flagged' ? '<i class="fas fa-exclamation-circle" style="color:#ef4444; margin-right:8px;"></i>' : '';
+            return `<li data-id="${p.id}" class="playlist-item">${icon}${p.nom_playlist}</li>`;
+        }).join('');
+        
+        const savedPlaylistId = localStorage.getItem('lastPlaylistId');
+        
+        playlistsListUl.querySelectorAll('li').forEach(li => li.addEventListener('click', () => {
+            playlistsListUl.querySelectorAll('.active').forEach(i => i.classList.remove('active'));
+            li.classList.add('active');
+            localStorage.setItem('lastPlaylistId', li.dataset.id);
+            loadPlaylistContent(li.dataset.id, data); // On passe 'data' (les vraies playlists DB)
+        }));
+
+        // Gestion de la sélection active au chargement
+        let activeLi = null;
+        if (savedPlaylistId) {
+            activeLi = playlistsListUl.querySelector(`li[data-id="${savedPlaylistId}"]`);
+        }
+        if (!activeLi) {
+            activeLi = playlistsListUl.querySelector('li'); 
+        }
+        if (activeLi) {
+            activeLi.classList.add('active');
+            loadPlaylistContent(activeLi.dataset.id, data);
         }
     };
 
-    const loadPlaylistContent = async (pid, allData) => {
-        const pl = allData.find(x => x.id == pid);
-        const ids = pl.partitions || [];
+    const loadPlaylistContent = async (pid, allPlaylistsData) => {
+        let parts = [];
+        let playlistName = "";
+        let isSmart = (pid === 'special-flagged');
+
+        // LOGIQUE SPECIALE POUR LA PLAYLIST "A TRAVAILLER"
+        if (isSmart) {
+            playlistName = '<i class="fas fa-exclamation-circle" style="color:#ef4444;"></i> A travailler';
+            // On filtre directement depuis la bibliothèque chargée en mémoire
+            parts = allPartitions.filter(p => p.is_flagged);
+        } 
+        // LOGIQUE STANDARD
+        else {
+            const pl = allPlaylistsData.find(x => x.id == pid);
+            if (!pl) return; // Sécurité
+            playlistName = pl.nom_playlist;
+            const ids = pl.partitions || [];
+            
+            if(ids.length > 0) {
+                // On récupère les détails des partitions
+                const { data } = await supabase.from('partitions').select('*').in('id', ids);
+                if(data) parts = data;
+            }
+        }
+        
+        // --- GÉNÉRATION HTML ---
         
         let gridHtml = '';
         let listHtml = '';
         
-        if(ids.length > 0) {
-            const { data: parts } = await supabase.from('partitions').select('*').in('id', ids);
-            if(parts && parts.length > 0) {
-                
-                gridHtml = `<div id="pl-grid-view" class="playlist-grid-container" style="display:${currentPlaylistViewMode === 'grid' ? 'grid' : 'none'};">` + parts.map(p => `
-                    <div class="grid-item music-item playlist-item-grid" data-id="${p.id}">
-                        ${p.is_flagged ? '<span class="flag-icon">!</span>' : ''}
-                        <img src="${p.url_cover || 'https://placehold.co/150/2a3f54/FFF?text=...'}" alt="Pochette">
-                        <div class="title">${p.titre}</div>
-                        <div class="artist">${p.nom_artiste}</div>
-                    </div>
-                `).join('') + `</div>`;
+        if(parts.length > 0) {
+            // Grille
+            gridHtml = `<div id="pl-grid-view" class="playlist-grid-container" style="display:${currentPlaylistViewMode === 'grid' ? 'grid' : 'none'};">` + parts.map(p => `
+                <div class="grid-item music-item playlist-item-grid" data-id="${p.id}">
+                    ${p.is_flagged ? '<span class="flag-icon">!</span>' : ''}
+                    <img src="${p.url_cover || 'https://placehold.co/150/2a3f54/FFF?text=...'}" alt="Pochette">
+                    <div class="title">${p.titre}</div>
+                    <div class="artist">${p.nom_artiste}</div>
+                </div>
+            `).join('') + `</div>`;
 
-                listHtml = `
-                    <div id="pl-list-view" class="music-list" style="display:${currentPlaylistViewMode === 'list' ? 'block' : 'none'}; margin-top:20px;">
-                        <table>
-                            <thead><tr><th>Titre</th><th>Artiste</th><th>Style</th><th>Année</th></tr></thead>
-                            <tbody>
-                                ${parts.map(p => `
-                                    <tr class="music-item playlist-item-list" data-id="${p.id}">
-                                        <td>${p.titre} ${p.is_flagged ? '<i class="fas fa-exclamation-circle" style="color:#ef4444; margin-left:5px;"></i>' : ''}</td>
-                                        <td>${p.nom_artiste}</td><td>${p.style || ''}</td><td>${p.annee || ''}</td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                `;
-            } else {
-                gridHtml = '<p style="padding:20px;">Cette playlist est vide.</p>';
-            }
+            // Liste
+            listHtml = `
+                <div id="pl-list-view" class="music-list" style="display:${currentPlaylistViewMode === 'list' ? 'block' : 'none'}; margin-top:20px;">
+                    <table>
+                        <thead><tr><th>Titre</th><th>Artiste</th><th>Style</th><th>Année</th></tr></thead>
+                        <tbody>
+                            ${parts.map(p => `
+                                <tr class="music-item playlist-item-list" data-id="${p.id}">
+                                    <td>${p.titre} ${p.is_flagged ? '<i class="fas fa-exclamation-circle" style="color:#ef4444; margin-left:5px;"></i>' : ''}</td>
+                                    <td>${p.nom_artiste}</td><td>${p.style || ''}</td><td>${p.annee || ''}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
         } else {
-            gridHtml = '<p style="padding:20px;">Cette playlist est vide.</p>';
+            gridHtml = `<p style="padding:20px; color:var(--text-muted);">${isSmart ? "Aucune partition marquée comme importante." : "Cette playlist est vide."}</p>`;
         }
+
+        // --- BOUTONS D'ACTION (On masque Suppression/Ajout pour la Smart Playlist) ---
+        const buttonsHtml = isSmart 
+            ? `` // Pas de boutons pour la playlist auto
+            : `
+            <div class="actions">
+                <button class="btn btn-accent" id="add-music-to-playlist-btn"><i class="fas fa-plus"></i> Ajouter des titres</button>
+                <button class="btn btn-danger" id="delete-playlist-btn"><i class="fas fa-trash"></i> Supprimer la Playlist</button>
+            </div>`;
 
         playlistContentContainer.innerHTML = `
             <div class="playlist-actions-header">
-                <h2>${pl.nom_playlist}</h2>
+                <h2>${playlistName}</h2>
                 <div style="display:flex; align-items:center; gap:10px;">
                     <div class="view-switcher" style="margin-right:15px;">
                         <button id="pl-btn-view-list" class="btn-icon ${currentPlaylistViewMode === 'list' ? 'active' : ''}" title="Liste"><i class="fas fa-list"></i></button>
                         <button id="pl-btn-view-grid" class="btn-icon ${currentPlaylistViewMode === 'grid' ? 'active' : ''}" title="Grille"><i class="fas fa-th-large"></i></button>
                     </div>
-                    <div class="actions">
-                        <button class="btn btn-accent" id="add-music-to-playlist-btn"><i class="fas fa-plus"></i> Ajouter des titres</button>
-                        <button class="btn btn-danger" id="delete-playlist-btn"><i class="fas fa-trash"></i> Supprimer la Playlist</button>
-                    </div>
+                    ${buttonsHtml}
                 </div>
             </div>
             ${gridHtml}
             ${listHtml}
         `;
 
+        // --- LISTENERS VUE (Liste/Grille) ---
         document.getElementById('pl-btn-view-list').addEventListener('click', () => {
             currentPlaylistViewMode = 'list';
-            document.getElementById('pl-list-view').style.display = 'block';
-            if(document.getElementById('pl-grid-view')) document.getElementById('pl-grid-view').style.display = 'none';
+            const listView = document.getElementById('pl-list-view');
+            const gridView = document.getElementById('pl-grid-view');
+            if(listView) listView.style.display = 'block';
+            if(gridView) gridView.style.display = 'none';
             document.getElementById('pl-btn-view-list').classList.add('active');
             document.getElementById('pl-btn-view-grid').classList.remove('active');
         });
 
         document.getElementById('pl-btn-view-grid').addEventListener('click', () => {
             currentPlaylistViewMode = 'grid';
-            if(document.getElementById('pl-list-view')) document.getElementById('pl-list-view').style.display = 'none';
-            if(document.getElementById('pl-grid-view')) document.getElementById('pl-grid-view').style.display = 'grid';
+            const listView = document.getElementById('pl-list-view');
+            const gridView = document.getElementById('pl-grid-view');
+            if(listView) listView.style.display = 'none';
+            if(gridView) gridView.style.display = 'grid';
             document.getElementById('pl-btn-view-grid').classList.add('active');
             document.getElementById('pl-btn-view-list').classList.remove('active');
         });
 
-        document.getElementById('delete-playlist-btn').addEventListener('click', async () => {
-             if(confirm(`Supprimer la playlist "${pl.nom_playlist}" ?`)) {
-                 await supabase.from('playlists').delete().eq('id', pid);
-                 localStorage.removeItem('lastPlaylistId'); 
-                 fetchPlaylists(); 
-                 playlistContentContainer.innerHTML='<p style="padding:20px;">Sélectionnez une playlist.</p>';
-                 if(playlistDetailsPanel) {
-                     playlistDetailsPanel.innerHTML = '<div style="text-align:center; padding-top:50px; color:#bdc3c7;"><i class="fas fa-compact-disc" style="font-size:3rem; margin-bottom:20px;"></i><p>Sélectionnez un titre</p></div>';
-                 }
-             }
-        });
-        document.getElementById('add-music-to-playlist-btn').addEventListener('click', () => openPlaylistModal(pid, true));
+        // --- LISTENERS ACTIONS (Seulement si pas Smart Playlist) ---
+        if (!isSmart) {
+            document.getElementById('delete-playlist-btn').addEventListener('click', async () => {
+                if(confirm(`Supprimer la playlist "${playlistName}" ?`)) {
+                    await supabase.from('playlists').delete().eq('id', pid);
+                    localStorage.removeItem('lastPlaylistId'); 
+                    fetchPlaylists(); 
+                    playlistContentContainer.innerHTML='<p style="padding:20px;">Sélectionnez une playlist.</p>';
+                    if(playlistDetailsPanel) playlistDetailsPanel.innerHTML = '';
+                }
+            });
+            document.getElementById('add-music-to-playlist-btn').addEventListener('click', () => openPlaylistModal(pid, true));
+        }
 
+        // --- GESTION DE LA SÉLECTION D'UN ITEM ---
         const setupSelection = (item) => {
             let clickTimer = null;
-
             item.addEventListener('click', async () => {
-                // Sélection immédiate
                 playlistContentContainer.querySelectorAll('.selected').forEach(i => i.classList.remove('selected'));
                 item.classList.add('selected');
                 const id = item.dataset.id;
                 playlistContentContainer.querySelectorAll(`[data-id="${id}"]`).forEach(el => el.classList.add('selected'));
-                renderPlaylistDetailsPanel(id, pid, allData);
                 
-                // Gestion du flag avec délai
-                if (clickTimer) {
-                    clearTimeout(clickTimer);
-                    clickTimer = null;
-                }
+                // IMPORTANT : On passe isSmart pour adapter le panneau de détails
+                renderPlaylistDetailsPanel(id, pid, allPlaylistsData, isSmart);
                 
-                clickTimer = setTimeout(async () => {
-                    const { data: currentP } = await supabase.from('partitions').select('is_flagged').eq('id', id).single();
-                    if(currentP) {
-                        const newStatus = !currentP.is_flagged;
-                        
-                        const existingFlag = item.querySelector('.flag-icon');
-                        if(newStatus && !existingFlag) {
-                            const span = document.createElement('span'); span.className='flag-icon'; span.textContent='!'; item.insertBefore(span, item.firstChild);
-                        } else if(!newStatus && existingFlag) {
-                            existingFlag.remove();
+                // Toggle flag (double usage pour Grille)
+                if (item.classList.contains('playlist-item-grid')) {
+                    if (clickTimer) { clearTimeout(clickTimer); clickTimer = null; }
+                    clickTimer = setTimeout(async () => {
+                        const { data: currentP } = await supabase.from('partitions').select('is_flagged').eq('id', id).single();
+                        if(currentP) {
+                            const newStatus = !currentP.is_flagged;
+                            // Mise à jour visuelle immédiate
+                            const existingFlag = item.querySelector('.flag-icon');
+                            if(newStatus && !existingFlag) {
+                                const span = document.createElement('span'); span.className='flag-icon'; span.textContent='!'; item.insertBefore(span, item.firstChild);
+                            } else if(!newStatus && existingFlag) {
+                                existingFlag.remove();
+                            }
+                            
+                            const cb = document.getElementById(`pl-flag-checkbox-${id}`);
+                            if(cb) cb.checked = newStatus;
+                            
+                            await supabase.from('partitions').update({ is_flagged: newStatus }).eq('id', id);
                         }
-                        
-                        const cb = document.getElementById(`pl-flag-checkbox-${id}`);
-                        if(cb) cb.checked = newStatus;
-                        
-                        await supabase.from('partitions').update({ is_flagged: newStatus }).eq('id', id);
-                    }
-                    clickTimer = null;
-                }, 250);
+                        clickTimer = null;
+                    }, 250);
+                }
             });
 
             item.addEventListener('dblclick', async () => {
@@ -882,25 +920,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
 
         playlistContentContainer.querySelectorAll('.playlist-item-grid').forEach(setupSelection);
-        // Pour la liste, on garde le comportement classique (clic simple = select, pas de flag)
-        playlistContentContainer.querySelectorAll('.playlist-item-list').forEach(item => {
-             item.addEventListener('click', () => {
-                playlistContentContainer.querySelectorAll('.selected').forEach(i => i.classList.remove('selected'));
-                item.classList.add('selected');
-                const id = item.dataset.id;
-                playlistContentContainer.querySelectorAll(`[data-id="${id}"]`).forEach(el => el.classList.add('selected'));
-                renderPlaylistDetailsPanel(id, pid, allData);
-             });
-             item.addEventListener('dblclick', async () => {
-                const { data: p } = await supabase.from('partitions').select('*').eq('id', item.dataset.id).single();
-                if(p && p.url_pdf) window.open(p.url_pdf, '_blank');
-             });
-        });
+        playlistContentContainer.querySelectorAll('.playlist-item-list').forEach(setupSelection);
     };
 
-    const renderPlaylistDetailsPanel = async (partitionId, playlistId, allPlaylistsData) => {
+    const renderPlaylistDetailsPanel = async (partitionId, playlistId, allPlaylistsData, isSmart = false) => {
         const { data: p } = await supabase.from('partitions').select('*').eq('id', partitionId).single();
         if(!p || !playlistDetailsPanel) return;
+
+        // Texte du bouton selon le type de playlist
+        const removeBtnText = isSmart ? "Ne plus travailler (Décocher)" : "Retirer de la playlist";
+        const removeBtnIcon = isSmart ? "fa-check-circle" : "fa-minus-circle";
 
         playlistDetailsPanel.innerHTML = `
             <div class="cover-art"><img src="${p.url_cover || 'https://placehold.co/600/2a3f54/FFF?text=Pochette'}" alt="Jaquette"></div>
@@ -916,29 +945,38 @@ document.addEventListener('DOMContentLoaded', async () => {
             </div>
             <div class="actions">
                 <a href="${p.url_pdf}" target="_blank" class="btn btn-accent" style="text-align:center; display:block;"><i class="fas fa-file-pdf"></i> Ouvrir le PDF</a>
-                <button class="btn btn-danger" id="remove-from-pl-btn"><i class="fas fa-minus-circle"></i> Retirer de la playlist</button>
+                <button class="btn btn-danger" id="remove-from-pl-btn"><i class="fas ${removeBtnIcon}"></i> ${removeBtnText}</button>
             </div>
         `;
         
         const checkbox = document.getElementById(`pl-flag-checkbox-${p.id}`);
         checkbox.addEventListener('change', async (e) => {
             const isChecked = e.target.checked;
-            
             await supabase.from('partitions').update({ is_flagged: isChecked }).eq('id', p.id);
-            
-            const { data: updatedData } = await supabase.from('playlists').select('*');
-            loadPlaylistContent(playlistId, updatedData);
+            // Rafraîchir la vue de la playlist active
+            loadPlaylistContent(playlistId, allPlaylistsData);
         });
 
         document.getElementById('remove-from-pl-btn').addEventListener('click', async () => {
-            const pl = allPlaylistsData.find(x => x.id == playlistId);
-            const currentIds = pl.partitions || [];
-            const newIds = currentIds.filter(id => String(id) !== String(partitionId));
+            if (isSmart) {
+                // Comportement pour "A travailler" : on décoche le flag
+                await supabase.from('partitions').update({ is_flagged: false }).eq('id', p.id);
+                // On met à jour la liste locale pour fluidité
+                const index = allPartitions.findIndex(x => x.id === p.id);
+                if(index > -1) allPartitions[index].is_flagged = false;
+                
+                loadPlaylistContent('special-flagged', null);
+            } else {
+                // Comportement classique
+                const pl = allPlaylistsData.find(x => x.id == playlistId);
+                const currentIds = pl.partitions || [];
+                const newIds = currentIds.filter(id => String(id) !== String(partitionId));
+                
+                await supabase.from('playlists').update({ partitions: newIds }).eq('id', playlistId);
+                const { data: updatedData } = await supabase.from('playlists').select('*');
+                loadPlaylistContent(playlistId, updatedData);
+            }
             
-            await supabase.from('playlists').update({ partitions: newIds }).eq('id', playlistId);
-            
-            const { data: updatedData } = await supabase.from('playlists').select('*');
-            loadPlaylistContent(playlistId, updatedData);
             playlistDetailsPanel.innerHTML = '<div style="text-align:center; padding-top:50px; color:#bdc3c7;"><i class="fas fa-compact-disc" style="font-size:3rem; margin-bottom:20px;"></i><p>Sélectionnez un titre</p></div>';
         });
     };
