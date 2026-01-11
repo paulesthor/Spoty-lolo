@@ -906,6 +906,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                             if(cb) cb.checked = newStatus;
                             
                             await supabase.from('partitions').update({ is_flagged: newStatus }).eq('id', id);
+
+                            // SI ON EST DANS LA SMART PLAYLIST ET QU'ON CLIC VIA GRILLE
+                            // On devrait idéalement retirer l'élément, mais pour le double clic c'est délicat.
+                            // Le panneau de détail s'en chargera mieux.
+                            if(isSmart && !newStatus) {
+                                // On update la mémoire locale
+                                const localP = allPartitions.find(x => x.id == id);
+                                if(localP) localP.is_flagged = false;
+                                // On recharge la vue immédiatement
+                                loadPlaylistContent('special-flagged', null);
+                                playlistDetailsPanel.innerHTML = '<div style="text-align:center; padding-top:50px; color:#bdc3c7;"><i class="fas fa-compact-disc" style="font-size:3rem; margin-bottom:20px;"></i><p>Sélectionnez un titre</p></div>';
+                            }
                         }
                         clickTimer = null;
                     }, 250);
@@ -952,18 +964,32 @@ document.addEventListener('DOMContentLoaded', async () => {
         const checkbox = document.getElementById(`pl-flag-checkbox-${p.id}`);
         checkbox.addEventListener('change', async (e) => {
             const isChecked = e.target.checked;
+            
+            // Update DB
             await supabase.from('partitions').update({ is_flagged: isChecked }).eq('id', p.id);
-            // Rafraîchir la vue de la playlist active
-            loadPlaylistContent(playlistId, allPlaylistsData);
+            
+            // Update Memory
+            const localP = allPartitions.find(x => x.id == p.id);
+            if(localP) localP.is_flagged = isChecked;
+
+            // SI SMART PLAYLIST : Refresh immédiat
+            if(isSmart) {
+                loadPlaylistContent('special-flagged', null);
+                // On vide le panneau car l'élément sélectionné n'existe plus dans la vue
+                playlistDetailsPanel.innerHTML = '<div style="text-align:center; padding-top:50px; color:#bdc3c7;"><i class="fas fa-compact-disc" style="font-size:3rem; margin-bottom:20px;"></i><p>Sélectionnez un titre</p></div>';
+            } else {
+                // Si playlist standard, on recharge juste pour voir l'icone '!' changer éventuellement
+                loadPlaylistContent(playlistId, allPlaylistsData);
+            }
         });
 
         document.getElementById('remove-from-pl-btn').addEventListener('click', async () => {
             if (isSmart) {
                 // Comportement pour "A travailler" : on décoche le flag
                 await supabase.from('partitions').update({ is_flagged: false }).eq('id', p.id);
-                // On met à jour la liste locale pour fluidité
-                const index = allPartitions.findIndex(x => x.id === p.id);
-                if(index > -1) allPartitions[index].is_flagged = false;
+                
+                const localP = allPartitions.find(x => x.id == p.id);
+                if(localP) localP.is_flagged = false;
                 
                 loadPlaylistContent('special-flagged', null);
             } else {
@@ -993,15 +1019,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const openPlaylistModal = async (targetId, isAddingToPlaylist = false) => {
         if(isAddingToPlaylist) {
+            // TRIER PAR TITRE
+            const sortedPartitions = [...allPartitions].sort((a, b) => a.titre.localeCompare(b.titre));
+
             modalBody.innerHTML = `
-                <h3 style="margin-bottom:15px; color:var(--primary-color);">Ajouter des morceaux</h3>
-                <div style="max-height:60vh; overflow-y:auto; padding-right:5px;">
-                    ${allPartitions.map(p => `
+                <h3 style="margin-bottom:10px; color:var(--primary-color);">Ajouter des morceaux</h3>
+                
+                <div style="margin-bottom:15px;">
+                    <input type="text" id="modal-playlist-search" placeholder="Rechercher titre ou artiste..." 
+                           style="width:100%; padding:10px; border-radius:5px; border:1px solid var(--highlight-color); background-color:var(--bg-color); color:white;">
+                </div>
+
+                <div id="modal-list-container" style="max-height:50vh; overflow-y:auto; padding-right:5px;">
+                    ${sortedPartitions.map(p => `
                         <label class="playlist-checkbox-item">
                             <input type="checkbox" class="add-partition-checkbox" value="${p.id}">
                             <div>
-                                <div style="font-weight:bold;">${p.titre}</div>
-                                <div style="font-size:0.8em; color:var(--text-muted);">${p.nom_artiste}</div>
+                                <div class="item-titre" style="font-weight:bold;">${p.titre}</div>
+                                <div class="item-artiste" style="font-size:0.8em; color:var(--text-muted);">${p.nom_artiste}</div>
                             </div>
                         </label>
                     `).join('')}
@@ -1009,6 +1044,21 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <button id="confirm-add-to-playlist" class="btn btn-accent" style="margin-top:20px; width:100%;">Ajouter la sélection</button>`;
             
             modal.style.display = 'flex';
+
+            // GESTION RECHERCHE DANS MODAL
+            document.getElementById('modal-playlist-search').addEventListener('input', (e) => {
+                const term = e.target.value.toLowerCase();
+                const items = document.querySelectorAll('.playlist-checkbox-item');
+                items.forEach(item => {
+                    const t = item.querySelector('.item-titre').textContent.toLowerCase();
+                    const a = item.querySelector('.item-artiste').textContent.toLowerCase();
+                    if (t.includes(term) || a.includes(term)) {
+                        item.style.display = 'flex';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            });
             
             document.getElementById('confirm-add-to-playlist').addEventListener('click', async () => {
                 const selectedIds = Array.from(document.querySelectorAll('.add-partition-checkbox:checked')).map(cb => cb.value);
