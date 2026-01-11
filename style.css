@@ -22,7 +22,6 @@ body {
     font-size: 16px;
     height: 100vh;
     display: flex; flex-direction: column;
-    overflow: hidden; /* MODIFIÉ : Empêche le scroll de toute la page */
 }
 
 /* =======================================================
@@ -33,7 +32,6 @@ body {
     padding: 15px 30px; background-color: var(--card-color);
     border-bottom: 2px solid var(--highlight-color);
     flex-shrink: 0;
-    height: 70px; /* Ajout d'une hauteur explicite pour le calcul du layout */
 }
 
 .logo { display: flex; align-items: center; font-size: 1.2rem; color: var(--primary-color); }
@@ -47,12 +45,12 @@ nav a:hover { color: var(--text-color); }
 nav a.active { color: var(--primary-color); border-bottom: 2px solid var(--primary-color); }
 
 /* =======================================================
-   3. LAYOUT GÉNÉRAL (MODIFIÉ POUR SCROLL FIXE)
+   3. LAYOUT GÉNÉRAL (ORIGINAL)
    ======================================================= */
 .main-container {
     padding: 25px;
-    height: calc(100vh - 70px); /* MODIFIÉ : Prend exactement la hauteur restante */
-    overflow: hidden; /* MODIFIÉ : Coupe le scroll global */
+    height: calc(100vh - 70px); 
+    overflow-y: auto; 
     position: relative;
 }
 
@@ -64,37 +62,11 @@ nav a.active { color: var(--primary-color); border-bottom: 2px solid var(--prima
 }
 
 /* =======================================================
-   4. BIBLIOTHÈQUE (LAYOUT SCROLL INDÉPENDANT)
+   4. BIBLIOTHÈQUE (ORIGINAL)
    ======================================================= */
-.library-page-container { 
-    display: flex; 
-    gap: 25px; 
-    align-items: flex-start; 
-    height: 100%; /* MODIFIÉ */
-    overflow: hidden; /* MODIFIÉ */
-}
-
-/* La zone de liste devient scrollable indépendamment */
-.library-view { 
-    flex: 1; 
-    display: flex; 
-    flex-direction: column; 
-    gap: 25px; 
-    min-width: 0; 
-    height: 100%; /* MODIFIÉ */
-    overflow-y: auto; /* MODIFIÉ : C'est ici que le scroll se fait */
-    padding-right: 5px; 
-}
-
-/* La zone de détails devient fixe et moins large */
-.details-view { 
-    width: 260px; /* MODIFIÉ : Réduit de 350px à 260px */
-    display: flex; 
-    flex-direction: column; 
-    gap: 20px; 
-    height: 100%; /* MODIFIÉ */
-    overflow-y: auto; /* MODIFIÉ : Scroll interne si nécessaire */
-}
+.library-page-container { display: flex; gap: 25px; align-items: flex-start; height: 100%; }
+.library-view { flex: 1; display: flex; flex-direction: column; gap: 25px; min-width: 0; height: 100%; }
+.details-view { width: 350px; display: flex; flex-direction: column; gap: 20px; position: sticky; top: 0; }
 
 .controls {
     display: flex;
@@ -105,8 +77,7 @@ nav a.active { color: var(--primary-color); border-bottom: 2px solid var(--prima
     border: 1px solid var(--highlight-color); 
     padding: 15px; 
     border-radius: 8px; 
-    margin-bottom: 0; /* MODIFIÉ : La marge est gérée par le gap du parent */
-    position: sticky; top: 0; z-index: 10; /* MODIFIÉ : Reste en haut lors du scroll */
+    margin-bottom: 20px; 
 }
 .search-bar { display: flex; align-items: center; background-color: var(--bg-color); padding: 8px 12px; border-radius: 5px; flex-grow: 1; }
 .search-bar i { color: var(--text-muted); }
@@ -119,16 +90,10 @@ nav a.active { color: var(--primary-color); border-bottom: 2px solid var(--prima
 .import-actions { display: flex; gap: 10px; }
 
 /* Table */
-.music-list { 
-    overflow-y: visible; /* MODIFIÉ : Le scroll est géré par le parent library-view */
-    max-height: none; 
-}
+.music-list { overflow-y: auto; max-height: 75vh; }
 .music-list table { width: 100%; border-collapse: collapse; }
 .music-list th, .music-list td { padding: 15px; text-align: left; border-bottom: 1px solid var(--highlight-color); }
-.music-list th { 
-    font-size: 0.9rem; text-transform: uppercase; color: var(--text-muted); 
-    position: sticky; top: 0; background-color: var(--bg-color); z-index: 5; /* MODIFIÉ : Header fixe */
-}
+.music-list th { font-size: 0.9rem; text-transform: uppercase; color: var(--text-muted); }
 .music-list tbody tr { cursor: pointer; transition: background-color 0.2s ease; }
 .music-list tbody tr:hover { background-color: var(--highlight-color); }
 .music-list tbody tr.selected { background-color: var(--primary-color); color: white; font-weight: bold; }
@@ -136,10 +101,10 @@ nav a.active { color: var(--primary-color); border-bottom: 2px solid var(--prima
 /* Grille */
 #grid-view-container, .playlist-grid-container {
     display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 25px; padding-top: 10px; padding-bottom: 20px;
+    gap: 25px; padding-top: 10px;
 }
 .grid-item {
-    position: relative; 
+    position: relative; /* MODIFICATION : ESSENTIEL POUR LE "!" */
     background-color: var(--card-color);
     padding: 15px; 
     border-radius: 12px; 
@@ -184,7 +149,7 @@ nav a.active { color: var(--primary-color); border-bottom: 2px solid var(--prima
 /* =======================================================
    5. PAGE AJOUTER & BOUTONS (ORIGINAL)
    ======================================================= */
-.form-container { max-width: 800px; margin: 0 auto; overflow-y: auto; } /* Ajout overflow au cas où */
+.form-container { max-width: 800px; margin: 0 auto; }
 .form-container h2 { margin-bottom: 20px; color: var(--primary-color); }
 .form-group { margin-bottom: 20px; }
 .form-group label { display: block; margin-bottom: 8px; font-weight: bold; color: var(--text-muted); }
@@ -203,39 +168,22 @@ nav a.active { color: var(--primary-color); border-bottom: 2px solid var(--prima
 .btn-icon:hover { color: var(--text-color); }
 
 /* =======================================================
-   6. PLAYLISTS (MODIFIÉ POUR SCROLL FIXE)
+   6. PLAYLISTS (ORIGINAL)
    ======================================================= */
-.playlists-layout { 
-    display: flex; gap: 25px; align-items: flex-start; 
-    height: 100%; /* MODIFIÉ */
-    overflow: hidden; /* MODIFIÉ */
-}
-.playlists-sidebar { 
-    width: 300px; flex-shrink: 0; display: flex; flex-direction: column; 
-    height: 100%; /* MODIFIÉ */
-    max-height: none; /* MODIFIÉ */
-}
+.playlists-layout { display: flex; gap: 25px; align-items: flex-start; height: 100%; }
+.playlists-sidebar { width: 300px; flex-shrink: 0; display: flex; flex-direction: column; max-height: 100%; }
 .playlist-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
 .playlists-sidebar ul { list-style: none; overflow-y: auto; flex-grow: 1; }
 .playlists-sidebar li { padding: 15px; border-radius: 5px; cursor: pointer; transition: background-color 0.2s ease; border-bottom: 1px solid var(--highlight-color); }
 .playlists-sidebar li:hover { background-color: var(--highlight-color); }
 .playlists-sidebar li.active { background-color: var(--primary-color); font-weight: bold; color: white; }
-
-.playlist-center { 
-    flex-grow: 1; display: flex; flex-direction: column; 
-    height: 100%; /* MODIFIÉ */
-    overflow-y: auto; /* MODIFIÉ : Scroll indépendant ici aussi */
-    min-width: 0; 
-}
+.playlist-center { flex-grow: 1; display: flex; flex-direction: column; height: 100%; overflow: hidden; min-width: 0; }
 .playlist-actions-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 2px solid var(--highlight-color); padding-bottom: 15px; }
 .playlist-content-scroll { overflow-y: auto; flex-grow: 1; padding-right: 5px; }
 
 /* =======================================================
-   7. STATISTIQUES (SCROLL AJOUTÉ)
+   7. STATISTIQUES (ORIGINAL)
    ======================================================= */
-/* Ajout d'un scroll spécifique si les stats dépassent l'écran */
-#stats-view .main-container { overflow-y: auto; } 
-
 .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px; }
 .kpi-card { position: relative; padding-top: 40px; }
 .kpi-card h3 { position: absolute; top: 15px; left: 25px; color: var(--text-muted); font-size: 1rem; }
@@ -244,7 +192,7 @@ nav a.active { color: var(--primary-color); border-bottom: 2px solid var(--prima
 .chart-container { height: 300px; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.1); border-radius: 5px; }
 
 /* =======================================================
-   8. MODALE D'IMPORT (ORIGINAL)
+   8. MODALE D'IMPORT (CORRECTION DU SCROLL & SWAP)
    ======================================================= */
 .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.8); display: none; justify-content: center; align-items: center; z-index: 1000; }
 .modal-content { background-color: var(--card-color); padding: 30px; border-radius: 10px; width: 500px; max-width: 90%; position: relative; }
@@ -348,7 +296,7 @@ nav a.active { color: var(--primary-color); border-bottom: 2px solid var(--prima
 .playlist-checkbox-item { background-color: var(--bg-color); padding: 10px; border-radius: 5px; margin-bottom: 5px; display: flex; align-items: center; gap: 10px; cursor: pointer; }
 
 /* =======================================================
-   9. LOGIN (DESIGN GLASSMORPHISM) (ORIGINAL)
+   9. LOGIN (DESIGN GLASSMORPHISM)
    ======================================================= */
 #auth-view {
     position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
@@ -388,18 +336,15 @@ nav a.active { color: var(--primary-color); border-bottom: 2px solid var(--prima
 .google-btn img { height: 20px; width: 20px; }
 
 /* =======================================================
-   10. MOBILE (ORIGINAL)
+   10. MOBILE
    ======================================================= */
 @media screen and (max-width: 900px) {
-    .main-container { overflow-y: auto; height: auto; } /* Retour au scroll normal sur mobile */
-    .library-page-container { flex-direction: column; height: auto; overflow: visible; }
-    .library-view { overflow: visible; height: auto; }
-    .details-view { width: 100%; position: static; order: -1; margin-bottom: 20px; height: auto; overflow: visible; }
+    .library-page-container { flex-direction: column; }
+    .details-view { width: 100%; position: static; order: -1; margin-bottom: 20px; }
     .playlists-layout { flex-direction: column; overflow: visible; height: auto; }
-    .playlists-sidebar { width: 100%; max-height: 250px; margin-bottom: 20px; height: auto; }
+    .playlists-sidebar { width: 100%; max-height: 250px; margin-bottom: 20px; }
     .playlists-sidebar ul { display: flex; overflow-x: auto; gap: 10px; padding-bottom: 10px; }
     .playlists-sidebar li { white-space: nowrap; margin: 0; }
-    .playlist-center { overflow: visible; height: auto; }
     .import-card { flex-direction: column; }
     .import-card-cover { width: 100%; height: 150px; }
     .import-card-details { grid-template-columns: 1fr; }
@@ -415,9 +360,10 @@ nav a.active { color: var(--primary-color); border-bottom: 2px solid var(--prima
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
 /* =========================================
-   STYLE POUR LE MARQUAGE (!) (ORIGINAL)
+   STYLE POUR LE MARQUAGE (!)
    ========================================= */
 
+/* L'icône "!" rouge sur la pochette */
 .flag-icon {
     position: absolute;
     top: 5px;
@@ -432,11 +378,12 @@ nav a.active { color: var(--primary-color); border-bottom: 2px solid var(--prima
     align-items: center;
     justify-content: center;
     box-shadow: 0 2px 4px rgba(0,0,0,0.5);
-    z-index: 20; 
+    z-index: 20; /* Augmenté pour être sûr */
     font-size: 14px;
     pointer-events: none; 
 }
 
+/* Le bouton à cocher dans le panneau de détails */
 .flag-toggle-container {
     margin-top: 15px;
     padding: 10px;
