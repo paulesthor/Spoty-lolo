@@ -255,6 +255,18 @@
                             </select>
                         </div>
                         <hr style="border: 0; border-top: 1px solid var(--highlight-color); margin: 20px 0;">
+
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Affichage PDF</h4>
+                                <p>Afficher le PDF sur 1 page ou 2 pages à la fois.</p>
+                            </div>
+                            <select id="setting-pdf-mode" class="btn" style="background-color: var(--bg-color); border: 1px solid var(--highlight-color); color:var(--text-color);">
+                                <option value="1">1 Page (Défilement continu)</option>
+                                <option value="2">2 Pages (Mode Livre)</option>
+                            </select>
+                        </div>
+                        <hr style="border: 0; border-top: 1px solid var(--highlight-color); margin: 20px 0;">
                         
                         <div class="setting-item">
                             <div class="setting-info">
@@ -268,6 +280,37 @@
                                 <option value="soft">Soft UI / Neumorphism</option>
                                 <option value="nord">Nord (Minimal)</option>
                             </select>
+                        </div>
+                    </div>
+
+                    <!-- Raccourcis Clavier -->
+                    <div class="card">
+                        <h3 style="color:var(--primary-color); margin-bottom: 20px;"><i class="fas fa-keyboard"></i> Raccourcis Clavier</h3>
+                        <p style="color:var(--text-muted); font-size: 0.9rem; margin-bottom: 15px;">Cliquez sur un bouton puis appuyez sur une touche pour la modifier.</p>
+                        
+                        <div class="setting-item" style="margin-bottom: 10px;">
+                            <div class="setting-info"><h4>Page Suivante (PDF)</h4></div>
+                            <button id="sc-pdf-next" class="btn shortcut-btn" data-action="pdf_next" style="min-width: 100px; font-weight: bold; font-family: monospace;">ArrowRight</button>
+                        </div>
+                        
+                        <div class="setting-item" style="margin-bottom: 10px;">
+                            <div class="setting-info"><h4>Page Précédente (PDF)</h4></div>
+                            <button id="sc-pdf-prev" class="btn shortcut-btn" data-action="pdf_prev" style="min-width: 100px; font-weight: bold; font-family: monospace;">ArrowLeft</button>
+                        </div>
+
+                        <div class="setting-item" style="margin-bottom: 10px;">
+                            <div class="setting-info"><h4>Play/Pause Autoscroll</h4></div>
+                            <button id="sc-pdf-scroll" class="btn shortcut-btn" data-action="pdf_scroll" style="min-width: 100px; font-weight: bold; font-family: monospace;"> </button>
+                        </div>
+                        
+                        <div class="setting-item" style="margin-bottom: 10px;">
+                            <div class="setting-info"><h4>Fermer le lecteur</h4></div>
+                            <button id="sc-pdf-close" class="btn shortcut-btn" data-action="pdf_close" style="min-width: 100px; font-weight: bold; font-family: monospace;">Escape</button>
+                        </div>
+
+                        <div class="setting-item" style="margin-bottom: 10px;">
+                            <div class="setting-info"><h4>Mode Aléatoire (Suivant)</h4></div>
+                            <button id="sc-random-next" class="btn shortcut-btn" data-action="random_next" style="min-width: 100px; font-weight: bold; font-family: monospace;">n</button>
                         </div>
                     </div>
 

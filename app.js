@@ -77,7 +77,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentPlaylistViewMode = 'grid'; 
     let currentUser = null; 
 
-    let appSettings = { useIntegratedPdf: true, defaultViewMode: 'grid', theme: 'default' };
+    let appSettings = { 
+        useIntegratedPdf: true, 
+        defaultViewMode: 'grid', 
+        theme: 'default',
+        pdfPageMode: '1',
+        shortcuts: {
+            pdf_next: 'ArrowRight',
+            pdf_prev: 'ArrowLeft',
+            pdf_scroll: ' ',
+            pdf_close: 'Escape',
+            random_next: 'n'
+        }
+    };
     
     const settingsPdfReader = document.getElementById('setting-pdf-reader');
     const settingsDefaultView = document.getElementById('setting-default-view');
@@ -138,6 +150,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         if(settingTheme) settingTheme.value = appSettings.theme || 'default';
+        const settingPdfMode = document.getElementById('setting-pdf-mode');
+        if(settingPdfMode) settingPdfMode.value = appSettings.pdfPageMode || '1';
+        
+        document.querySelectorAll('.shortcut-btn').forEach(btn => {
+            const action = btn.dataset.action;
+            if (appSettings.shortcuts && appSettings.shortcuts[action]) {
+                btn.textContent = appSettings.shortcuts[action] === ' ' ? 'Espace' : appSettings.shortcuts[action];
+            }
+        });
         
         document.body.setAttribute('data-theme', appSettings.theme || 'default');
         
@@ -189,12 +210,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         const totalPages = currentPdfDoc.numPages;
         const renders = [];
         let displayStr = '';
+        
+        const isOnePageMode = (appSettings.pdfPageMode === '1');
 
-        if (totalPages === 1) {
+        if (totalPages === 1 || isOnePageMode) {
             // One page - render just one
-            currentPdfPageNum = 1;
-            renders.push(renderPdfPage(1));
-            displayStr = '1 / 1';
+            if (currentPdfPageNum < 1) currentPdfPageNum = 1;
+            if (currentPdfPageNum > totalPages) currentPdfPageNum = totalPages;
+            
+            renders.push(renderPdfPage(currentPdfPageNum));
+            displayStr = `${currentPdfPageNum} / ${totalPages}`;
         } else {
             // Two or more pages - render side by side
             // Enforce odd page number on the left (1-2, 3-4)
@@ -280,26 +305,45 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // PDF Controls
     if(pdfPrevBtn) pdfPrevBtn.addEventListener('click', () => {
+        const step = appSettings.pdfPageMode === '1' ? 1 : 2;
         if(currentPdfDoc && currentPdfDoc.numPages > 1 && currentPdfPageNum > 1) {
-            currentPdfPageNum -= 2; // Jump back 2 pages
+            currentPdfPageNum -= step;
             renderPdfState();
         }
     });
 
     if(pdfNextBtn) pdfNextBtn.addEventListener('click', () => {
-        if(currentPdfDoc && currentPdfDoc.numPages > 1 && (currentPdfPageNum + 1) < currentPdfDoc.numPages) {
-            currentPdfPageNum += 2; // Jump forward 2 pages
+        const step = appSettings.pdfPageMode === '1' ? 1 : 2;
+        if(currentPdfDoc && currentPdfDoc.numPages > 1 && (currentPdfPageNum + step - 1) <= currentPdfDoc.numPages) {
+            currentPdfPageNum += step;
             renderPdfState();
         }
     });
 
-    // Navigation au clavier (Flèches gauche/droite)
+    // Navigation au clavier (Personnalisée via Raccourcis)
     document.addEventListener('keydown', (e) => {
+        // Exclure les champs de texte
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.classList.contains('shortcut-btn')) return;
+
+        const s = appSettings.shortcuts || {};
+        const key = e.key;
+
         if (pdfModal && pdfModal.style.display === 'flex') {
-            if (e.key === 'ArrowLeft' && pdfPrevBtn) {
-                pdfPrevBtn.click();
-            } else if (e.key === 'ArrowRight' && pdfNextBtn) {
-                pdfNextBtn.click();
+            if (key === s.pdf_prev && pdfPrevBtn) {
+                e.preventDefault(); pdfPrevBtn.click();
+            } else if (key === s.pdf_next && pdfNextBtn) {
+                e.preventDefault(); pdfNextBtn.click();
+            } else if (key === s.pdf_close && pdfModalClose) {
+                e.preventDefault(); pdfModalClose.click();
+            } else if (key === s.pdf_scroll && pdfAutoscrollToggle) {
+                e.preventDefault(); pdfAutoscrollToggle.click();
+            }
+        }
+        
+        const randomView = document.getElementById('random-view');
+        if (randomView && randomView.style.display === 'block') {
+            if (key === s.random_next && randomNextBtn) {
+                e.preventDefault(); randomNextBtn.click();
             }
         }
     });
@@ -323,8 +367,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(pdfAutoscrollToggle) pdfAutoscrollToggle.innerHTML = '<i class="fas fa-pause"></i>';
         const scrollStep = () => {
             if (!isAutoscrolling) return;
+            // Vitesse très douce (0.1 à 1.5 pixels par frame) au lieu du slider brut.
             const speed = parseFloat(pdfAutoscrollSpeed.value);
-            pdfViewerContainer.scrollTop += (speed * 0.2); // Adjust multiplier for smoothness
+            pdfViewerContainer.scrollTop += (speed * 0.15); 
+            
+            // Passer 1 ou 2 pages si fin de conteneur
+            if (pdfViewerContainer.scrollTop + pdfViewerContainer.clientHeight >= pdfViewerContainer.scrollHeight - 1) {
+                const step = appSettings.pdfPageMode === '1' ? 1 : 2;
+                if(currentPdfDoc && (currentPdfPageNum + step - 1) <= currentPdfDoc.numPages) {
+                    stopAutoscroll();
+                    currentPdfPageNum += step;
+                    renderPdfState().then(() => {
+                        setTimeout(() => startAutoscroll(), 500); // Reprend après petit délai
+                    });
+                    return;
+                }
+            }
+
             autoscrollRAF = requestAnimationFrame(scrollStep);
         };
         autoscrollRAF = requestAnimationFrame(scrollStep);
@@ -1780,5 +1839,59 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     sortSelect.addEventListener('change', (e) => { currentSort = e.target.value; sortAndDisplayPartitions(); });
     searchInput.addEventListener('input', sortAndDisplayPartitions);
+    const settingPdfMode = document.getElementById('setting-pdf-mode');
+    if (settingPdfMode) {
+        settingPdfMode.addEventListener('change', (e) => {
+            appSettings.pdfPageMode = e.target.value;
+            saveSettings();
+        });
+    }
+
+    // Keyboard Shortcuts UI
+    let listeningShortcutAction = null;
+    document.querySelectorAll('.shortcut-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            document.querySelectorAll('.shortcut-btn').forEach(b => {
+                if (b !== btn) {
+                    const act = b.dataset.action;
+                    b.textContent = appSettings.shortcuts[act] === ' ' ? 'Espace' : appSettings.shortcuts[act];
+                    b.style.border = '';
+                }
+            });
+            
+            btn.textContent = 'Appuyez sur une touche...';
+            btn.style.border = '2px solid var(--accent-color)';
+            listeningShortcutAction = btn.dataset.action;
+            e.stopPropagation();
+        });
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (listeningShortcutAction) {
+            e.preventDefault();
+            const key = e.key;
+            appSettings.shortcuts[listeningShortcutAction] = key;
+            saveSettings();
+            
+            const btn = document.querySelector(`.shortcut-btn[data-action="${listeningShortcutAction}"]`);
+            if (btn) {
+                btn.textContent = key === ' ' ? 'Espace' : key;
+                btn.style.border = '';
+            }
+            listeningShortcutAction = null;
+        }
+    });
+
+    document.addEventListener('click', () => {
+        if (listeningShortcutAction) {
+            const btn = document.querySelector(`.shortcut-btn[data-action="${listeningShortcutAction}"]`);
+            if (btn) {
+                btn.textContent = appSettings.shortcuts[listeningShortcutAction] === ' ' ? 'Espace' : appSettings.shortcuts[listeningShortcutAction];
+                btn.style.border = '';
+            }
+            listeningShortcutAction = null;
+        }
+    });
+
     checkSession();
 });
