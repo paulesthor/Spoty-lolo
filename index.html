@@ -224,16 +224,16 @@
                         
                         <div class="setting-item">
                             <div class="setting-info">
-                                <h4>Couleur d'accentuation</h4>
-                                <p>Personnaliser la couleur principale de Spoti-Lolo.</p>
+                                <h4>Thème de l'application</h4>
+                                <p>Modifier radicalement l'apparence de Spoti-Lolo.</p>
                             </div>
-                            <div class="color-picker-container" style="display: flex; gap: 10px;">
-                                <button class="color-swatch" data-color="#3498db" style="background-color: #3498db;"></button>
-                                <button class="color-swatch" data-color="#1abc9c" style="background-color: #1abc9c;"></button>
-                                <button class="color-swatch" data-color="#9b59b6" style="background-color: #9b59b6;"></button>
-                                <button class="color-swatch" data-color="#e67e22" style="background-color: #e67e22;"></button>
-                                <button class="color-swatch" data-color="#e74c3c" style="background-color: #e74c3c;"></button>
-                            </div>
+                            <select id="setting-theme" class="btn" style="background-color: var(--bg-color); border: 1px solid var(--highlight-color); color:var(--text-color);">
+                                <option value="default">Défaut (Sombre)</option>
+                                <option value="glassmorphism">Glassmorphism (Verre)</option>
+                                <option value="sepia">Sepia (Reposant pour les yeux)</option>
+                                <option value="soft">Soft UI / Neumorphism</option>
+                                <option value="nord">Nord (Minimal)</option>
+                            </select>
                         </div>
                     </div>
 
@@ -266,14 +266,27 @@
         <div class="pdf-modal-container">
             <div class="pdf-modal-header">
                 <h3 id="pdf-modal-title">Lecture de la partition</h3>
-                <span id="pdf-modal-close" class="modal-close">&times;</span>
+                <div class="pdf-controls">
+                    <button id="pdf-zoom-out" class="btn btn-icon" title="Dézoomer"><i class="fas fa-search-minus"></i></button>
+                    <button id="pdf-zoom-in" class="btn btn-icon" title="Zoomer"><i class="fas fa-search-plus"></i></button>
+                    <div style="width:1px; height:20px; background:var(--highlight-color); margin:0 10px;"></div>
+                    <button id="pdf-prev-btn" class="btn btn-icon" title="Page Précédente"><i class="fas fa-chevron-left"></i></button>
+                    <span id="pdf-page-num" style="min-width: 60px; text-align:center;">1 / 1</span>
+                    <button id="pdf-next-btn" class="btn btn-icon" title="Page Suivante"><i class="fas fa-chevron-right"></i></button>
+                </div>
+                <span id="pdf-modal-close" class="modal-close" style="position:static; margin-left: 15px;">&times;</span>
             </div>
-            <div class="pdf-modal-body">
-                <iframe id="pdf-frame" src="" frameborder="0" style="width:100%; height:100%;"></iframe>
+            <div class="pdf-modal-body" id="pdf-viewer-container" style="overflow: auto; display: flex; justify-content: center; gap: 10px; padding: 20px; background-color: var(--bg-color);">
+                <!-- Les canvas PDF.js seront injectés ici -->
             </div>
         </div>
     </div>
 
+    <!-- PDF.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="app.js"></script>
 </body>

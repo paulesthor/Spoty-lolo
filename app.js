@@ -69,17 +69,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentPlaylistViewMode = 'grid'; 
     let currentUser = null; 
 
-    let appSettings = { useIntegratedPdf: true, defaultViewMode: 'grid', primaryColor: '#3498db' };
+    let appSettings = { useIntegratedPdf: true, defaultViewMode: 'grid', theme: 'default' };
     
     const settingsPdfReader = document.getElementById('setting-pdf-reader');
     const settingsDefaultView = document.getElementById('setting-default-view');
-    const colorSwatches = document.querySelectorAll('.color-swatch');
+    const settingTheme = document.getElementById('setting-theme');
     const settingsUserEmail = document.getElementById('settings-user-email');
     
     const pdfModal = document.getElementById('pdf-reader-modal');
-    const pdfFrame = document.getElementById('pdf-frame');
+    const pdfViewerContainer = document.getElementById('pdf-viewer-container');
     const pdfModalClose = document.getElementById('pdf-modal-close');
     const pdfModalTitle = document.getElementById('pdf-modal-title');
+    
+    // Controles PDF
+    const pdfZoomInBtn = document.getElementById('pdf-zoom-in');
+    const pdfZoomOutBtn = document.getElementById('pdf-zoom-out');
+    const pdfPrevBtn = document.getElementById('pdf-prev-btn');
+    const pdfNextBtn = document.getElementById('pdf-next-btn');
+    const pdfPageNumDisplay = document.getElementById('pdf-page-num');
+    
+    let currentPdfDoc = null;
+    let currentPdfPageNum = 1;
+    let currentPdfZoom = 1.2; // Default scale
 
     // =======================================================
     // |                 FONCTIONS UTILITAIRES               |
@@ -92,11 +103,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             catch(err) {}
         }
         
-        if(settingsPdfReader) settingsPdfReader.checked = appSettings.useIntegratedPdf;
-        if(settingsDefaultView) settingsDefaultView.value = appSettings.defaultViewMode;
+        if(settingTheme) settingTheme.value = appSettings.theme || 'default';
         
-        document.documentElement.style.setProperty('--primary-color', appSettings.primaryColor);
-        colorSwatches.forEach(sw => sw.classList.toggle('active', sw.dataset.color === appSettings.primaryColor));
+        document.body.setAttribute('data-theme', appSettings.theme || 'default');
         
         currentViewMode = appSettings.defaultViewMode;
         currentPlaylistViewMode = appSettings.defaultViewMode;
@@ -113,20 +122,117 @@ document.addEventListener('DOMContentLoaded', async () => {
         localStorage.setItem('spotiLoloSettings', JSON.stringify(appSettings));
     };
 
-    window.openPdf = (url, title = 'Partition') => {
+    // --- PDF.js Logic ---
+    const renderPdfPage = async (pageNumber, isSecondPage = false) => {
+        if (!currentPdfDoc) return null;
+        try {
+            const page = await currentPdfDoc.getPage(pageNumber);
+            const viewport = page.getViewport({ scale: currentPdfZoom });
+            
+            const wrapper = document.createElement('div');
+            wrapper.className = 'pdf-canvas-wrapper';
+            
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+            
+            wrapper.appendChild(canvas);
+            
+            const renderContext = { canvasContext: ctx, viewport: viewport };
+            await page.render(renderContext).promise;
+            return wrapper;
+        } catch (error) {
+            console.error("Error rendering page", error);
+            return null;
+        }
+    };
+
+    const renderPdfState = async () => {
+        if (!currentPdfDoc) return;
+        pdfViewerContainer.innerHTML = '';
+        
+        const totalPages = currentPdfDoc.numPages;
+        const renders = [];
+        let displayStr = '';
+
+        if (totalPages === 1) {
+            // One page - render just one
+            currentPdfPageNum = 1;
+            renders.push(renderPdfPage(1));
+            displayStr = '1 / 1';
+        } else {
+            // Two or more pages - render side by side
+            // Enforce odd page number on the left (1-2, 3-4)
+            if (currentPdfPageNum % 2 === 0) currentPdfPageNum--; 
+            if (currentPdfPageNum < 1) currentPdfPageNum = 1;
+            
+            renders.push(renderPdfPage(currentPdfPageNum));
+            
+            if (currentPdfPageNum + 1 <= totalPages) {
+                renders.push(renderPdfPage(currentPdfPageNum + 1, true));
+                displayStr = `${currentPdfPageNum}-${currentPdfPageNum + 1} / ${totalPages}`;
+            } else {
+                displayStr = `${currentPdfPageNum} / ${totalPages}`;
+            }
+        }
+        
+        const canvases = await Promise.all(renders);
+        canvases.forEach(c => { if(c) pdfViewerContainer.appendChild(c); });
+        
+        if (pdfPageNumDisplay) pdfPageNumDisplay.textContent = displayStr;
+    };
+
+    window.openPdf = async (url, title = 'Partition') => {
         if (appSettings.useIntegratedPdf) {
             if(pdfModalTitle) pdfModalTitle.textContent = title;
-            if(pdfFrame) pdfFrame.src = url;
             if(pdfModal) pdfModal.style.display = 'flex';
+            pdfViewerContainer.innerHTML = '<div style="color:white; margin:auto;">Chargement du PDF...</div>';
+            
+            try {
+                // Initialize PDF.js
+                const loadingTask = pdfjsLib.getDocument(url);
+                currentPdfDoc = await loadingTask.promise;
+                currentPdfPageNum = 1;
+                currentPdfZoom = 1.2;
+                await renderPdfState();
+            } catch (err) {
+                console.error(err);
+                pdfViewerContainer.innerHTML = "<div style='color:var(--danger-color); margin:auto;'>Erreur de chargement du PDF. Vérifiez CORS ou l'URL.</div>";
+            }
         } else {
             window.open(url, '_blank');
         }
     };
 
+    // PDF Controls
+    if(pdfPrevBtn) pdfPrevBtn.addEventListener('click', () => {
+        if(currentPdfDoc && currentPdfDoc.numPages > 1 && currentPdfPageNum > 1) {
+            currentPdfPageNum -= 2; // Jump back 2 pages
+            renderPdfState();
+        }
+    });
+
+    if(pdfNextBtn) pdfNextBtn.addEventListener('click', () => {
+        if(currentPdfDoc && currentPdfDoc.numPages > 1 && (currentPdfPageNum + 1) < currentPdfDoc.numPages) {
+            currentPdfPageNum += 2; // Jump forward 2 pages
+            renderPdfState();
+        }
+    });
+
+    if(pdfZoomInBtn) pdfZoomInBtn.addEventListener('click', () => {
+        if(currentPdfDoc && currentPdfZoom < 3.0) { currentPdfZoom += 0.2; renderPdfState(); }
+    });
+
+    if(pdfZoomOutBtn) pdfZoomOutBtn.addEventListener('click', () => {
+        if(currentPdfDoc && currentPdfZoom > 0.4) { currentPdfZoom -= 0.2; renderPdfState(); }
+    });
+
     if(pdfModalClose) {
         pdfModalClose.addEventListener('click', () => {
             if(pdfModal) pdfModal.style.display = 'none';
-            if(pdfFrame) pdfFrame.src = ''; 
+            pdfViewerContainer.innerHTML = ''; 
+            currentPdfDoc = null;
         });
     }
 
@@ -144,15 +250,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
     
-    colorSwatches.forEach(sw => {
-        sw.addEventListener('click', () => {
-            const color = sw.dataset.color;
-            appSettings.primaryColor = color;
-            document.documentElement.style.setProperty('--primary-color', color);
-            colorSwatches.forEach(s => s.classList.toggle('active', s === sw));
+    if(settingTheme) {
+        settingTheme.addEventListener('change', (e) => {
+            const theme = e.target.value;
+            appSettings.theme = theme;
+            document.body.setAttribute('data-theme', theme);
             saveSettings();
         });
-    });
+    }
 
     loadSettings();
 

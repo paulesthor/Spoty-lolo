@@ -11,6 +11,68 @@
     --danger-color: #e74c3c;
     --highlight-color: #4a6fa5;
     --font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    
+    /* Variables communes ajoutées pour les thèmes */
+    --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    --card-border: none;
+    --card-backdrop: none;
+    --btn-shadow: none;
+}
+
+/* --- THEMES --- */
+
+/* 1. Glassmorphism */
+body[data-theme="glassmorphism"] {
+    --bg-color: #0f172a; /* Darker blue background */
+    --card-color: rgba(30, 41, 59, 0.6);
+    --text-color: #f8fafc;
+    --text-muted: #94a3b8;
+    --highlight-color: rgba(255, 255, 255, 0.1);
+    --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    --card-border: 1px solid rgba(255, 255, 255, 0.08);
+    --card-backdrop: blur(12px);
+    background-image: radial-gradient(circle at 15% 50%, rgba(56, 189, 248, 0.15), transparent 25%), radial-gradient(circle at 85% 30%, rgba(168, 85, 247, 0.15), transparent 25%);
+}
+
+/* 2. Sepia (Vintage) */
+body[data-theme="sepia"] {
+    --bg-color: #f4ecd8; /* Warm paper */
+    --card-color: #eaddc5;
+    --text-color: #4a3c31; /* Dark brown */
+    --text-muted: #8c7b6d;
+    --primary-color: #b5651d; /* Light brown/rust accent */
+    --highlight-color: #d1bfae;
+    --card-shadow: 0 4px 6px rgba(100, 80, 60, 0.1);
+    --card-border: 1px solid #d1bfae;
+    --font-family: 'Merriweather', 'Georgia', serif; /* Serif font for classic feel */
+}
+
+/* 3. Soft UI / Neumorphism */
+body[data-theme="soft"] {
+    --bg-color: #e0e5ec;
+    --card-color: #e0e5ec;
+    --text-color: #4a5568;
+    --text-muted: #a0aec0;
+    --primary-color: #3182ce;
+    --highlight-color: #cbd5e0;
+    --card-shadow: 9px 9px 16px rgb(163,177,198,0.6), -9px -9px 16px rgba(255,255,255, 0.5);
+    --card-border: none;
+    --btn-shadow: 5px 5px 10px rgb(163,177,198,0.6), -5px -5px 10px rgba(255,255,255, 0.5);
+}
+
+/* 4. Nord (Minimal Arctic) */
+body[data-theme="nord"] {
+    --bg-color: #2e3440; /* Nord0 */
+    --card-color: #3b4252; /* Nord1 */
+    --text-color: #eceff4; /* Nord6 */
+    --text-muted: #d8dee9; /* Nord4 */
+    --primary-color: #88c0d0; /* Nord8 (Frost) */
+    --accent-color: #81a1c1; /* Nord9 */
+    --danger-color: #bf616a; /* Nord11 */
+    --highlight-color: #4c566a; /* Nord3 */
+    --card-shadow: none;
+    --card-border: 1px solid #434c5e; /* Nord2 */
+    --font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -58,7 +120,10 @@ nav a.active { color: var(--primary-color); border-bottom: 2px solid var(--prima
     background-color: var(--card-color);
     border-radius: 8px;
     padding: 25px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    box-shadow: var(--card-shadow);
+    border: var(--card-border);
+    backdrop-filter: var(--card-backdrop);
+    -webkit-backdrop-filter: var(--card-backdrop);
 }
 
 /* =======================================================
@@ -118,9 +183,6 @@ nav a.active { color: var(--primary-color); border-bottom: 2px solid var(--prima
 .import-actions { display: flex; gap: 10px; }
 
 /* Table */
-.music-list { 
-    /* Pas de max-height fixe pour laisser la page scroller */
-}
 .music-list table { width: 100%; border-collapse: collapse; }
 .music-list th, .music-list td { padding: 15px; text-align: left; border-bottom: 1px solid var(--highlight-color); }
 .music-list th { font-size: 0.9rem; text-transform: uppercase; color: var(--text-muted); }
@@ -325,9 +387,18 @@ input:checked + .slider:before { transform: translateX(22px); background-color: 
 .color-swatch:hover { transform: scale(1.1); }
 .color-swatch.active { border-color: white; box-shadow: 0 0 10px rgba(255,255,255,0.5); transform: scale(1.1); }
 
-/* PDF Modal */
+/* PDF Modal & PDF.js Viewer */
 .pdf-modal-overlay { background-color: rgba(0, 0, 0, 0.9); }
 .pdf-modal-container { width: 95vw; height: 95vh; background-color: var(--bg-color); border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--highlight-color); box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
 .pdf-modal-header { padding: 15px 25px; background-color: var(--card-color); border-bottom: 1px solid var(--highlight-color); display: flex; justify-content: space-between; align-items: center; }
-.pdf-modal-header h3 { margin: 0; color: var(--text-color); }
-.pdf-modal-body { flex-grow: 1; background-color: #333; }
+.pdf-modal-header h3 { margin: 0; color: var(--text-color); flex: 1; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; }
+
+.pdf-controls { display: flex; align-items: center; gap: 5px; background: rgba(0,0,0,0.2); padding: 5px 15px; border-radius: 20px; border: 1px solid var(--highlight-color); }
+.pdf-controls .btn-icon { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: transparent; border: none; color: var(--text-color); cursor: pointer; transition: background 0.2s; }
+.pdf-controls .btn-icon:hover { background: var(--highlight-color); color: var(--primary-color); }
+.pdf-controls #pdf-page-num { font-size: 0.9rem; font-weight: bold; color: var(--text-color); }
+
+.pdf-modal-body { flex-grow: 1; background-color: #222; } /* Always dark background for the PDF reader area itself for contrast */
+
+.pdf-canvas-wrapper { box-shadow: 0 4px 15px rgba(0,0,0,0.5); background-color: white; /* PDF pages are usually white */ transition: transform 0.2s ease-out; transform-origin: top center; }
+.pdf-canvas-wrapper canvas { display: block; max-width: 100%; height: auto; }
