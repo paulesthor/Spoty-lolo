@@ -40,10 +40,10 @@
             <img src="logo.png" alt="Logo">
             <span>Spoti-Lolo</span>
         </div>
-        <nav>
+        <nav id="main-nav">
             <a href="#library" class="nav-link active" data-view="library-view">Bibliothèque</a>
-            <a href="#add" class="nav-link" data-view="add-view">Ajouter</a>
             <a href="#playlists" class="nav-link" data-view="playlists-view">Playlists</a>
+            <a href="#random" class="nav-link" data-view="random-view">🎲 Aléatoire</a>
             <a href="#stats" class="nav-link" data-view="stats-view">Statistiques</a>
             <a href="#settings" class="nav-link" data-view="settings-view"><i class="fas fa-cog"></i> Paramètres</a>
         </nav>
@@ -66,8 +66,8 @@
                             <option value="date_ajout_desc">Ajout (Récent)</option>
                         </select>
                         <div class="view-switcher">
-                            <button id="btn-view-list" class="btn-icon" title="Liste"><i class="fas fa-list"></i></button>
-                            <button id="btn-view-grid" class="btn-icon active" title="Grille"><i class="fas fa-th-large"></i></button>
+                            <button id="btn-view-list" class="btn btn-icon active" title="Vue Liste"><i class="fas fa-list"></i></button>
+                            <button id="btn-view-grid" class="btn btn-icon" title="Vue Grille"><i class="fas fa-th"></i></button>
                         </div>
                         <div class="import-actions">
                             <button id="btn-mass-import" class="btn btn-accent">
@@ -76,10 +76,19 @@
                             <input type="file" id="hidden-file-input" multiple accept=".pdf" style="display: none;">
                         </div>
                     </div>
+
+                    <!-- Floating Bulk Action Bar -->
+                    <div id="bulk-action-bar" class="card" style="display: none; position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 1000; padding: 15px 25px; align-items: center; gap: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 2px solid var(--primary-color);">
+                        <span id="bulk-selection-count" style="font-weight: bold; font-size: 1.1rem;">0 sélectionné(s)</span>
+                        <div style="width: 1px; height: 20px; background: var(--highlight-color);"></div>
+                        <button id="btn-bulk-add-playlist" class="btn"><i class="fas fa-plus"></i> Aux Playlists</button>
+                        <button id="btn-bulk-delete" class="btn btn-danger"><i class="fas fa-trash"></i> Supprimer</button>
+                        <button id="btn-bulk-cancel" class="btn btn-icon" title="Annuler"><i class="fas fa-times"></i></button>
+                    </div>
                     
                     <div id="list-view-container" class="music-list" style="display: none;">
                         <table>
-                            <thead><tr><th>Titre</th><th>Artiste</th><th>Style</th><th>Année</th></tr></thead>
+                            <thead><tr><th style="width:40px;"></th><th>Titre</th><th>Artiste</th><th>Style</th><th>Année</th></tr></thead>
                             <tbody id="music-table-body"></tbody>
                         </table>
                     </div>
@@ -159,6 +168,31 @@
                         <p>Sélectionnez un titre</p>
                     </div>
                 </aside>
+            </div>
+        </div>
+        <div id="random-view" class="app-view" style="display:none;">
+            <div class="main-container" style="display:flex; align-items:center; justify-content:center;">
+                <div class="card" style="text-align:center; max-width:600px; width:100%; display:flex; flex-direction:column; align-items:center; gap:30px; padding:50px;">
+                    <div id="random-fallback-icon" style="font-size: 8rem; color: var(--primary-color); opacity: 0.8; margin-bottom: 20px;">
+                        <i class="fas fa-music"></i>
+                    </div>
+                    <img id="random-cover" src="" alt="Cover" style="display:none; width: 300px; height: 300px; object-fit: cover; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+                    
+                    <div style="flex:1;">
+                        <h2 id="random-title" style="font-size: 2.5rem; margin-bottom:10px; color:var(--text-color);">Titre mystère</h2>
+                        <h3 id="random-artist" style="font-size: 1.5rem; color:var(--text-muted); font-weight:normal;">Artiste mystère</h3>
+                        <p id="random-year" style="color:var(--highlight-color); margin-top:5px;"></p>
+                    </div>
+
+                    <div style="display:flex; gap:20px; width:100%; margin-top: 20px;">
+                        <button id="random-play-btn" class="btn btn-primary" style="flex:2; font-size:1.2rem; padding:15px; border-radius:30px;">
+                            <i class="fas fa-book-open"></i> Ouvrir la partition
+                        </button>
+                        <button id="random-next-btn" class="btn" style="flex:1; font-size:1.2rem; padding:15px; border-radius:30px; background:var(--bg-color); border:2px solid var(--highlight-color); color:var(--text-color);">
+                            <i class="fas fa-random"></i> Suivant
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -266,10 +300,26 @@
         <div class="pdf-modal-container">
             <div class="pdf-modal-header">
                 <h3 id="pdf-modal-title">Lecture de la partition</h3>
-                <div class="pdf-controls">
+                <div class="pdf-controls" style="flex-wrap: wrap;">
+                    <!-- Auto-scroll -->
+                    <div style="display:flex; align-items:center; gap:5px; background:rgba(255,255,255,0.1); padding:2px 10px; border-radius:15px;" title="Défilement automatique">
+                        <button id="pdf-autoscroll-toggle" class="btn btn-icon" style="color:var(--text-color);"><i class="fas fa-play"></i></button>
+                        <input type="range" id="pdf-autoscroll-speed" min="1" max="10" value="3" style="width:60px;">
+                    </div>
+                    <div style="width:1px; height:20px; background:var(--highlight-color); margin:0 5px;"></div>
+                    <!-- Metronome -->
+                    <div style="display:flex; align-items:center; gap:5px; background:rgba(255,255,255,0.1); padding:2px 10px; border-radius:15px;" title="Métronome">
+                        <button id="pdf-metronome-toggle" class="btn btn-icon" style="color:var(--text-color);"><i class="fas fa-drum"></i></button>
+                        <input type="number" id="pdf-metronome-bpm" value="120" min="40" max="240" style="width:50px; background:transparent; border:none; color:white; font-weight:bold; text-align:center;">
+                    </div>
+                    <div style="width:1px; height:20px; background:var(--highlight-color); margin:0 5px;"></div>
+                    <!-- Tools -->
+                    <button id="pdf-draw-btn" class="btn btn-icon" title="Dessiner (Session active)"><i class="fas fa-pen"></i></button>
+                    <button id="pdf-night-mode-btn" class="btn btn-icon" title="Mode Nuit Scène"><i class="fas fa-moon"></i></button>
+                    <div style="width:1px; height:20px; background:var(--highlight-color); margin:0 5px;"></div>
+                    <!-- Zoom & Pagination -->
                     <button id="pdf-zoom-out" class="btn btn-icon" title="Dézoomer"><i class="fas fa-search-minus"></i></button>
                     <button id="pdf-zoom-in" class="btn btn-icon" title="Zoomer"><i class="fas fa-search-plus"></i></button>
-                    <div style="width:1px; height:20px; background:var(--highlight-color); margin:0 10px;"></div>
                     <button id="pdf-prev-btn" class="btn btn-icon" title="Page Précédente"><i class="fas fa-chevron-left"></i></button>
                     <span id="pdf-page-num" style="min-width: 60px; text-align:center;">1 / 1</span>
                     <button id="pdf-next-btn" class="btn btn-icon" title="Page Suivante"><i class="fas fa-chevron-right"></i></button>

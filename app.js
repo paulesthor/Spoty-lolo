@@ -41,6 +41,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const gridViewContainer = document.getElementById('grid-view-container');
     const listViewContainer = document.getElementById('list-view-container');
     const detailsPanel = document.getElementById('details-view-panel');
+    
+    // Bulk Edit Elements
+    const bulkActionBar = document.getElementById('bulk-action-bar');
+    const bulkSelCount = document.getElementById('bulk-selection-count');
+    const btnBulkAddPlaylist = document.getElementById('btn-bulk-add-playlist');
+    const btnBulkDelete = document.getElementById('btn-bulk-delete');
+    const btnBulkCancel = document.getElementById('btn-bulk-cancel');
+    let selectedBulkIds = new Set();
 
     // Import Multiple
     const btnMassImport = document.getElementById('btn-mass-import');
@@ -87,6 +95,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     const pdfPrevBtn = document.getElementById('pdf-prev-btn');
     const pdfNextBtn = document.getElementById('pdf-next-btn');
     const pdfPageNumDisplay = document.getElementById('pdf-page-num');
+    
+    // PDF Companion Tools
+    const pdfAutoscrollToggle = document.getElementById('pdf-autoscroll-toggle');
+    const pdfAutoscrollSpeed = document.getElementById('pdf-autoscroll-speed');
+    const pdfMetronomeToggle = document.getElementById('pdf-metronome-toggle');
+    const pdfMetronomeBpm = document.getElementById('pdf-metronome-bpm');
+    const pdfDrawBtn = document.getElementById('pdf-draw-btn');
+    const pdfNightModeBtn = document.getElementById('pdf-night-mode-btn');
+    
+    let isAutoscrolling = false;
+    let autoscrollRAF = null;
+    let audioContext = null;
+    let isMetronomePlaying = false;
+    let metronomeInterval = null;
+    let isDrawingMode = false;
+    let isNightMode = false;
+    
+    // Mode Aléatoire
+    const randomFallbackIcon = document.getElementById('random-fallback-icon');
+    const randomCover = document.getElementById('random-cover');
+    const randomTitle = document.getElementById('random-title');
+    const randomArtist = document.getElementById('random-artist');
+    const randomYear = document.getElementById('random-year');
+    const randomPlayBtn = document.getElementById('random-play-btn');
+    const randomNextBtn = document.getElementById('random-next-btn');
+    let currentRandomPartition = null;
     
     let currentPdfDoc = null;
     let currentPdfPageNum = 1;
@@ -178,7 +212,46 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         const canvases = await Promise.all(renders);
-        canvases.forEach(c => { if(c) pdfViewerContainer.appendChild(c); });
+        canvases.forEach(c => { 
+            if(c) {
+                if (isNightMode) c.classList.add('pdf-dark-mode');
+                
+                // Set up drawing layer for this wrapper
+                const overlay = document.createElement('canvas');
+                overlay.className = 'pdf-drawing-layer';
+                overlay.width = c.querySelector('canvas').width;
+                overlay.height = c.querySelector('canvas').height;
+                overlay.style.position = 'absolute';
+                overlay.style.top = '0';
+                overlay.style.left = '0';
+                overlay.style.pointerEvents = isDrawingMode ? 'auto' : 'none';
+                overlay.style.cursor = isDrawingMode ? 'crosshair' : 'default';
+                
+                c.style.position = 'relative';
+                c.appendChild(overlay);
+                
+                // Simple drawing logic (Session only)
+                const ctx = overlay.getContext('2d');
+                let isDrawing = false;
+                overlay.addEventListener('mousedown', (e) => {
+                    isDrawing = true;
+                    ctx.beginPath();
+                    ctx.moveTo(e.offsetX, e.offsetY);
+                });
+                overlay.addEventListener('mousemove', (e) => {
+                    if (isDrawing) {
+                        ctx.strokeStyle = 'rgba(255, 0, 0, 0.6)';
+                        ctx.lineWidth = 4 * currentPdfZoom;
+                        ctx.lineTo(e.offsetX, e.offsetY);
+                        ctx.stroke();
+                    }
+                });
+                overlay.addEventListener('mouseup', () => isDrawing = false);
+                overlay.addEventListener('mouseleave', () => isDrawing = false);
+
+                pdfViewerContainer.appendChild(c); 
+            }
+        });
         
         if (pdfPageNumDisplay) pdfPageNumDisplay.textContent = displayStr;
     };
@@ -228,11 +301,96 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(currentPdfDoc && currentPdfZoom > 0.4) { currentPdfZoom -= 0.2; renderPdfState(); }
     });
 
+    // --- COMPANION TOOLS (STAGE) ---
+    const stopAutoscroll = () => {
+        isAutoscrolling = false;
+        cancelAnimationFrame(autoscrollRAF);
+        if(pdfAutoscrollToggle) pdfAutoscrollToggle.innerHTML = '<i class="fas fa-play"></i>';
+    };
+    const startAutoscroll = () => {
+        isAutoscrolling = true;
+        if(pdfAutoscrollToggle) pdfAutoscrollToggle.innerHTML = '<i class="fas fa-pause"></i>';
+        const scrollStep = () => {
+            if (!isAutoscrolling) return;
+            const speed = parseFloat(pdfAutoscrollSpeed.value);
+            pdfViewerContainer.scrollTop += (speed * 0.2); // Adjust multiplier for smoothness
+            autoscrollRAF = requestAnimationFrame(scrollStep);
+        };
+        autoscrollRAF = requestAnimationFrame(scrollStep);
+    };
+    if(pdfAutoscrollToggle) {
+        pdfAutoscrollToggle.addEventListener('click', () => isAutoscrolling ? stopAutoscroll() : startAutoscroll());
+    }
+
+    const stopMetronome = () => {
+        isMetronomePlaying = false;
+        clearInterval(metronomeInterval);
+        if(pdfMetronomeToggle) {
+            pdfMetronomeToggle.innerHTML = '<i class="fas fa-drum"></i>';
+            pdfMetronomeToggle.style.color = 'var(--text-color)';
+        }
+    };
+    const startMetronome = () => {
+        if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        isMetronomePlaying = true;
+        if(pdfMetronomeToggle) {
+            pdfMetronomeToggle.innerHTML = '<i class="fas fa-square"></i>';
+            pdfMetronomeToggle.style.color = 'var(--accent-color)';
+        }
+        
+        const playClick = () => {
+            if(audioContext.state === 'suspended') audioContext.resume();
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            osc.connect(gain);
+            gain.connect(audioContext.destination);
+            osc.frequency.value = 1000; // Click frequency
+            gain.gain.setValueAtTime(1, audioContext.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.1);
+            osc.start(audioContext.currentTime);
+            osc.stop(audioContext.currentTime + 0.1);
+        };
+        
+        const bpm = parseInt(pdfMetronomeBpm.value) || 120;
+        const intervalMs = (60 / bpm) * 1000;
+        playClick(); // play first immediately
+        metronomeInterval = setInterval(playClick, intervalMs);
+    };
+    if(pdfMetronomeToggle) {
+        pdfMetronomeToggle.addEventListener('click', () => isMetronomePlaying ? stopMetronome() : startMetronome());
+    }
+    if(pdfMetronomeBpm) {
+        pdfMetronomeBpm.addEventListener('change', () => { if(isMetronomePlaying) { stopMetronome(); startMetronome(); } });
+    }
+
+    if(pdfNightModeBtn) {
+        pdfNightModeBtn.addEventListener('click', () => {
+            isNightMode = !isNightMode;
+            pdfNightModeBtn.style.color = isNightMode ? 'var(--accent-color)' : 'var(--text-color)';
+            document.querySelectorAll('.pdf-canvas-wrapper').forEach(w => w.classList.toggle('pdf-dark-mode', isNightMode));
+        });
+    }
+
+    if(pdfDrawBtn) {
+        pdfDrawBtn.addEventListener('click', () => {
+            isDrawingMode = !isDrawingMode;
+            pdfDrawBtn.style.color = isDrawingMode ? 'var(--danger-color)' : 'var(--text-color)';
+            document.querySelectorAll('.pdf-drawing-layer').forEach(l => {
+                l.style.pointerEvents = isDrawingMode ? 'auto' : 'none';
+                l.style.cursor = isDrawingMode ? 'crosshair' : 'default';
+            });
+        });
+    }
+
     if(pdfModalClose) {
         pdfModalClose.addEventListener('click', () => {
             if(pdfModal) pdfModal.style.display = 'none';
             pdfViewerContainer.innerHTML = ''; 
             currentPdfDoc = null;
+            stopAutoscroll();
+            stopMetronome();
+            isDrawingMode = false;
+            if(pdfDrawBtn) pdfDrawBtn.style.color = 'var(--text-color)';
         });
     }
 
@@ -469,12 +627,25 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
+        const updateBulkBar = () => {
+            if (selectedBulkIds.size > 0) {
+                if(bulkActionBar) bulkActionBar.style.display = 'flex';
+                if(bulkSelCount) bulkSelCount.textContent = `${selectedBulkIds.size} sélectionné(s)`;
+            } else {
+                if(bulkActionBar) bulkActionBar.style.display = 'none';
+            }
+        };
+
         partitions.forEach(p => {
+            const isChecked = selectedBulkIds.has(String(p.id)) ? 'checked' : '';
             // Vue Liste
             const tr = document.createElement('tr');
             tr.className = 'music-item';
             tr.dataset.id = p.id;
-            tr.innerHTML = `<td>${p.titre} ${p.is_flagged ? '<i class="fas fa-exclamation-circle" style="color:#ef4444; margin-left:5px;"></i>' : ''}</td><td>${p.nom_artiste}</td><td>${p.style || ''}</td><td>${p.annee || ''}</td>`;
+            tr.innerHTML = `
+                <td style="width:40px;"><div class="bulk-checkbox-container" onclick="event.stopPropagation()"><input type="checkbox" class="bulk-checkbox" data-id="${p.id}" ${isChecked}></div></td>
+                <td>${p.titre} ${p.is_flagged ? '<i class="fas fa-exclamation-circle" style="color:#ef4444; margin-left:5px;"></i>' : ''}</td><td>${p.nom_artiste}</td><td>${p.style || ''}</td><td>${p.annee || ''}</td>
+            `;
             
             // Vue Grille
             const div = document.createElement('div');
@@ -484,11 +655,26 @@ document.addEventListener('DOMContentLoaded', async () => {
             const flagHtml = p.is_flagged ? '<span class="flag-icon">!</span>' : '';
             
             div.innerHTML = `
+                <div class="bulk-checkbox-container" onclick="event.stopPropagation()">
+                    <input type="checkbox" class="bulk-checkbox" data-id="${p.id}" ${isChecked}>
+                </div>
                 ${flagHtml}
                 <img src="${p.url_cover || 'https://placehold.co/150/2a3f54/FFF?text=...'}" alt="Pochette">
                 <div class="title">${p.titre}</div>
                 <div class="artist">${p.nom_artiste}</div>
             `;
+            
+            const handleCheckboxChange = (e) => {
+                if (e.target.checked) selectedBulkIds.add(String(p.id));
+                else selectedBulkIds.delete(String(p.id));
+                updateBulkBar();
+                
+                // Keep checkboxes synced between list and grid
+                document.querySelectorAll(`.bulk-checkbox[data-id="${p.id}"]`).forEach(cb => cb.checked = e.target.checked);
+            };
+            
+            tr.querySelector('.bulk-checkbox').addEventListener('change', handleCheckboxChange);
+            div.querySelector('.bulk-checkbox').addEventListener('change', handleCheckboxChange);
             
             const handleSelect = () => {
                 document.querySelectorAll('.music-item.selected').forEach(sel => sel.classList.remove('selected'));
@@ -991,7 +1177,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             if(ids.length > 0) {
                 // On récupère les détails des partitions
                 const { data } = await supabase.from('partitions').select('*').in('id', ids);
-                if(data) parts = data;
+                if(data) {
+                    // Restore original array order!
+                    parts = ids.map(id => data.find(d => String(d.id) === String(id))).filter(Boolean);
+                }
             }
         }
         
@@ -1001,11 +1190,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         let listHtml = '';
         
         if(parts.length > 0) {
-            parts = sortPartitionsArray(parts, currentPlaylistSort);
+            if (currentPlaylistSort !== 'manuel') {
+                parts = sortPartitionsArray(parts, currentPlaylistSort);
+            }
             
             // Grille
-            gridHtml = `<div id="pl-grid-view" class="playlist-grid-container" style="display:${currentPlaylistViewMode === 'grid' ? 'grid' : 'none'};">` + parts.map(p => `
-                <div class="grid-item music-item playlist-item-grid" data-id="${p.id}">
+            gridHtml = `<div id="pl-grid-view" class="playlist-grid-container" style="display:${currentPlaylistViewMode === 'grid' ? 'grid' : 'none'};">` + parts.map((p, index) => `
+                <div class="grid-item music-item playlist-item-grid ${!isSmart && currentPlaylistSort === 'manuel' ? 'draggable-item' : ''}" data-id="${p.id}" data-index="${index}" ${!isSmart && currentPlaylistSort === 'manuel' ? 'draggable="true"' : ''} title="${!isSmart && currentPlaylistSort === 'manuel' ? 'Glissez pour réorganiser' : ''}">
                     ${p.is_flagged ? '<span class="flag-icon">!</span>' : ''}
                     <img src="${p.url_cover || 'https://placehold.co/150/2a3f54/FFF?text=...'}" alt="Pochette">
                     <div class="title">${p.titre}</div>
@@ -1019,8 +1210,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <table>
                         <thead><tr><th>Titre</th><th>Artiste</th><th>Style</th><th>Année</th></tr></thead>
                         <tbody>
-                            ${parts.map(p => `
-                                <tr class="music-item playlist-item-list" data-id="${p.id}">
+                            ${parts.map((p, index) => `
+                                <tr class="music-item playlist-item-list ${!isSmart && currentPlaylistSort === 'manuel' ? 'draggable-item' : ''}" data-id="${p.id}" data-index="${index}" ${!isSmart && currentPlaylistSort === 'manuel' ? 'draggable="true"' : ''}>
                                     <td>${p.titre} ${p.is_flagged ? '<i class="fas fa-exclamation-circle" style="color:#ef4444; margin-left:5px;"></i>' : ''}</td>
                                     <td>${p.nom_artiste}</td><td>${p.style || ''}</td><td>${p.annee || ''}</td>
                                 </tr>
@@ -1046,7 +1237,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             <div class="playlist-actions-header">
                 <h2>${playlistName}</h2>
                 <div style="display:flex; align-items:center; gap:10px;">
+                    <span style="font-size:0.9rem; color:var(--text-muted);">Trier par:</span>
                     <select id="pl-sort-select" class="btn" style="background-color: var(--card-color); border: 1px solid var(--highlight-color); color:var(--text-color); padding: 7px 15px; margin-right: 15px; border-radius: 6px; cursor: pointer;">
+                        <option value="manuel" ${currentPlaylistSort === 'manuel' ? 'selected' : ''}>Ordre manuel (Glisser/Déposer)</option>
                         <option value="titre_asc" ${currentPlaylistSort === 'titre_asc' ? 'selected' : ''}>Titre (A-Z)</option>
                         <option value="artiste_asc" ${currentPlaylistSort === 'artiste_asc' ? 'selected' : ''}>Artiste (A-Z)</option>
                         <option value="annee_desc" ${currentPlaylistSort === 'annee_desc' ? 'selected' : ''}>Année (Récent)</option>
@@ -1072,24 +1265,78 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
 
-        document.getElementById('pl-btn-view-list').addEventListener('click', () => {
-            currentPlaylistViewMode = 'list';
-            const listView = document.getElementById('pl-list-view');
-            const gridView = document.getElementById('pl-grid-view');
-            if(listView) listView.style.display = 'block';
-            if(gridView) gridView.style.display = 'none';
-            document.getElementById('pl-btn-view-list').classList.add('active');
-            document.getElementById('pl-btn-view-grid').classList.remove('active');
-        });
+        if(document.getElementById('pl-btn-view-list')) {
+            document.getElementById('pl-btn-view-list').addEventListener('click', () => {
+                currentPlaylistViewMode = 'list';
+                const listView = document.getElementById('pl-list-view');
+                const gridView = document.getElementById('pl-grid-view');
+                if(listView) listView.style.display = 'block';
+                if(gridView) gridView.style.display = 'none';
+                document.getElementById('pl-btn-view-list').classList.add('active');
+                document.getElementById('pl-btn-view-grid').classList.remove('active');
+            });
+        }
 
-        document.getElementById('pl-btn-view-grid').addEventListener('click', () => {
-            currentPlaylistViewMode = 'grid';
-            const listView = document.getElementById('pl-list-view');
-            const gridView = document.getElementById('pl-grid-view');
-            if(listView) listView.style.display = 'none';
-            if(gridView) gridView.style.display = 'grid';
-            document.getElementById('pl-btn-view-grid').classList.add('active');
-            document.getElementById('pl-btn-view-list').classList.remove('active');
+        if(document.getElementById('pl-btn-view-grid')) {
+            document.getElementById('pl-btn-view-grid').addEventListener('click', () => {
+                currentPlaylistViewMode = 'grid';
+                const listView = document.getElementById('pl-list-view');
+                const gridView = document.getElementById('pl-grid-view');
+                if(listView) listView.style.display = 'none';
+                if(gridView) gridView.style.display = 'grid';
+                document.getElementById('pl-btn-view-grid').classList.add('active');
+                document.getElementById('pl-btn-view-list').classList.remove('active');
+            });
+        }
+
+        // --- DRAG AND DROP ---
+        let draggedItemIdx = null;
+        const draggableItems = playlistContentContainer.querySelectorAll('.draggable-item');
+        
+        draggableItems.forEach(item => {
+            item.addEventListener('dragstart', (e) => {
+                draggedItemIdx = parseInt(e.currentTarget.dataset.index);
+                e.dataTransfer.effectAllowed = 'move';
+                e.currentTarget.style.opacity = '0.5';
+            });
+            item.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+            });
+            item.addEventListener('dragenter', (e) => {
+                e.preventDefault();
+                e.currentTarget.style.borderTop = '3px solid var(--primary-color)';
+            });
+            item.addEventListener('dragleave', (e) => {
+                e.currentTarget.style.borderTop = 'none';
+            });
+            item.addEventListener('dragend', (e) => {
+                e.currentTarget.style.opacity = '1';
+                draggableItems.forEach(i => i.style.borderTop = 'none');
+            });
+            item.addEventListener('drop', async (e) => {
+                e.preventDefault();
+                e.currentTarget.style.borderTop = 'none';
+                e.currentTarget.style.opacity = '1';
+                
+                const dropItemIdx = parseInt(e.currentTarget.dataset.index);
+                if (draggedItemIdx !== null && draggedItemIdx !== dropItemIdx) {
+                    const pl = allPlaylistsData.find(x => x.id == pid);
+                    if (pl && pl.partitions) {
+                        const newIds = [...pl.partitions];
+                        // Reorder array
+                        const [moved] = newIds.splice(draggedItemIdx, 1);
+                        newIds.splice(dropItemIdx, 0, moved);
+                        
+                        showLoading('Enregistrement de l\'ordre...');
+                        await supabase.from('playlists').update({ partitions: newIds }).eq('id', pid);
+                        hideLoading();
+                        
+                        const { data } = await supabase.from('playlists').select('*');
+                        loadPlaylistContent(pid, data);
+                    }
+                }
+            });
         });
 
         // --- LISTENERS ACTIONS (Seulement si pas Smart Playlist) ---
@@ -1248,6 +1495,63 @@ document.addEventListener('DOMContentLoaded', async () => {
         e.target.reset(); fetchPlaylists();
     });
 
+    // =======================================================
+    // |                 ACTIONS DE MASSE (BULK)             |
+    // =======================================================
+    
+    if (btnBulkCancel) {
+        btnBulkCancel.addEventListener('click', () => {
+            selectedBulkIds.clear();
+            document.querySelectorAll('.bulk-checkbox').forEach(cb => cb.checked = false);
+            if(bulkActionBar) bulkActionBar.style.display = 'none';
+        });
+    }
+
+    if (btnBulkDelete) {
+        btnBulkDelete.addEventListener('click', async () => {
+            if (!confirm(`T'es SÛR de vouloir supprimer ces ${selectedBulkIds.size} partitions ? Cette action est irréversible !`)) return;
+            
+            const idsToDelete = Array.from(selectedBulkIds);
+            const partitionsToDelete = allPartitions.filter(p => idsToDelete.includes(String(p.id)));
+
+            showLoading(`Suppression de ${partitionsToDelete.length} partition(s)...`);
+            
+            try {
+                // Remove files from storage
+                for (const p of partitionsToDelete) {
+                    if (p.url_pdf && p.url_pdf.includes('fichiers_pdf')) {
+                        const path = p.url_pdf.split('fichiers_pdf/')[1];
+                        if (path) await supabase.storage.from('fichiers_pdf').remove([path]);
+                    }
+                }
+                
+                // Remove DB entries
+                for (let i = 0; i < idsToDelete.length; i += 50) {
+                    const chunk = idsToDelete.slice(i, i + 50);
+                    await supabase.from('partitions').delete().in('id', chunk);
+                }
+                
+                selectedBulkIds.clear();
+                if(bulkActionBar) bulkActionBar.style.display = 'none';
+                
+            } catch(e) { console.error("Erreur suppression:", e); alert("Une erreur est survenue lors de la suppression."); }
+            
+            hideLoading();
+            // The realtime listener trigger fetchLibrary, but force it just in case
+            fetchLibrary();
+            detailsPanel.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding-top:50px;"><i class="fas fa-trash" style="font-size:3rem; margin-bottom:20px; opacity:0.5;"></i><p>Sélection supprimée.</p></div>';
+        });
+    }
+
+    if (btnBulkAddPlaylist) {
+        btnBulkAddPlaylist.addEventListener('click', async () => {
+            if(selectedBulkIds.size === 0) return;
+            // The openPlaylistModal was designed for single targetId. 
+            // We pass an array of IDs using a special signal (-1) and read selectedBulkIds inside.
+            openPlaylistModal('bulk_add');
+        });
+    }
+
     const openPlaylistModal = async (targetId, isAddingToPlaylist = false) => {
         if(isAddingToPlaylist) {
             // TRIER PAR TITRE
@@ -1326,9 +1630,23 @@ document.addEventListener('DOMContentLoaded', async () => {
                 d.addEventListener('click', async () => {
                     const pl = pls.find(x => x.id == d.dataset.id);
                     const ids = pl.partitions || [];
-                    if(!ids.map(String).includes(String(targetId))) {
-                        ids.push(String(targetId));
-                        await supabase.from('playlists').update({partitions: ids}).eq('id', pl.id);
+                    
+                    if (targetId === 'bulk_add') {
+                        // We are doing a bulk add
+                        const newIds = Array.from(selectedBulkIds);
+                        const mergedIds = Array.from(new Set([...ids, ...newIds]));
+                        await supabase.from('playlists').update({partitions: mergedIds}).eq('id', pl.id);
+                        
+                        selectedBulkIds.clear();
+                        document.querySelectorAll('.bulk-checkbox').forEach(cb => cb.checked = false);
+                        if(bulkActionBar) bulkActionBar.style.display = 'none';
+                        alert(`${newIds.length} partition(s) ajoutée(s) à la playlist.`);
+                    } else {
+                        // Single add
+                        if(!ids.map(String).includes(String(targetId))) {
+                            ids.push(String(targetId));
+                            await supabase.from('playlists').update({partitions: ids}).eq('id', pl.id);
+                        }
                     }
                     modal.style.display = 'none';
                 });
@@ -1363,6 +1681,49 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     };
 
+    // =======================================================
+    // |               MODE ALÉATOIRE (RANDOM)               |
+    // =======================================================
+    
+    const loadRandomPartition = () => {
+        if (!allPartitions || allPartitions.length === 0) return;
+        
+        let newRandom = null;
+        // Try not to pick the exact same one twice in a row if there are multiple choices
+        if (allPartitions.length > 1 && currentRandomPartition) {
+            do {
+                newRandom = allPartitions[Math.floor(Math.random() * allPartitions.length)];
+            } while (newRandom.id === currentRandomPartition.id);
+        } else {
+            newRandom = allPartitions[Math.floor(Math.random() * allPartitions.length)];
+        }
+        
+        currentRandomPartition = newRandom;
+        
+        randomTitle.textContent = currentRandomPartition.titre || 'Titre Inconnu';
+        randomArtist.textContent = currentRandomPartition.nom_artiste || 'Artiste Inconnu';
+        randomYear.textContent = currentRandomPartition.annee ? `Sortie en ${currentRandomPartition.annee}` : '';
+        
+        if (currentRandomPartition.url_cover) {
+            randomCover.src = currentRandomPartition.url_cover;
+            randomCover.style.display = 'block';
+            randomFallbackIcon.style.display = 'none';
+        } else {
+            randomCover.style.display = 'none';
+            randomFallbackIcon.style.display = 'block';
+        }
+    };
+
+    if(randomNextBtn) randomNextBtn.addEventListener('click', loadRandomPartition);
+    
+    if(randomPlayBtn) randomPlayBtn.addEventListener('click', () => {
+        if (currentRandomPartition && currentRandomPartition.url_fichier) {
+            window.openPdf(currentRandomPartition.url_fichier, currentRandomPartition.titre);
+        } else {
+            alert("Aucun fichier PDF associé à cette partition.");
+        }
+    });
+
     // ROUTER
     const showView = (viewId) => {
         appViews.forEach(v => {
@@ -1374,14 +1735,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         navLinks.forEach(l => l.classList.toggle('active', l.dataset.view === viewId));
         if(viewId==='playlists-view') fetchPlaylists();
         if(viewId==='stats-view') renderStatsView();
+        if(viewId==='random-view') loadRandomPartition();
     };
     
     // NAVIGATION
     navLinks.forEach(l => l.addEventListener('click', (e) => { 
         e.preventDefault(); 
         const viewId = e.currentTarget.dataset.view;
-        window.location.hash = viewId.replace('-view','');
-        showView(viewId);
+        if(viewId) {
+            window.location.hash = viewId.replace('-view','');
+            showView(viewId);
+        }
     }));
     
     // Toggle View Mode

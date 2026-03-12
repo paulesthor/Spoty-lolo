@@ -398,7 +398,31 @@ input:checked + .slider:before { transform: translateX(22px); background-color: 
 .pdf-controls .btn-icon:hover { background: var(--highlight-color); color: var(--primary-color); }
 .pdf-controls #pdf-page-num { font-size: 0.9rem; font-weight: bold; color: var(--text-color); }
 
-.pdf-modal-body { flex-grow: 1; background-color: #222; } /* Always dark background for the PDF reader area itself for contrast */
+.pdf-modal-body { flex-grow: 1; background-color: #222; }
 
-.pdf-canvas-wrapper { box-shadow: 0 4px 15px rgba(0,0,0,0.5); background-color: white; /* PDF pages are usually white */ transition: transform 0.2s ease-out; transform-origin: top center; }
+.pdf-canvas-wrapper { box-shadow: 0 4px 15px rgba(0,0,0,0.5); background-color: white; transition: transform 0.2s ease-out; transform-origin: top center; }
+.pdf-canvas-wrapper.pdf-dark-mode { filter: invert(1) hue-rotate(180deg) brightness(1.2); }
 .pdf-canvas-wrapper canvas { display: block; max-width: 100%; height: auto; }
+
+/* Bulk Selection */
+.bulk-checkbox {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    accent-color: var(--primary-color);
+}
+.bulk-checkbox-container {
+    padding: 10px;
+}
+.music-item .bulk-checkbox-container {
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    z-index: 10;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+.music-item:hover .bulk-checkbox-container,
+.music-item .bulk-checkbox:checked {
+    opacity: 1;
+}
