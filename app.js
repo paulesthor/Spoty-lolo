@@ -293,6 +293,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
+    // Navigation au clavier (Flèches gauche/droite)
+    document.addEventListener('keydown', (e) => {
+        if (pdfModal && pdfModal.style.display === 'flex') {
+            if (e.key === 'ArrowLeft' && pdfPrevBtn) {
+                pdfPrevBtn.click();
+            } else if (e.key === 'ArrowRight' && pdfNextBtn) {
+                pdfNextBtn.click();
+            }
+        }
+    });
+
     if(pdfZoomInBtn) pdfZoomInBtn.addEventListener('click', () => {
         if(currentPdfDoc && currentPdfZoom < 3.0) { currentPdfZoom += 0.2; renderPdfState(); }
     });
