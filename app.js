@@ -365,15 +365,41 @@ document.addEventListener('DOMContentLoaded', async () => {
     const startAutoscroll = () => {
         isAutoscrolling = true;
         if(pdfAutoscrollToggle) pdfAutoscrollToggle.innerHTML = '<i class="fas fa-pause"></i>';
+        
+        let fractionalScroll = pdfViewerContainer.scrollTop;
+        let fakeTimerScroll = 0;
+
         const scrollStep = () => {
             if (!isAutoscrolling) return;
-            // Vitesse très douce (0.1 à 1.5 pixels par frame) au lieu du slider brut.
             const speed = parseFloat(pdfAutoscrollSpeed.value);
-            pdfViewerContainer.scrollTop += (speed * 0.15); 
-            // Passer 1 ou 2 pages si fin de conteneur
-            if (pdfViewerContainer.scrollTop + pdfViewerContainer.clientHeight >= pdfViewerContainer.scrollHeight - 1) {
+            
+            // Accrémentation fractionnelle (sub-pixels)
+            const increment = speed * 0.2; 
+            fractionalScroll += increment;
+            
+            // Appliquer le sub-pixel (le DOM tronquera)
+            if (Math.floor(fractionalScroll) > pdfViewerContainer.scrollTop) {
+                pdfViewerContainer.scrollTop = Math.floor(fractionalScroll);
+            } else if (pdfViewerContainer.scrollTop > fractionalScroll + 10) {
+                // Gérer le cas où l'utilisateur scrolle manuellement
+                fractionalScroll = pdfViewerContainer.scrollTop;
+            }
+
+            let maxScrollable = pdfViewerContainer.scrollHeight - pdfViewerContainer.clientHeight;
+            let isFinished = false;
+
+            if (maxScrollable > 5) {
+                if (pdfViewerContainer.scrollTop >= maxScrollable - 1) isFinished = true;
+            } else {
+                // La page rentre entièrement à l'écran : utiliser un timer simulé
+                fakeTimerScroll += increment;
+                if (fakeTimerScroll >= pdfViewerContainer.clientHeight * 0.8) {
+                    isFinished = true;
+                }
+            }
+
+            if (isFinished) {
                 const step = appSettings.pdfPageMode === '1' ? 1 : 2;
-                // Verifier s'il reste vraiment des pages à afficher
                 if(currentPdfDoc && (currentPdfPageNum + step) <= currentPdfDoc.numPages) {
                     stopAutoscroll();
                     currentPdfPageNum += step;
@@ -383,7 +409,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     });
                     return;
                 } else {
-                    // Fin du document atteinte, on stop
                     stopAutoscroll();
                     return;
                 }
