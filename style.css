@@ -301,3 +301,33 @@ nav a.active { color: var(--primary-color); border-bottom: 2px solid var(--prima
 .flag-toggle-container { margin-top: 15px; padding: 10px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; display: flex; align-items: center; gap: 10px; cursor: pointer; color: inherit; }
 .flag-toggle-container:hover { background: rgba(255,255,255,0.1); }
 .flag-toggle-container input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; accent-color: #ef4444; }
+
+/* =======================================================
+   11. PARAMÈTRES & LECTEUR PDF
+   ======================================================= */
+/* Settings Layout */
+.setting-item { display: flex; justify-content: space-between; align-items: center; }
+.setting-info h4 { margin-bottom: 5px; color: var(--text-color); }
+.setting-info p { color: var(--text-muted); font-size: 0.9em; margin: 0; }
+
+/* Toggle Switch */
+.switch { position: relative; display: inline-block; width: 50px; height: 28px; flex-shrink: 0; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255,255,255,0.1); transition: .4s; border: 1px solid var(--highlight-color); }
+.slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: var(--text-muted); transition: .4s; }
+input:checked + .slider { background-color: var(--primary-color); border-color: var(--primary-color); }
+input:checked + .slider:before { transform: translateX(22px); background-color: white; }
+.slider.round { border-radius: 34px; }
+.slider.round:before { border-radius: 50%; }
+
+/* Color Swatches */
+.color-swatch { width: 35px; height: 35px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; transition: transform 0.2s, border-color 0.2s; }
+.color-swatch:hover { transform: scale(1.1); }
+.color-swatch.active { border-color: white; box-shadow: 0 0 10px rgba(255,255,255,0.5); transform: scale(1.1); }
+
+/* PDF Modal */
+.pdf-modal-overlay { background-color: rgba(0, 0, 0, 0.9); }
+.pdf-modal-container { width: 95vw; height: 95vh; background-color: var(--bg-color); border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--highlight-color); box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+.pdf-modal-header { padding: 15px 25px; background-color: var(--card-color); border-bottom: 1px solid var(--highlight-color); display: flex; justify-content: space-between; align-items: center; }
+.pdf-modal-header h3 { margin: 0; color: var(--text-color); }
+.pdf-modal-body { flex-grow: 1; background-color: #333; }

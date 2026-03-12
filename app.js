@@ -69,9 +69,92 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentPlaylistViewMode = 'grid'; 
     let currentUser = null; 
 
+    let appSettings = { useIntegratedPdf: true, defaultViewMode: 'grid', primaryColor: '#3498db' };
+    
+    const settingsPdfReader = document.getElementById('setting-pdf-reader');
+    const settingsDefaultView = document.getElementById('setting-default-view');
+    const colorSwatches = document.querySelectorAll('.color-swatch');
+    const settingsUserEmail = document.getElementById('settings-user-email');
+    
+    const pdfModal = document.getElementById('pdf-reader-modal');
+    const pdfFrame = document.getElementById('pdf-frame');
+    const pdfModalClose = document.getElementById('pdf-modal-close');
+    const pdfModalTitle = document.getElementById('pdf-modal-title');
+
     // =======================================================
     // |                 FONCTIONS UTILITAIRES               |
     // =======================================================
+
+    const loadSettings = () => {
+        const saved = localStorage.getItem('spotiLoloSettings');
+        if (saved) {
+            try { appSettings = { ...appSettings, ...JSON.parse(saved) }; } 
+            catch(err) {}
+        }
+        
+        if(settingsPdfReader) settingsPdfReader.checked = appSettings.useIntegratedPdf;
+        if(settingsDefaultView) settingsDefaultView.value = appSettings.defaultViewMode;
+        
+        document.documentElement.style.setProperty('--primary-color', appSettings.primaryColor);
+        colorSwatches.forEach(sw => sw.classList.toggle('active', sw.dataset.color === appSettings.primaryColor));
+        
+        currentViewMode = appSettings.defaultViewMode;
+        currentPlaylistViewMode = appSettings.defaultViewMode;
+        
+        if (btnGridView && btnListView && gridViewContainer && listViewContainer) {
+            btnGridView.classList.toggle('active', currentViewMode === 'grid');
+            btnListView.classList.toggle('active', currentViewMode === 'list');
+            gridViewContainer.style.display = currentViewMode === 'grid' ? 'grid' : 'none';
+            listViewContainer.style.display = currentViewMode === 'list' ? 'block' : 'none';
+        }
+    };
+
+    const saveSettings = () => {
+        localStorage.setItem('spotiLoloSettings', JSON.stringify(appSettings));
+    };
+
+    window.openPdf = (url, title = 'Partition') => {
+        if (appSettings.useIntegratedPdf) {
+            if(pdfModalTitle) pdfModalTitle.textContent = title;
+            if(pdfFrame) pdfFrame.src = url;
+            if(pdfModal) pdfModal.style.display = 'flex';
+        } else {
+            window.open(url, '_blank');
+        }
+    };
+
+    if(pdfModalClose) {
+        pdfModalClose.addEventListener('click', () => {
+            if(pdfModal) pdfModal.style.display = 'none';
+            if(pdfFrame) pdfFrame.src = ''; 
+        });
+    }
+
+    if(settingsPdfReader) {
+        settingsPdfReader.addEventListener('change', (e) => {
+            appSettings.useIntegratedPdf = e.target.checked;
+            saveSettings();
+        });
+    }
+    
+    if(settingsDefaultView) {
+        settingsDefaultView.addEventListener('change', (e) => {
+            appSettings.defaultViewMode = e.target.value;
+            saveSettings();
+        });
+    }
+    
+    colorSwatches.forEach(sw => {
+        sw.addEventListener('click', () => {
+            const color = sw.dataset.color;
+            appSettings.primaryColor = color;
+            document.documentElement.style.setProperty('--primary-color', color);
+            colorSwatches.forEach(s => s.classList.toggle('active', s === sw));
+            saveSettings();
+        });
+    });
+
+    loadSettings();
 
     const sortPartitionsArray = (array, sortKey) => {
         let column = 'titre';
@@ -159,6 +242,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             const hash = window.location.hash.substring(1) || 'library';
             showView(hash + '-view');
+            
+            if(settingsUserEmail) settingsUserEmail.textContent = session.user.email;
             
             fetchLibrary(); 
         } else {
@@ -327,7 +412,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 await supabase.from('partitions').update({ is_flagged: p.is_flagged }).eq('id', p.id);
             };
 
-            const handleOpen = () => { if(p.url_pdf) window.open(p.url_pdf, '_blank'); };
+            const handleOpen = () => { if(p.url_pdf) window.openPdf(p.url_pdf, p.titre); };
 
             // Listeners Vue Liste
             tr.addEventListener('click', handleSelect);
@@ -385,7 +470,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </label>
             </div>
             <div class="actions">
-                <a href="${p.url_pdf}" target="_blank" class="btn btn-accent" style="text-align:center; display:block;"><i class="fas fa-file-pdf"></i> Ouvrir le PDF</a>
+                <button type="button" class="btn btn-accent" style="text-align:center; display:block; width:100%;" onclick="window.openPdf('${p.url_pdf}', \`${p.titre.replace(/`/g, '')}\`);"><i class="fas fa-file-pdf"></i> Ouvrir le PDF</button>
                 <button class="btn" id="edit-btn"><i class="fas fa-edit"></i> Modifier</button>
                 <button class="btn" id="add-pl-btn"><i class="fas fa-plus"></i> Playlist</button>
                 <button class="btn btn-danger" id="del-btn"><i class="fas fa-trash"></i> Supprimer</button>
@@ -968,7 +1053,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             item.addEventListener('dblclick', async () => {
                 if(clickTimer) { clearTimeout(clickTimer); clickTimer = null; }
                 const { data: p } = await supabase.from('partitions').select('*').eq('id', item.dataset.id).single();
-                if(p && p.url_pdf) window.open(p.url_pdf, '_blank');
+                if(p && p.url_pdf) window.openPdf(p.url_pdf, p.titre);
             });
         };
 
@@ -997,7 +1082,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </label>
             </div>
             <div class="actions">
-                <a href="${p.url_pdf}" target="_blank" class="btn btn-accent" style="text-align:center; display:block;"><i class="fas fa-file-pdf"></i> Ouvrir le PDF</a>
+                <button type="button" class="btn btn-accent" style="text-align:center; display:block; width:100%;" onclick="window.openPdf('${p.url_pdf}', \`${p.titre.replace(/`/g, '')}\`);"><i class="fas fa-file-pdf"></i> Ouvrir le PDF</button>
                 <button class="btn btn-danger" id="remove-from-pl-btn"><i class="fas ${removeBtnIcon}"></i> ${removeBtnText}</button>
             </div>
         `;
