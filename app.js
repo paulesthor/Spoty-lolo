@@ -370,16 +370,21 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Vitesse très douce (0.1 à 1.5 pixels par frame) au lieu du slider brut.
             const speed = parseFloat(pdfAutoscrollSpeed.value);
             pdfViewerContainer.scrollTop += (speed * 0.15); 
-            
             // Passer 1 ou 2 pages si fin de conteneur
             if (pdfViewerContainer.scrollTop + pdfViewerContainer.clientHeight >= pdfViewerContainer.scrollHeight - 1) {
                 const step = appSettings.pdfPageMode === '1' ? 1 : 2;
-                if(currentPdfDoc && (currentPdfPageNum + step - 1) <= currentPdfDoc.numPages) {
+                // Verifier s'il reste vraiment des pages à afficher
+                if(currentPdfDoc && (currentPdfPageNum + step) <= currentPdfDoc.numPages) {
                     stopAutoscroll();
                     currentPdfPageNum += step;
                     renderPdfState().then(() => {
+                        pdfViewerContainer.scrollTop = 0; // Reset scroll au top
                         setTimeout(() => startAutoscroll(), 500); // Reprend après petit délai
                     });
+                    return;
+                } else {
+                    // Fin du document atteinte, on stop
+                    stopAutoscroll();
                     return;
                 }
             }
