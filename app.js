@@ -1728,8 +1728,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     if(randomNextBtn) randomNextBtn.addEventListener('click', loadRandomPartition);
     
     if(randomPlayBtn) randomPlayBtn.addEventListener('click', () => {
-        if (currentRandomPartition && currentRandomPartition.url_fichier) {
-            window.openPdf(currentRandomPartition.url_fichier, currentRandomPartition.titre);
+        if (currentRandomPartition && currentRandomPartition.url_pdf) {
+            window.openPdf(currentRandomPartition.url_pdf, currentRandomPartition.titre);
         } else {
             alert("Aucun fichier PDF associé à cette partition.");
         }
