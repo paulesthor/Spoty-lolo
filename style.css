@@ -390,6 +390,7 @@ input:checked + .slider:before { transform: translateX(22px); background-color: 
 /* PDF Modal & PDF.js Viewer */
 .pdf-modal-overlay { background-color: rgba(0, 0, 0, 0.9); }
 .pdf-modal-container { width: 95vw; height: 95vh; background-color: var(--bg-color); border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--highlight-color); box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+.pdf-modal-container.full-screen { width: 100vw; height: 100vh; border-radius: 0; border: none; }
 .pdf-modal-header { padding: 15px 25px; background-color: var(--card-color); border-bottom: 1px solid var(--highlight-color); display: flex; justify-content: space-between; align-items: center; }
 .pdf-modal-header h3 { margin: 0; color: var(--text-color); flex: 1; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; }
 

@@ -79,6 +79,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let appSettings = { 
         useIntegratedPdf: true, 
+        fullScreenPdf: false,
         defaultViewMode: 'grid', 
         theme: 'default',
         pdfPageMode: '1',
@@ -91,7 +92,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
     
+    let randomSource = { type: 'all', id: null };
+    
     const settingsPdfReader = document.getElementById('setting-pdf-reader');
+    const settingsPdfFullscreen = document.getElementById('setting-pdf-fullscreen');
     const settingsDefaultView = document.getElementById('setting-default-view');
     const settingTheme = document.getElementById('setting-theme');
     const settingsUserEmail = document.getElementById('settings-user-email');
@@ -152,6 +156,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(settingTheme) settingTheme.value = appSettings.theme || 'default';
         const settingPdfMode = document.getElementById('setting-pdf-mode');
         if(settingPdfMode) settingPdfMode.value = appSettings.pdfPageMode || '1';
+        
+        if(settingsPdfReader) settingsPdfReader.checked = appSettings.useIntegratedPdf;
+        if(settingsPdfFullscreen) settingsPdfFullscreen.checked = appSettings.fullScreenPdf;
+        if(settingsDefaultView) settingsDefaultView.value = appSettings.defaultViewMode;
         
         document.querySelectorAll('.shortcut-btn').forEach(btn => {
             const action = btn.dataset.action;
@@ -222,8 +230,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             displayStr = `${currentPdfPageNum} / ${totalPages}`;
         } else {
             // Two or more pages - render side by side
-            // Enforce odd page number on the left (1-2, 3-4)
-            if (currentPdfPageNum % 2 === 0) currentPdfPageNum--; 
+            // On n'impose plus de page impaire (permet 1-2, puis 2-3, puis 3-4 etc.)
             if (currentPdfPageNum < 1) currentPdfPageNum = 1;
             
             renders.push(renderPdfPage(currentPdfPageNum));
@@ -284,7 +291,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.openPdf = async (url, title = 'Partition') => {
         if (appSettings.useIntegratedPdf) {
             if(pdfModalTitle) pdfModalTitle.textContent = title;
-            if(pdfModal) pdfModal.style.display = 'flex';
+            if(pdfModal) {
+                pdfModal.style.display = 'flex';
+                // Apply full screen setting
+                const container = pdfModal.querySelector('.pdf-modal-container');
+                if (container) {
+                    container.classList.toggle('full-screen', !!appSettings.fullScreenPdf);
+                }
+            }
             pdfViewerContainer.innerHTML = '<div style="color:white; margin:auto;">Chargement du PDF...</div>';
             
             try {
@@ -305,18 +319,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // PDF Controls
     if(pdfPrevBtn) pdfPrevBtn.addEventListener('click', () => {
-        const step = appSettings.pdfPageMode === '1' ? 1 : 2;
         if(currentPdfDoc && currentPdfDoc.numPages > 1 && currentPdfPageNum > 1) {
-            currentPdfPageNum -= step;
+            currentPdfPageNum -= 1;
             renderPdfState();
         }
     });
 
     if(pdfNextBtn) pdfNextBtn.addEventListener('click', () => {
-        const step = appSettings.pdfPageMode === '1' ? 1 : 2;
-        if(currentPdfDoc && currentPdfDoc.numPages > 1 && (currentPdfPageNum + step - 1) <= currentPdfDoc.numPages) {
-            currentPdfPageNum += step;
-            renderPdfState();
+        if(currentPdfDoc && currentPdfDoc.numPages > 1) {
+            // Dans le mode 2 pages, la dernière "vue" est (numPages - 1) et (numPages)
+            const maxPage = appSettings.pdfPageMode === '1' ? currentPdfDoc.numPages : Math.max(1, currentPdfDoc.numPages - 1);
+            if (currentPdfPageNum < maxPage) {
+                currentPdfPageNum += 1;
+                renderPdfState();
+            }
         }
     });
 
@@ -399,10 +415,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             if (isFinished) {
-                const step = appSettings.pdfPageMode === '1' ? 1 : 2;
-                if(currentPdfDoc && (currentPdfPageNum + step) <= currentPdfDoc.numPages) {
+                const maxPage = appSettings.pdfPageMode === '1' ? currentPdfDoc.numPages : Math.max(1, currentPdfDoc.numPages - 1);
+                if(currentPdfDoc && currentPdfPageNum < maxPage) {
                     stopAutoscroll();
-                    currentPdfPageNum += step;
+                    currentPdfPageNum += 1;
                     renderPdfState().then(() => {
                         pdfViewerContainer.scrollTop = 0; // Reset scroll au top
                         setTimeout(() => startAutoscroll(), 500); // Reprend après petit délai
@@ -497,6 +513,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     if(settingsPdfReader) {
         settingsPdfReader.addEventListener('change', (e) => {
             appSettings.useIntegratedPdf = e.target.checked;
+            saveSettings();
+        });
+    }
+
+    if(settingsPdfFullscreen) {
+        settingsPdfFullscreen.addEventListener('change', (e) => {
+            appSettings.fullScreenPdf = e.target.checked;
             saveSettings();
         });
     }
@@ -1785,17 +1808,33 @@ document.addEventListener('DOMContentLoaded', async () => {
     // |               MODE ALÉATOIRE (RANDOM)               |
     // =======================================================
     
-    const loadRandomPartition = () => {
+    const loadRandomPartition = async () => {
         if (!allPartitions || allPartitions.length === 0) return;
         
+        let pool = [...allPartitions];
+        
+        if (randomSource.type === 'playlist' && randomSource.id) {
+            // Filtrer par playlist
+            const { data: pl } = await supabase.from('playlists').select('partitions').eq('id', randomSource.id).single();
+            if (pl && pl.partitions && pl.partitions.length > 0) {
+                const ids = pl.partitions.map(String);
+                pool = allPartitions.filter(p => ids.includes(String(p.id)));
+            }
+            if (pool.length === 0) {
+                alert("Cette playlist est vide. Retour à la bibliothèque complète.");
+                randomSource = { type: 'all', id: null };
+                pool = [...allPartitions];
+            }
+        }
+
         let newRandom = null;
         // Try not to pick the exact same one twice in a row if there are multiple choices
-        if (allPartitions.length > 1 && currentRandomPartition) {
+        if (pool.length > 1 && currentRandomPartition) {
             do {
-                newRandom = allPartitions[Math.floor(Math.random() * allPartitions.length)];
+                newRandom = pool[Math.floor(Math.random() * pool.length)];
             } while (newRandom.id === currentRandomPartition.id);
         } else {
-            newRandom = allPartitions[Math.floor(Math.random() * allPartitions.length)];
+            newRandom = pool[Math.floor(Math.random() * pool.length)];
         }
         
         currentRandomPartition = newRandom;
@@ -1812,6 +1851,62 @@ document.addEventListener('DOMContentLoaded', async () => {
             randomCover.style.display = 'none';
             randomFallbackIcon.style.display = 'block';
         }
+    };
+
+    const openShuffleSourceModal = async () => {
+        modalBody.innerHTML = `
+            <div style="text-align:center;">
+                <h2 style="margin-bottom:25px; color:var(--primary-color);"><i class="fas fa-random"></i> Mode Aléatoire</h2>
+                <p style="margin-bottom:30px; color:var(--text-muted);">Choisissez d'où proviendront les morceaux :</p>
+                
+                <div style="display:flex; flex-direction:column; gap:15px;">
+                    <button id="shuffle-all-btn" class="btn btn-accent" style="padding:20px; font-size:1.1rem;">
+                        <i class="fas fa-globe"></i> Toute la bibliothèque
+                    </button>
+                    <button id="shuffle-playlist-btn" class="btn" style="padding:20px; font-size:1.1rem; background:rgba(255,255,255,0.05); border:1px solid var(--highlight-color);">
+                        <i class="fas fa-list-ul"></i> Une playlist spécifique
+                    </button>
+                </div>
+            </div>
+        `;
+        modal.style.display = 'flex';
+
+        document.getElementById('shuffle-all-btn').addEventListener('click', () => {
+            randomSource = { type: 'all', id: null };
+            modal.style.display = 'none';
+            showView('random-view');
+        });
+
+        document.getElementById('shuffle-playlist-btn').addEventListener('click', async () => {
+            const { data: pls } = await supabase.from('playlists').select('*').eq('user_id', currentUser.id);
+            
+            // On ajoute aussi "A travailler" (flagged)
+            const smartPlaylist = { id: 'special-flagged', nom_playlist: 'A travailler' };
+            const allPls = [smartPlaylist, ...pls];
+
+            modalBody.innerHTML = `
+                <h3 style="margin-bottom:20px; color:var(--primary-color);">Choisir une playlist</h3>
+                <div class="playlist-selection-container">
+                    ${allPls.map(pl => `
+                        <div class="playlist-option" data-id="${pl.id}">
+                            <span>${pl.id === 'special-flagged' ? '<i class="fas fa-exclamation-circle" style="color:#ef4444; margin-right:8px;"></i>' : ''}${pl.nom_playlist}</span>
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                    `).join('')}
+                </div>
+                <button id="back-to-shuffle-main" class="btn" style="margin-top:20px; width:100%; background:transparent; border:1px solid var(--highlight-color);"><i class="fas fa-arrow-left"></i> Retour</button>
+            `;
+
+            document.getElementById('back-to-shuffle-main').addEventListener('click', openShuffleSourceModal);
+
+            modalBody.querySelectorAll('.playlist-option').forEach(opt => {
+                opt.addEventListener('click', () => {
+                    randomSource = { type: 'playlist', id: opt.dataset.id };
+                    modal.style.display = 'none';
+                    showView('random-view');
+                });
+            });
+        });
     };
 
     if(randomNextBtn) randomNextBtn.addEventListener('click', loadRandomPartition);
@@ -1843,8 +1938,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         e.preventDefault(); 
         const viewId = e.currentTarget.dataset.view;
         if(viewId) {
-            window.location.hash = viewId.replace('-view','');
-            showView(viewId);
+            if(viewId === 'random-view') {
+                openShuffleSourceModal();
+            } else {
+                window.location.hash = viewId.replace('-view','');
+                showView(viewId);
+            }
         }
     }));
     
