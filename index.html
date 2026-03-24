@@ -197,26 +197,59 @@
         </div>
 
         <div id="stats-view" class="app-view" style="display:none;">
-            <div class="main-container">
-                <div class="stats-grid">
-                    <div class="card kpi-card">
-                        <h3>Partitions</h3>
-                        <div id="stats-total-partitions" class="kpi-value">0</div>
-                        <i class="fas fa-file-alt kpi-icon"></i>
+            <div class="main-container dashboard-container">
+                <h2 style="margin-bottom: 30px; color: var(--primary-color); font-size: 2rem;"><i class="fas fa-tachometer-alt"></i> Dashboard de Musicien</h2>
+                
+                <div class="dashboard-grid">
+                    <!-- KPI Principal: Répertoire -->
+                    <div class="card kpi-card-main">
+                        <div class="kpi-info">
+                            <h3>Répertoire Travaillé</h3>
+                            <div id="stats-total-flagged" class="kpi-value">0</div>
+                            <p class="kpi-subtext">morceaux actuellement à l'étude</p>
+                        </div>
+                        <div class="kpi-chart-mini">
+                            <canvas id="progressionChart"></canvas>
+                        </div>
                     </div>
-                    <div class="card kpi-card">
+
+                    <!-- KPI Secondaires -->
+                    <div class="card kpi-card-small">
+                        <h3>Total Partitions</h3>
+                        <div id="stats-total-partitions" class="kpi-value-small">0</div>
+                        <i class="fas fa-file-alt kpi-icon-dim"></i>
+                    </div>
+
+                    <div class="card kpi-card-small">
+                        <h3>Nouveautés (30j)</h3>
+                        <div id="stats-monthly-growth" class="kpi-value-small">0</div>
+                        <i class="fas fa-calendar-plus kpi-icon-dim"></i>
+                    </div>
+
+                    <div class="card kpi-card-small">
                         <h3>Artistes</h3>
-                        <div id="stats-total-artistes" class="kpi-value">0</div>
-                        <i class="fas fa-user-friends kpi-icon"></i>
+                        <div id="stats-total-artistes" class="kpi-value-small">0</div>
+                        <i class="fas fa-user-friends kpi-icon-dim"></i>
                     </div>
-                    <div class="card kpi-card">
-                        <h3>Playlists</h3>
-                        <div id="stats-total-playlists" class="kpi-value">0</div>
-                         <i class="fas fa-list kpi-icon"></i>
+
+                    <!-- Graphiques de fond -->
+                    <div class="card chart-card large">
+                        <h3>Profil Musical (Styles)</h3>
+                        <div class="chart-container-large">
+                            <canvas id="stylesRadarChart"></canvas>
+                        </div>
                     </div>
-                    <div class="card chart-card">
+
+                    <div class="card chart-card medium">
+                        <h3>Croissance de la Bibliothèque</h3>
+                        <div class="chart-container-medium">
+                            <canvas id="historyLineChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="card chart-card medium">
                         <h3>Top Artistes</h3>
-                         <div class="chart-container">
+                        <div class="chart-container-medium">
                             <canvas id="topArtistsChart"></canvas>
                         </div>
                     </div>

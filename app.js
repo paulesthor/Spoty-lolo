@@ -68,7 +68,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const statsTotalPartitions = document.getElementById('stats-total-partitions');
     const statsTotalArtistes = document.getElementById('stats-total-artistes');
     const statsTotalPlaylists = document.getElementById('stats-total-playlists');
+    const statsTotalFlagged = document.getElementById('stats-total-flagged');
+    const statsMonthlyGrowth = document.getElementById('stats-monthly-growth');
+    
     let topArtistsChart = null;
+    let progressionChart = null;
+    let stylesRadarChart = null;
+    let historyLineChart = null;
 
     let allPartitions = [];
     let currentSort = 'titre_asc';
@@ -1779,29 +1785,166 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     const renderStatsView = async () => {
         if(!allPartitions) return;
-        statsTotalPartitions.textContent = allPartitions.length;
-        statsTotalArtistes.textContent = new Set(allPartitions.map(p => p.nom_artiste)).size;
-        const { count } = await supabase.from('playlists').select('*', { count: 'exact', head: true }).eq('user_id', currentUser.id);
-        statsTotalPlaylists.textContent = count || 0;
         
-        const artistCounts = {};
-        allPartitions.forEach(p => { artistCounts[p.nom_artiste] = (artistCounts[p.nom_artiste] || 0) + 1; });
-        const sortedArtists = Object.entries(artistCounts).sort((a,b) => b[1] - a[1]).slice(0, 5);
+        // --- 1. METRIQUES ---
+        const total = allPartitions.length;
+        const flaggedCount = allPartitions.filter(p => p.is_flagged).length;
+        const artistCount = new Set(allPartitions.map(p => p.nom_artiste)).size;
+        
+        // Calcul Nouveautés (30 derniers jours)
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const monthlyGrowth = allPartitions.filter(p => new Date(p.date_ajout) >= thirtyDaysAgo).length;
 
-        if (topArtistsChart) topArtistsChart.destroy();
-        const ctx = document.getElementById('topArtistsChart');
-        topArtistsChart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: sortedArtists.map(x => x[0]),
-                datasets: [{ label: 'Partitions', data: sortedArtists.map(x => x[1]), backgroundColor: '#3498db' }]
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                scales: { y: { beginAtZero: true, ticks: { color: 'white', stepSize:1 } }, x: { ticks: { color: 'white' } } },
-                plugins: { legend: { display: false } }
+        if(statsTotalPartitions) statsTotalPartitions.textContent = total;
+        if(statsTotalArtistes) statsTotalArtistes.textContent = artistCount;
+        if(statsTotalFlagged) statsTotalFlagged.textContent = flaggedCount;
+        if(statsTotalMonthlyGrowth) statsTotalMonthlyGrowth.textContent = monthlyGrowth; 
+        // Note: I used 'stats-monthly-growth' in HTML, but defined 'statsTotalMonthlyGrowth' here. 
+        // Actually, I'll use the IDs consistently.
+        const elMonthly = document.getElementById('stats-monthly-growth');
+        if(elMonthly) elMonthly.textContent = monthlyGrowth;
+
+        // Colors based on theme
+        const isDark = !['soft', 'sepia'].includes(appSettings.theme);
+        const labelColor = isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)';
+        const gridColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+
+        // --- 2. CHART: PROGRESSION (Doughnut) ---
+        if (progressionChart) progressionChart.destroy();
+        const ctxProg = document.getElementById('progressionChart');
+        if (ctxProg) {
+            progressionChart = new Chart(ctxProg, {
+                type: 'doughnut',
+                data: {
+                    labels: ['À travailler', 'Maîtrisé'],
+                    datasets: [{
+                        data: [flaggedCount, total - flaggedCount],
+                        backgroundColor: ['#e74c3c', '#1abc9c'],
+                        borderWidth: 0,
+                        cutout: '70%'
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        // --- 3. CHART: STYLES (Radar) ---
+        if (stylesRadarChart) stylesRadarChart.destroy();
+        const ctxRadar = document.getElementById('stylesRadarChart');
+        if (ctxRadar) {
+            const styleCounts = {};
+            allPartitions.forEach(p => {
+                let s = (p.style || 'Non classé').trim();
+                s = s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+                styleCounts[s] = (styleCounts[s] || 0) + 1;
+            });
+            const topStyles = Object.entries(styleCounts).sort((a,b) => b[1] - a[1]).slice(0, 6);
+            
+            stylesRadarChart = new Chart(ctxRadar, {
+                type: 'radar',
+                data: {
+                    labels: topStyles.map(x => x[0]),
+                    datasets: [{
+                        label: 'Nombre de titres',
+                        data: topStyles.map(x => x[1]),
+                        backgroundColor: 'rgba(52, 152, 219, 0.2)',
+                        borderColor: '#3498db',
+                        pointBackgroundColor: '#3498db'
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            angleLines: { color: gridColor },
+                            grid: { color: gridColor },
+                            pointLabels: { color: labelColor, font: { size: 12 } },
+                            ticks: { display: false, beginAtZero: true }
+                        }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        // --- 4. CHART: HISTORIQUE (Line) ---
+        if (historyLineChart) historyLineChart.destroy();
+        const ctxHistory = document.getElementById('historyLineChart');
+        if (ctxHistory) {
+            // Group by month
+            const months = {};
+            // Last 6 months
+            for(let i=5; i>=0; i--) {
+                const d = new Date();
+                d.setMonth(d.getMonth() - i);
+                const key = d.toLocaleString('fr-FR', { month: 'short' });
+                months[key] = 0;
             }
-        });
+
+            allPartitions.forEach(p => {
+                const d = new Date(p.date_ajout);
+                const key = d.toLocaleString('fr-FR', { month: 'short' });
+                if(months.hasOwnProperty(key)) months[key]++;
+            });
+
+            historyLineChart = new Chart(ctxHistory, {
+                type: 'line',
+                data: {
+                    labels: Object.keys(months),
+                    datasets: [{
+                        label: 'Ajouts',
+                        data: Object.values(months),
+                        borderColor: '#1abc9c',
+                        backgroundColor: 'rgba(26, 188, 156, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: gridColor }, ticks: { color: labelColor } },
+                        x: { grid: { display: false }, ticks: { color: labelColor } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        // --- 5. CHART: TOP ARTISTES (Bar) ---
+        if (topArtistsChart) topArtistsChart.destroy();
+        const ctxBar = document.getElementById('topArtistsChart');
+        if (ctxBar) {
+            const artistCounts = {};
+            allPartitions.forEach(p => { artistCounts[p.nom_artiste || 'Inconnu'] = (artistCounts[p.nom_artiste || 'Inconnu'] || 0) + 1; });
+            const sortedArtists = Object.entries(artistCounts).sort((a,b) => b[1] - a[1]).slice(0, 5);
+
+            topArtistsChart = new Chart(ctxBar, {
+                type: 'bar',
+                data: {
+                    labels: sortedArtists.map(x => x[0]),
+                    datasets: [{
+                        label: 'Partitions',
+                        data: sortedArtists.map(x => x[1]),
+                        backgroundColor: '#3498db',
+                        borderRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    scales: {
+                        x: { beginAtZero: true, grid: { color: gridColor }, ticks: { color: labelColor, stepSize: 1 } },
+                        y: { grid: { display: false }, ticks: { color: labelColor } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
     };
 
     // =======================================================

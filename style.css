@@ -274,14 +274,89 @@ nav a.active { color: var(--primary-color); border-bottom: 2px solid var(--prima
 .playlist-content-scroll { overflow-y: auto; flex-grow: 1; padding-right: 5px; }
 
 /* =======================================================
-   7. STATISTIQUES
-   ======================================================= */
-.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px; }
-.kpi-card { position: relative; padding-top: 40px; }
-.kpi-card h3 { position: absolute; top: 15px; left: 25px; color: var(--text-muted); font-size: 1rem; }
-.kpi-value { font-size: 3rem; font-weight: bold; color: var(--primary-color); }
-.kpi-icon { position: absolute; bottom: 20px; right: 25px; font-size: 4rem; color: var(--highlight-color); opacity: 0.3; }
-.chart-container { height: 300px; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.1); border-radius: 5px; }
+11. DASHBOARD & STATS (ENHANCED)
+========================================================= */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: auto;
+    gap: 25px;
+}
+
+.kpi-card-main {
+    grid-column: span 2;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(135deg, var(--card-color), var(--highlight-color));
+}
+
+.kpi-card-small {
+    grid-column: span 1;
+    position: relative;
+    overflow: hidden;
+}
+
+.kpi-value-small {
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: var(--primary-color);
+    margin-top: 10px;
+}
+
+.kpi-icon-dim {
+    position: absolute;
+    right: -10px;
+    bottom: -10px;
+    font-size: 4rem;
+    opacity: 0.1;
+    transform: rotate(-15deg);
+}
+
+.chart-card.large {
+    grid-column: span 2;
+    grid-row: span 2;
+}
+
+.chart-card.medium {
+    grid-column: span 2;
+}
+
+.chart-container-large {
+    height: 400px;
+    margin-top: 20px;
+}
+
+.chart-container-medium {
+    height: 250px;
+    margin-top: 20px;
+}
+
+.kpi-chart-mini {
+    width: 140px;
+    height: 140px;
+}
+
+.kpi-subtext {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-top: 5px;
+}
+
+@media screen and (max-width: 1100px) {
+    .dashboard-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media screen and (max-width: 600px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+    .kpi-card-main, .chart-card.large, .chart-card.medium {
+        grid-column: span 1;
+    }
+}
 
 /* =======================================================
    8. MODALE D'IMPORT & RECHERCHE
