@@ -1,0 +1,94 @@
+INFO  []                      Main 259  | Running in batch mode
+WARN  []                 Languages 142  | *** No installed OCR languages ***
+INFO  []             AliasPatterns 146  | Alias patterns: [(IMSLP[0-9]*)-.*]
+INFO  []                      Main 194  | Submitting 1 task(s) in sequence:
+    Input "/tmp/tmpszvpbfhz/pages/p001.pdf"
+INFO  [p001]                      Book 560  | 1 sheet in /tmp/tmpszvpbfhz/pages/p001.pdf
+INFO  []                      Book 2565 | Stored /book.xml
+INFO  []                      Book 2525 | Book stored as /tmp/tmpszvpbfhz/out/p001.omr
+INFO  []                      Book 1929 | Book reaching PAGE on sheets:[#1]
+INFO  [p001]            StepMonitoring 98   | LOAD
+INFO  [p001]                 SheetStub 1278 | Loaded image #1 2479x3508 from /tmp/tmpszvpbfhz/pages/p001.pdf
+INFO  [p001]            StepMonitoring 98   | BINARY
+INFO  [p001]            StepMonitoring 98   | SCALE
+INFO  [p001]              ScaleBuilder 254  | Beam  guessed height: 10 -- 0.25 of [8..17] range
+INFO  [p001]              ScaleBuilder 271  | Beam measured height: 10 -- 0.22 of [8..17] range at 877% of needed quorum
+INFO  [p001]              ScaleBuilder 401  | Normalized black jitter: 5.56 %
+INFO  [p001]                 ScaleStep 65   | Scale{ small_interline(10,10,11) interline(16,18,20) line(3,3,4) small_beam(10) beam(13)}
+INFO  [p001]            StepMonitoring 98   | GRID
+INFO  [p001]            LinesRetriever 1508 | Global slope: 0.00000
+INFO  [p001]         ClustersRetriever 533  | Destroying non-consistent Cluster#C1371{interline(16,18,20) size:5 fil#1332@0 fil#1371@1 fil#1399@2 fil#1432@3 fil#1460@4}
+INFO  [p001]         ClustersRetriever 326  | Retrieved raw line clusters: 7 of sizes [5] with interline(16,18,20)
+INFO  [p001]            LinesRetriever 1524 | Searching clusters with smallInterline: 10
+INFO  [p001]         ClustersRetriever 326  | Retrieved raw line clusters: 0 of sizes [5] with interline(10,10,11)
+INFO  [p001]                 PeakGraph 310  | Systems: #1[1] #2[2] #3[3] #4[4] #5[5] #6[6] #7[7]
+INFO  [p001]             SystemManager 134  | Indentation detected for system #1
+INFO  [p001]             SystemManager 800  | 1 part along 7 systems
+INFO  [p001]                      Book 543  | Created scores: [{Score 1}]
+INFO  [p001]            StepMonitoring 98   | HEADERS
+INFO  [p001]            StepMonitoring 98   | STEM_SEEDS
+INFO  [p001]             StemSeedsStep 86   | stem(3 max:4)
+INFO  [p001]            StepMonitoring 98   | BEAMS
+INFO  [p001]            StepMonitoring 98   | LEDGERS
+INFO  [p001]            StepMonitoring 98   | HEADS
+INFO  [p001]             HeadSeedTally 235  | Scale information: HeadSeeds{NOTEHEAD_VOID[L:-0.3] NOTEHEAD_BLACK[L:-0.3,R:-0.9]}
+INFO  [p001]            StepMonitoring 98   | STEMS
+INFO  [p001]            StepMonitoring 98   | REDUCTION
+INFO  [p001]            BeamGroupInter 1123 | Separating beams SmallBeamInter#2275{(0.399/0.616) BEAM_SMALL} and SmallBeamInter#2277{(0.470/0.661) BEAM_SMALL}
+INFO  [p001]            BeamGroupInter 1123 | Separating beams SmallBeamInter#2328{(0.496/0.732) BEAM_SMALL} and SmallBeamInter#2330{(0.592/0.783) BEAM_SMALL}
+INFO  [p001]            BeamGroupInter 1123 | Separating beams SmallBeamInter#2424{(0.400/0.753) BEAM_SMALL} and SmallBeamInter#2396{(0.555/0.837) BEAM_SMALL}
+INFO  [p001]            BeamGroupInter 1123 | Separating beams SmallBeamInter#2517{(0.389/0.655) BEAM_SMALL} and SmallBeamInter#2519{(0.662/0.810) BEAM_SMALL}
+INFO  [p001]            BeamGroupInter 1123 | Separating beams SmallBeamInter#2525{(0.456/0.706) BEAM_SMALL} and SmallBeamInter#2527{(0.623/0.796) BEAM_SMALL}
+INFO  [p001]             ReductionStep 105  | Stems free length median value: 59 pixels, 3.3 interlines
+INFO  [p001]            StepMonitoring 98   | CUE_BEAMS
+INFO  [p001]              CueBeamsStep 81   | Step CUE_BEAMS is skipped because small heads switch is off
+INFO  [p001]            StepMonitoring 98   | TEXTS
+WARN  [p001]              TesseractOCR 335  | The collection of supported languages is empty
+INFO  [p001]                   OcrUtil 106  | Missing support for 'eng' language(s)
+INFO  [p001]            StepMonitoring 98   | MEASURES
+INFO  [p001]                      Page 307  | 41 raw measures: [5 in system#1, 6 in system#2, 8 in system#3, 5 in system#4, 4 in system#5, 7 in system#6, 6 in system#7]
+INFO  [p001]            StepMonitoring 98   | CHORDS
+INFO  [p001]            StepMonitoring 98   | CURVES
+INFO  [p001]              SlursBuilder 240  | Slurs: 14
+INFO  [p001]           SegmentsBuilder 155  | Segments: 24
+INFO  [p001]            StepMonitoring 98   | SYMBOLS
+INFO  [p001]            StepMonitoring 98   | LINKS
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#10027{(0.216) staff:1 NATURAL pitch:-3.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#10345{(0.176) staff:1 NATURAL pitch:4.0}
+INFO  [p001]                  KeyInter 1331 | Key built KeyInter#11501{(0.271) staff:1 KEY_FLAT_1 pitch:1.6 fifths:-1}
+INFO  [p001]                  KeyInter 1331 | Key built KeyInter#11503{(0.133) staff:2 KEY_FLAT_1 pitch:0.1 fifths:-1}
+INFO  [p001]                  KeyInter 1331 | Key built KeyInter#11505{(0.643) staff:2 KEY_FLAT_1 pitch:-0.3 fifths:-1}
+INFO  [p001]             SymbolsLinker 258  | No chord linked to OctaveShiftInter#10963{(0.374) staff:4 VENTIDUESIMA BASSA} at java.awt.Point[x=152,y=1679]
+INFO  [p001]                  KeyInter 1331 | Key built KeyInter#11507{(0.165) staff:4 KEY_FLAT_1 pitch:-0.3 fifths:-1}
+INFO  [p001]                  KeyInter 1331 | Key built KeyInter#11509{(0.344) staff:4 KEY_FLAT_1 pitch:0.1 fifths:-1}
+INFO  [p001]             SymbolsLinker 258  | No chord linked to OctaveShiftInter#11094{(0.374) staff:5 VENTIDUESIMA ALTA} at java.awt.Point[x=152,y=1679]
+INFO  [p001]             SymbolsLinker 258  | No chord linked to OctaveShiftInter#11097{(0.135) staff:5 VENTIDUESIMA BASSA} at java.awt.Point[x=152,y=1945]
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#11107{(0.223) staff:5 NATURAL pitch:0.0}
+INFO  [p001]             SymbolsLinker 258  | No chord linked to OctaveShiftInter#11182{(0.135) staff:6 VENTIDUESIMA ALTA} at java.awt.Point[x=152,y=1945]
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#11201{(0.790) staff:6 NATURAL pitch:0.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#11361{(0.435) staff:7 NATURAL pitch:0.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#11412{(0.195) staff:7 NATURAL pitch:-5.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#11447{(0.143) staff:7 NATURAL pitch:2.0}
+INFO  [p001]            StepMonitoring 98   | RHYTHMS
+INFO  [p001]            StepMonitoring 98   | PAGE
+WARN  [p001]              MeasureFixer 343  | System#1 No target duration for measures local IDs [1, 2, 3, 4, 5], please check time signatures
+WARN  [p001]              MeasureFixer 343  | System#2 No target duration for measures local IDs [6, 7, 8, 9, 10, 11], please check time signatures
+WARN  [p001]              MeasureFixer 343  | System#3 No target duration for measures local IDs [12, 13, 14, 15, 16, 17, 18, 19], please check time signatures
+WARN  [p001]              MeasureFixer 343  | System#4 No target duration for measures local IDs [20, 21, 22, 23, 24], please check time signatures
+WARN  [p001]              MeasureFixer 343  | System#5 No target duration for measures local IDs [25, 26, 27, 28], please check time signatures
+WARN  [p001]              MeasureFixer 343  | System#6 No target duration for measures local IDs [29, 30, 31, 32, 33, 34, 35], please check time signatures
+WARN  [p001]              MeasureFixer 343  | System#7 No target duration for measures local IDs [36, 37, 38, 39, 40, 41], please check time signatures
+INFO  [p001]                      Book 2584 | Book{p001} storing
+INFO  [p001]                      Book 2565 | Stored /book.xml
+INFO  [p001]                DataHolder 348  | Stored /sheet#1/BINARY.png
+INFO  [p001]                     Sheet 1583 | Stored /sheet#1/sheet#1.xml
+INFO  [p001]                      Book 2525 | Book stored as /tmp/tmpszvpbfhz/out/p001.omr
+INFO  [p001]                 SheetStub 1655 | Sheet disposed
+INFO  [p001]                      Book 2050 | End of Stub#1
+INFO  [p001]                      Book 2057 | End of Book{p001}
+INFO  [p001]                 SheetStub 1000 | Loaded /sheet#1/sheet#1.xml
+INFO  [p001]           PartwiseBuilder 2707 | Exporting sheet(s): [#1]
+INFO  [p001]             ScoreExporter 164  | Score p001 exported to /tmp/tmpszvpbfhz/out/p001.mxl
+INFO  [p001]                     Score 181  | Closing {Score 1}
+
+(Audiveris:2883): dbind-WARNING **: 18:44:18.115: AT-SPI: Error retrieving accessibility bus address: org.freedesktop.DBus.Error.ServiceUnknown: The name org.a11y.Bus was not provided by any .service files
