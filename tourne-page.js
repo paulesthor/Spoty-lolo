@@ -143,11 +143,17 @@
             start--;
             beats += mesures[start].duree;
         }
+        const frames = framesFromMeasures(mesures.slice(start, end), bpm);
+        return frames.length >= 8 ? { frames, start, end } : null;
+    };
+
+    // Empreintes attendues pour une suite de mesures jouée à `bpm` (noire)
+    const framesFromMeasures = (mesures, bpm) => {
         const notes = [];
         let offset = 0;
-        for (let i = start; i < end; i++) {
-            for (const [onset, dur, midi] of mesures[i].notes) notes.push([offset + onset, dur, midi]);
-            offset += mesures[i].duree;
+        for (const m of mesures) {
+            for (const [onset, dur, midi] of m.notes) notes.push([offset + onset, dur, midi]);
+            offset += m.duree;
         }
         const step = bpm / 60 * HOP_MS / 1000; // noires par trame
         const frames = [];
@@ -155,8 +161,147 @@
             const sounding = notes.filter(([onset, dur]) => onset <= t + 1e-6 && t < onset + dur);
             if (sounding.length) frames.push(notesChroma(sounding.map(n => n[2])));
         }
-        return frames.length >= 8 ? { frames, start, end } : null;
+        return frames;
     };
+
+    // Suivi de partition : on reconnaît des passages de 2 mesures n'importe
+    // où sur la page (des "repères"), on en déduit la position et le tempo,
+    // puis on avance une horloge musicale jusqu'au moment de tourner.
+    class ScoreFollower {
+        constructor(mesures, { bpm, anticipation, threshold }) {
+            this.threshold = threshold;
+            this.nominalTempo = bpm / 60; // noires par seconde
+            this.starts = [];
+            let beat = 0;
+            for (const m of mesures) { this.starts.push(beat); beat += m.duree; }
+            this.totalBeats = beat;
+            this.measureBeats = beat / Math.max(1, mesures.length);
+            this.turnBeat = beat - mesures.slice(mesures.length - anticipation).reduce((a, m) => a + m.duree, 0);
+            this.anchors = [];
+            for (let i = 0; i + 1 < mesures.length; i++) {
+                const frames = framesFromMeasures(mesures.slice(i, i + 2), bpm);
+                if (frames.length >= 8) {
+                    this.anchors.push({ frames, measure: i, beats: mesures[i].duree + mesures[i + 1].duree,
+                                        endBeat: this.starts[i + 1] + mesures[i + 1].duree });
+                }
+            }
+            this.maxLive = Math.ceil(Math.max(0, ...this.anchors.map(a => a.frames.length)) * 2.2) + 5;
+            this.live = [];
+            this.time = 0;          // secondes écoulées sur la page
+            this.silence = 0;
+            this.frame = 0;
+            this.pos = null;        // position en noires depuis le haut de la page
+            this.tempo = this.nominalTempo;
+            this.last = null;       // dernière détection { beat, time }
+            this.history = [];      // détections récentes { beat, time } pour lisser
+            this.fitError = Infinity; // écart (en noires) des détections à une progression régulière
+            this.detections = 0;
+            this.lastSimilarity = null;
+        }
+
+        measureAt(beat) {
+            let i = 0;
+            while (i + 1 < this.starts.length && this.starts[i + 1] <= beat) i++;
+            return i + 1;
+        }
+
+        push(chroma, sounding) {
+            const dt = HOP_MS / 1000;
+            this.time += dt;
+            this.frame++;
+            if (!sounding) {
+                // Courte respiration : la musique continue ; longue pause : on fige l'horloge
+                this.silence += dt;
+                if (this.pos !== null && this.silence < 1.5) this.pos += this.tempo * dt;
+                return this.status();
+            }
+            this.silence = 0;
+            if (this.pos !== null) this.pos += this.tempo * dt;
+            this.live.push(chroma);
+            if (this.live.length > this.maxLive) this.live.splice(0, this.live.length - this.maxLive);
+            if (this.frame % 3 === 0) this.detect();
+            return this.status();
+        }
+
+        tracking() {
+            // Suivi établi : au moins 3 reconnaissances récentes, bien alignées
+            const recent = this.history.filter(h => this.time - h.time <= 12).length;
+            return recent >= 3 && this.fitError <= 1.5 * this.measureBeats;
+        }
+
+        detect() {
+            const tracking = this.tracking();
+            // Toujours après la dernière reconnaissance ; en suivi, pas plus de
+            // 2 mesures au-delà de la position attendue.
+            const minBeat = this.last ? this.last.beat : -Infinity;
+            const maxBeat = this.pos === null ? Infinity
+                : this.pos + (tracking ? 2 * this.measureBeats : 16);
+            let best = null, bestSim = -1;
+            for (const a of this.anchors) {
+                if (a.endBeat <= minBeat || a.endBeat > maxBeat) continue;
+                const live = this.live.slice(-Math.ceil(a.frames.length * 2.2) - 5);
+                const res = matchEnd(a.frames, live);
+                if (!res || res.similarity < this.threshold) continue;
+                bestSim = Math.max(bestSim, res.similarity);
+                // Passage répété : en suivi, le plus proche de la position attendue ;
+                // sinon le premier en avant (on avance dans la musique)
+                const better = !best || (tracking
+                    ? Math.abs(a.endBeat - this.pos) < Math.abs(best.a.endBeat - this.pos)
+                    : a.endBeat < best.a.endBeat);
+                if (better) best = { a, liveLen: live.length - res.start };
+            }
+            this.lastSimilarity = bestSim > -1 ? bestSim : null;
+            if (!best) return;
+            const { a, liveLen } = best;
+            const clamp = (v) => Math.min(this.nominalTempo * 2.5, Math.max(this.nominalTempo * 0.4, v));
+            this.last = { beat: a.endBeat, time: this.time };
+            this.history.push(this.last);
+            // Les reconnaissances trop anciennes ne décrivent plus le jeu actuel
+            this.history = this.history.filter(h => this.time - h.time <= 20).slice(-8);
+            this.detections++;
+            if (this.history.length >= 3) {
+                // Droite position = f(temps) sur les dernières détections :
+                // lisse les petites erreurs de chaque reconnaissance
+                const n = this.history.length;
+                const mt = this.history.reduce((s, h) => s + h.time, 0) / n;
+                const mb = this.history.reduce((s, h) => s + h.beat, 0) / n;
+                let num = 0, den = 0;
+                for (const h of this.history) { num += (h.time - mt) * (h.beat - mb); den += (h.time - mt) ** 2; }
+                if (den > 0 && num > 0) {
+                    const slope = num / den;
+                    // Des reconnaissances au hasard sautent d'un endroit à l'autre :
+                    // seules des positions alignées sur une droite (tempo régulier)
+                    // sont crédibles
+                    this.fitError = Math.sqrt(this.history.reduce((s, h) =>
+                        s + (h.beat - (mb + slope * (h.time - mt))) ** 2, 0) / n);
+                    this.tempo = clamp(slope);
+                    this.pos = mb + this.tempo * (this.time - mt);
+                    return;
+                }
+            }
+            // Peu de détections : tempo d'après la durée de jeu du passage reconnu
+            this.fitError = Infinity;
+            this.tempo = clamp(a.beats / (Math.max(1, liveLen) * HOP_MS / 1000));
+            this.pos = a.endBeat;
+        }
+
+        status() {
+            const confident = this.tracking();
+            // Une reconnaissance arrive un peu après la fin du passage : on
+            // compense par une demi-seconde d'avance
+            const margin = this.tempo * 0.5;
+            const turn = this.pos !== null && confident && this.pos + margin >= this.turnBeat;
+            return {
+                turn,
+                pos: this.pos,
+                measure: this.pos === null ? null : this.measureAt(this.pos),
+                measures: this.starts.length,
+                bpm: Math.round(this.tempo * 60),
+                secondsLeft: this.pos === null ? null : Math.max(0, (this.turnBeat - this.pos - margin) / this.tempo),
+                detections: this.detections
+            };
+        }
+    }
 
     class ChromaListener {
         constructor(onFrame) { this.onFrame = onFrame; this.running = false; }
@@ -208,7 +353,7 @@
     }
 
     // Exposé pour les tests et le débogage depuis la console
-    window.TournePageEngine = { buildBinMap, chromaFromSpectrum, normalizeChroma, matchEnd, notesChroma, templateFromMeasures, ChromaListener, NOTE_NAMES };
+    window.TournePageEngine = { buildBinMap, chromaFromSpectrum, normalizeChroma, matchEnd, notesChroma, templateFromMeasures, framesFromMeasures, ScoreFollower, ChromaListener, NOTE_NAMES };
 
     // =======================================================
     // |                     STOCKAGE LOCAL                   |
@@ -285,6 +430,7 @@
         const anticipInput = $('tp-anticipation');
         const anticipLabel = $('tp-anticipation-label');
         const flash = $('tp-flash');
+        const followEl = $('tp-follow');
 
         const settings = Object.assign(
             { threshold: 0.85, thresholdOmr: 0.75, bpm: 100, anticipation: 1, minDelay: 8, gate: 0.01, auto: true },
@@ -302,6 +448,7 @@
             omr: null,           // fins lues sur la partition
             omrStatus: 'none',   // 'loading' | 'ok' | 'absent' | 'none'
             templates: {},       // cache des références construites depuis l'OMR
+            follower: null,      // suivi de partition de la page courante
             listener: null,
             recording: null,     // tableau d'empreintes pendant l'apprentissage
             live: [],            // flux live (empreintes non silencieuses)
@@ -427,11 +574,30 @@
 
         // Référence de la page courante : fin enregistrée au micro si elle
         // existe, sinon fin lue sur la partition.
+        const omrPage = () => {
+            const fin = state.omr && state.omr.fins && state.omr.fins[state.page];
+            // Page où Audiveris a sauté des lignes : positions fausses, on ne s'y fie pas
+            return fin && fin.fiable !== false ? fin : null;
+        };
+
+        // Suivi de partition (analyse v2 : toutes les mesures de la page)
+        const currentFollower = () => {
+            if (!state.pdf || state.refs[state.page] || state.page >= state.pdf.numPages) return null;
+            const fin = omrPage();
+            if (!fin || !(state.omr.version >= 2)) return null;
+            if (!state.follower) {
+                state.follower = new ScoreFollower(fin.mesures, {
+                    bpm: settings.bpm, anticipation: settings.anticipation, threshold: settings.thresholdOmr
+                });
+            }
+            return state.follower;
+        };
+
         const currentReference = () => {
             if (!state.pdf) return null;
             const rec = state.refs[state.page];
             if (rec) return { kind: 'rec', frames: rec.frames, threshold: settings.threshold };
-            const fin = state.omr && state.omr.fins && state.omr.fins[state.page];
+            const fin = omrPage();
             if (!fin) return null;
             if (!(state.page in state.templates)) {
                 state.templates[state.page] = templateFromMeasures(fin.mesures, settings);
@@ -487,8 +653,10 @@
             state.live = [];
             state.hits = 0;
             state.pageStart = Date.now();
+            state.follower = null;
             simBar.style.width = '0%';
             simValue.textContent = '—';
+            followEl.textContent = '';
         };
 
         prevBtn.addEventListener('click', () => goToPage(state.page - 1));
@@ -526,7 +694,10 @@
             if (!hasPdf) refBadge.textContent = '';
             else if (isLast) refBadge.textContent = 'Dernière page';
             else if (rec) refBadge.innerHTML = `<i class="fas fa-check-circle"></i> Fin jouée au micro (${(rec.frames.length * HOP_MS / 1000).toFixed(1)} s)`;
+            else if (ref && state.omr.version >= 2) refBadge.innerHTML = `<i class="fas fa-check-circle"></i> Suivi de la partition (${ref.total} mesures lues)`;
             else if (ref) refBadge.innerHTML = `<i class="fas fa-check-circle"></i> Fin lue sur la partition (mesures ${ref.from}–${ref.to} sur ${ref.total})`;
+            else if (state.omr && state.omr.fins && state.omr.fins[state.page] && state.omr.fins[state.page].fiable === false)
+                refBadge.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Lecture douteuse (lignes sautées) : la page ne tournera pas seule. Jouez la fin une fois pour corriger';
             else if (state.omrStatus === 'loading') refBadge.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Recherche de la lecture automatique...';
             else if (state.omrStatus === 'ok') refBadge.innerHTML = '<i class="fas fa-exclamation-circle"></i> Fin de page non lue sur la partition : jouez-la une fois pour corriger';
             else if (state.omrStatus === 'absent') refBadge.innerHTML = '<i class="fas fa-hourglass-half"></i> Partition pas encore analysée (analyse automatique chaque nuit)';
@@ -628,9 +799,8 @@
             levelBar.classList.toggle('tp-sounding', sounding);
             chromaFills.forEach((f, i) => { f.style.height = (sounding ? Math.max(0, chroma[i]) * 100 : 0) + '%'; });
             if (test.active) { testOnFrame(chroma, sounding); return; }
-            if (!sounding) return; // les silences sont ignorés (pauses, respiration du soufflet)
-
             if (state.recording) {
+                if (!sounding) return;
                 state.recording.push(chroma);
                 const secs = (state.recording.length * HOP_MS / 1000).toFixed(1);
                 recordBtn.innerHTML = `<i class="fas fa-stop"></i> Terminer (${secs} s)`;
@@ -638,6 +808,20 @@
                 return;
             }
 
+            const armed = settings.auto && (Date.now() - state.pageStart) / 1000 >= settings.minDelay;
+
+            // Suivi de partition : position + tempo -> moment de tourner
+            const follower = currentFollower();
+            if (follower) {
+                const st = follower.push(chroma, sounding);
+                followEl.textContent = st.pos === null
+                    ? 'Position : recherche…'
+                    : `Position : mesure ${st.measure} / ${st.measures} · tempo ≈ ${st.bpm}` +
+                      (follower.tracking() ? ` · page suivante dans ${Math.round(st.secondsLeft)} s` : ' · en cours de calage…');
+                if (st.turn && armed) { autoTurn(); return; }
+            }
+
+            if (!sounding) return; // les silences sont ignorés (pauses, respiration du soufflet)
             const ref = currentReference();
             if (!ref) return;
 
@@ -651,11 +835,12 @@
             simBar.style.width = Math.max(0, sim * 100) + '%';
             simValue.textContent = Math.round(sim * 100) + ' %';
 
-            const armed = settings.auto && (Date.now() - state.pageStart) / 1000 >= settings.minDelay;
             simBar.classList.toggle('tp-armed', armed);
             simBar.classList.toggle('tp-hit', sim >= ref.threshold);
             if (!armed) { state.hits = 0; return; }
 
+            // Avec le suivi de partition, c'est lui qui décide (il vérifie la cohérence)
+            if (follower && ref.kind === 'omr') return;
             // Deux trames consécutives au-dessus du seuil pour éviter les faux départs
             state.hits = sim >= ref.threshold ? state.hits + 1 : 0;
             if (state.hits >= 2 && state.page < state.pdf.numPages) autoTurn();

@@ -71,7 +71,7 @@ jobs:
         with:
           python-version: '3.12'
 
-      - run: pip install pypdf
+      - run: pip install pypdf pypdfium2 numpy
 
       - name: Analyse des partitions
         env:

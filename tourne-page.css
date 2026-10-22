@@ -112,3 +112,4 @@ nav a[data-view="tournepage-view"] { white-space: nowrap; }
 .tp-test-result.tp-test-ok { color: var(--accent-color); }
 .tp-test-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 12px; }
 .tp-test-score { color: var(--text-muted); font-weight: bold; }
+.tp-follow { font-size: 0.9rem; font-weight: bold; color: var(--primary-color); min-height: 1.2em; }

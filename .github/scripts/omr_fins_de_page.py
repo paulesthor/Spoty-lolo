@@ -1,10 +1,11 @@
-"""Lit les dernières mesures de chaque page des partitions (OMR Audiveris).
+"""Lit les mesures de chaque page des partitions (OMR Audiveris).
 
 Pour chaque partition de Supabase pas encore analysée :
   1. télécharge le PDF et le découpe en une page par fichier ;
   2. lance Audiveris (lecture optique de partition) sur chaque page ;
-  3. extrait les notes des dernières mesures de chaque page depuis le
-     MusicXML produit ;
+  3. extrait les notes de toutes les mesures de chaque page depuis le
+     MusicXML produit, et vérifie qu'Audiveris n'a pas sauté de lignes
+     (comptage indépendant des portées sur l'image) ;
   4. écrit le résultat dans <data>/omr/<id>.json, lu ensuite par
      l'onglet Tourne-page de l'application.
 
@@ -21,6 +22,7 @@ Variables d'environnement :
 import glob
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -32,10 +34,12 @@ import xml.etree.ElementTree as ET
 import zipfile
 from datetime import datetime, timezone
 
+import numpy as np
+import pypdfium2 as pdfium
 from pypdf import PdfReader, PdfWriter
 
-FORMAT_VERSION = 1
-LAST_MEASURES = 6  # mesures conservées en fin de page (le navigateur choisit lesquelles utiliser)
+# v2 : toutes les mesures de la page + indicateur de fiabilité
+FORMAT_VERSION = 2
 STEP_SEMITONES = {'C': 0, 'D': 2, 'E': 4, 'F': 5, 'G': 7, 'A': 9, 'B': 11}
 
 SUPABASE_URL = os.environ['SUPABASE_URL'].rstrip('/')
@@ -159,28 +163,84 @@ def part_measures(part):
     return measures
 
 
-def page_end(mxl_path):
-    """Dernières mesures d'une page, toutes portées/parties fusionnées."""
-    score = read_mxl(mxl_path)
-    parts = [part_measures(p) for p in score.findall('part')]
-    parts = [p for p in parts if p]
-    if not parts:
-        return None
-    count = max(len(p) for p in parts)
-    start = max(0, count - LAST_MEASURES)
+def page_measures(mxl_paths):
+    """Toutes les mesures d'une page, portées/parties fusionnées, dans l'ordre
+    des mouvements (Audiveris en crée plusieurs si la page change de pièce)."""
     result = []
-    for i in range(start, count):
-        length = max((p[i][0] for p in parts if i < len(p)), default=0)
-        events = sorted(e for p in parts if i < len(p) for e in p[i][1])
-        result.append({'duree': round(length, 4), 'notes': [list(e) for e in events]})
-    total_notes = sum(len(m['notes']) for m in result)
-    return {'mesures': result, 'nbMesuresPage': count} if total_notes else None
+    for path in mxl_paths:
+        score = read_mxl(path)
+        parts = [part_measures(p) for p in score.findall('part')]
+        parts = [p for p in parts if p]
+        if not parts:
+            continue
+        for i in range(max(len(p) for p in parts)):
+            length = max((p[i][0] for p in parts if i < len(p)), default=0)
+            events = sorted(e for p in parts if i < len(p) for e in p[i][1])
+            result.append({'duree': round(length, 4), 'notes': [list(e) for e in events]})
+    if not any(m['notes'] for m in result):
+        return None
+    return {'mesures': result, 'nbMesuresPage': len(result)}
 
 
 def find_mxl(out_dir, stem):
-    found = sorted(glob.glob(os.path.join(out_dir, '**', f'{stem}*.mxl'), recursive=True))
-    # Plusieurs mouvements sur une même page : le dernier contient la fin de page
-    return found[-1] if found else None
+    """MusicXML d'une page, dans l'ordre des mouvements (mvt2 avant mvt10)."""
+    found = glob.glob(os.path.join(out_dir, '**', f'{stem}*.mxl'), recursive=True)
+    mvt = lambda p: int((re.search(r'\.mvt(\d+)\.mxl$', p) or [0, 0])[1])
+    return sorted(found, key=mvt)
+
+
+def count_staves(pdf_path, dpi=120, delta=25, band_frac=0.45):
+    """Compte les portées sur l'image : groupes de 5 lignes horizontales
+    également espacées, présentes sur presque toute la largeur."""
+    img = pdfium.PdfDocument(pdf_path)[0].render(scale=dpi / 72, grayscale=True).to_numpy()
+    if img.ndim == 3:
+        img = img[..., 0]
+    dark = img < (np.median(img) - delta)
+    # Tolère une légère inclinaison des scans : une ligne peut s'étaler sur 3 rangées
+    tol = dark[:-2] | dark[1:-1] | dark[2:]
+    bands = np.array_split(tol, 4, axis=1)
+    frac = np.stack([b.mean(axis=1) for b in bands], axis=1)
+    rows = np.flatnonzero((frac > band_frac).sum(axis=1) >= 3)
+    lines = []
+    for y in rows:
+        if lines and y - lines[-1][-1] <= 1:
+            lines[-1].append(y)
+        else:
+            lines.append([y])
+    centers = [float(np.mean(l)) for l in lines]
+    if len(centers) < 5:
+        return 0
+    gaps = np.diff(centers)
+    small = gaps[(gaps >= 3) & (gaps < img.shape[0] / 20)]
+    if not len(small):
+        return 0
+    g = float(np.argmax(np.bincount(np.round(small).astype(int))))  # interligne le plus fréquent
+    used, staves = set(), 0
+    for i, c in enumerate(centers):
+        if i in used:
+            continue
+        chosen = [i]
+        for k in range(1, 5):
+            near = [j for j in range(i + 1, len(centers))
+                    if j not in used and abs(centers[j] - (c + k * g)) <= max(1.5, 0.3 * g)]
+            if not near:
+                break
+            chosen.append(near[0])
+        if len(chosen) == 5:
+            staves += 1
+            used.update(chosen)
+    return staves
+
+
+def audiveris_staves(journal, stem):
+    """Portées retenues par Audiveris pour une page, et signes de lignes écartées."""
+    tag = f'[{stem}]'
+    lines = [l for l in journal.splitlines() if tag in l]
+    kept = sum(len(re.findall(r'\d+', grp)) for l in lines if 'Systems:' in l
+               for grp in re.findall(r'\[([^\]]*)\]', l.split('Systems:')[1]))
+    clusters = max([int(m) for l in lines for m in re.findall(r'Retrieved raw line clusters: (\d+)', l)] or [0])
+    dropped = any('Destroying non-consistent' in l for l in lines) or clusters > kept
+    return kept, dropped
 
 
 def analyze(partition):
@@ -202,20 +262,30 @@ def analyze(partition):
             for mxl in glob.glob(os.path.join(out_dir, '**', '*.mxl'), recursive=True):
                 shutil.copy(mxl, dest)
         fins, erreurs = {}, {}
-        for i in range(1, len(page_paths) + 1):
-            mxl = find_mxl(out_dir, f'p{i:03d}')
-            if not mxl:
+        for i, page_path in enumerate(page_paths, start=1):
+            stem = f'p{i:03d}'
+            mxls = find_mxl(out_dir, stem)
+            if not mxls:
                 erreurs[str(i)] = 'aucune musique reconnue'
                 continue
             try:
-                end = page_end(mxl)
+                page = page_measures(mxls)
             except Exception as e:  # MusicXML inattendu : on note et on continue
-                end = None
+                page = None
                 erreurs[str(i)] = f'lecture MusicXML impossible : {e}'
-            if end:
-                fins[str(i)] = end
-            elif str(i) not in erreurs:
-                erreurs[str(i)] = 'aucune note en fin de page'
+            if not page:
+                erreurs.setdefault(str(i), 'aucune note reconnue')
+                continue
+            kept, dropped = audiveris_staves(journal, stem)
+            try:
+                detected = count_staves(page_path)
+            except Exception:
+                detected = 0
+            # Prudence : une page n'est fiable que si tout concorde, sinon les
+            # positions de mesures seraient décalées (lignes sautées)
+            page['portees'] = {'lues': kept, 'detectees': detected}
+            page['fiable'] = bool(kept) and kept == detected and not dropped
+            fins[str(i)] = page
         return {
             'version': FORMAT_VERSION,
             'id': partition['id'],
@@ -239,7 +309,8 @@ def main():
     if ONLY_IDS:
         todo = [p for p in partitions if str(p['id']) in ONLY_IDS]
     else:
-        todo = [p for p in partitions if str(p['id']) not in index]
+        todo = [p for p in partitions
+                if index.get(str(p['id']), {}).get('version', 1) < FORMAT_VERSION]
     log(f'{len(partitions)} partitions, {len(todo)} à analyser, limite {LIMIT}')
 
     for n, p in enumerate(todo[:LIMIT], start=1):
@@ -251,12 +322,15 @@ def main():
             result = analyze(p)
             with open(os.path.join(OMR_DIR, f"{p['id']}.json"), 'w') as f:
                 json.dump(result, f, ensure_ascii=False, separators=(',', ':'))
-            index[str(p['id'])] = {'statut': 'ok', 'pages': result['pages'],
-                                   'pagesLues': len(result['fins']), 'date': result['analyseLe']}
-            log(f"[{n}] {p['id']} {p['titre']} : {len(result['fins'])}/{result['pages']} pages lues "
+            index[str(p['id'])] = {'statut': 'ok', 'version': FORMAT_VERSION, 'pages': result['pages'],
+                                   'pagesLues': len(result['fins']),
+                                   'pagesFiables': sum(f['fiable'] for f in result['fins'].values()),
+                                   'date': result['analyseLe']}
+            log(f"[{n}] {p['id']} {p['titre']} : {len(result['fins'])}/{result['pages']} pages lues, "
+                f"portées {[(k, f['portees']['lues'], f['portees']['detectees'], f['fiable']) for k, f in result['fins'].items()]} "
                 f"({time.time() - t0:.0f} s) {result['erreurs'] or ''}")
         except Exception as e:
-            index[str(p['id'])] = {'statut': 'echec', 'erreur': str(e)[:300],
+            index[str(p['id'])] = {'statut': 'echec', 'version': FORMAT_VERSION, 'erreur': str(e)[:300],
                                    'date': datetime.now(timezone.utc).isoformat(timespec='seconds')}
             log(f"[{n}] {p['id']} {p['titre']} : ÉCHEC {e}")
         with open(INDEX_PATH, 'w') as f:
