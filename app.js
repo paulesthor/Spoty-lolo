@@ -77,6 +77,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let historyLineChart = null;
 
     let allPartitions = [];
+    let libraryPlaylists = []; // playlists de l'utilisateur, pour afficher l'appartenance dans la bibliothèque
     let currentSort = 'titre_asc';
     let currentPlaylistSort = 'titre_asc';
     let currentViewMode = 'grid'; 
@@ -678,6 +679,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.error(error);
         } else {
             allPartitions = data;
+            fetchLibraryPlaylists();
             sortAndDisplayPartitions();
             if(document.getElementById('stats-view').style.display === 'block') renderStatsView();
         }
@@ -687,7 +689,54 @@ document.addEventListener('DOMContentLoaded', async () => {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'partitions' }, () => {
         fetchLibrary();
     })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'playlists' }, () => {
+        fetchLibraryPlaylists();
+    })
     .subscribe();
+
+    // =======================================================
+    // |          APPARTENANCE AUX PLAYLISTS (BIBLIO)        |
+    // =======================================================
+
+    const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    const playlistsOf = (partitionId) => libraryPlaylists
+        .filter(pl => (pl.partitions || []).map(String).includes(String(partitionId)))
+        .map(pl => pl.nom_playlist);
+
+    const playlistBadgeHtml = (partitionId) => {
+        const names = playlistsOf(partitionId);
+        if (!names.length) return '';
+        return `<i class="fas fa-list-ul"></i> ${names.length}`;
+    };
+
+    const playlistMembershipHtml = (partitionId) => {
+        const names = playlistsOf(partitionId);
+        return names.length
+            ? names.map(n => `<span class="playlist-chip">${escapeHtml(n)}</span>`).join('')
+            : '<span style="color:var(--text-muted);">Aucune playlist</span>';
+    };
+
+    // Met à jour les pastilles sans reconstruire la liste (garde le défilement)
+    const refreshPlaylistBadges = () => {
+        document.querySelectorAll('.playlist-badge[data-pid]').forEach(el => {
+            const names = playlistsOf(el.dataset.pid);
+            el.innerHTML = playlistBadgeHtml(el.dataset.pid);
+            el.title = names.length ? 'Dans : ' + names.join(', ') : '';
+            el.style.display = names.length ? '' : 'none';
+        });
+        document.querySelectorAll('.playlist-membership[data-pid]').forEach(el => {
+            el.innerHTML = playlistMembershipHtml(el.dataset.pid);
+        });
+    };
+
+    const fetchLibraryPlaylists = async () => {
+        if (!currentUser) return;
+        const { data, error } = await supabase.from('playlists').select('id, nom_playlist, partitions').eq('user_id', currentUser.id);
+        if (error) { console.error(error); return; }
+        libraryPlaylists = data || [];
+        refreshPlaylistBadges();
+    };
 
     // =======================================================
     // |               AFFICHAGE BIBLIOTHEQUE                |
@@ -773,7 +822,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             tr.dataset.id = p.id;
             tr.innerHTML = `
                 <td style="width:40px;"><div class="bulk-checkbox-container" onclick="event.stopPropagation()"><input type="checkbox" class="bulk-checkbox" data-id="${p.id}" ${isChecked}></div></td>
-                <td>${p.titre} ${p.is_flagged ? '<i class="fas fa-exclamation-circle" style="color:#ef4444; margin-left:5px;"></i>' : ''}</td><td>${p.nom_artiste}</td><td>${p.style || ''}</td><td>${p.annee || ''}</td>
+                <td>${p.titre} ${p.is_flagged ? '<i class="fas fa-exclamation-circle" style="color:#ef4444; margin-left:5px;"></i>' : ''}<span class="playlist-badge" data-pid="${p.id}"></span></td><td>${p.nom_artiste}</td><td>${p.style || ''}</td><td>${p.annee || ''}</td>
             `;
             
             // Vue Grille
@@ -791,6 +840,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <img src="${p.url_cover || 'https://placehold.co/150/2a3f54/FFF?text=...'}" alt="Pochette">
                 <div class="title">${p.titre}</div>
                 <div class="artist">${p.nom_artiste}</div>
+                <span class="playlist-badge playlist-badge-grid" data-pid="${p.id}"></span>
             `;
             
             const handleCheckboxChange = (e) => {
@@ -866,6 +916,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             gridViewContainer.appendChild(div);
         });
+        refreshPlaylistBadges();
         
         if (!document.querySelector('.music-item.selected') && partitions.length > 0) {
              renderDetailsPanel(partitions[0].id);
@@ -883,6 +934,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <h2>${p.titre}</h2>
                 <div class="artist">${p.nom_artiste}</div>
                 <div class="meta"><span>Style: ${p.style || '-'}</span><br><span>Année: ${p.annee || '-'}</span></div>
+                <div class="meta" style="margin-top:8px;">Dans les playlists :</div>
+                <div class="playlist-membership" data-pid="${p.id}">${playlistMembershipHtml(p.id)}</div>
                 
                 <label class="flag-toggle-container">
                     <input type="checkbox" id="flag-checkbox-${p.id}" ${p.is_flagged ? 'checked' : ''}>
@@ -1769,12 +1822,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                         selectedBulkIds.clear();
                         document.querySelectorAll('.bulk-checkbox').forEach(cb => cb.checked = false);
                         if(bulkActionBar) bulkActionBar.style.display = 'none';
+                        fetchLibraryPlaylists();
                         alert(`${newIds.length} partition(s) ajoutée(s) à la playlist.`);
                     } else {
                         // Single add
                         if(!ids.map(String).includes(String(targetId))) {
                             ids.push(String(targetId));
                             await supabase.from('playlists').update({partitions: ids}).eq('id', pl.id);
+                            fetchLibraryPlaylists();
                         }
                     }
                     modal.style.display = 'none';
@@ -2072,6 +2127,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         navLinks.forEach(l => l.classList.toggle('active', l.dataset.view === viewId));
         if(viewId==='playlists-view') fetchPlaylists();
+        if(viewId==='library-view') fetchLibraryPlaylists();
         if(viewId==='stats-view') renderStatsView();
         if(viewId==='random-view') loadRandomPartition();
     };
