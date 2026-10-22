@@ -81,6 +81,7 @@ jobs:
           LIMIT: ${{ github.event.inputs.limit || '40' }}
           ONLY_IDS: ${{ github.event_name == 'push' && '14,989,24,25,12' || github.event.inputs.ids }}
           TIME_BUDGET_MIN: '300'
+          DEBUG_DIR: ${{ github.event_name == 'push' && 'data/debug' || '' }}
         run: xvfb-run -a python .github/scripts/omr_fins_de_page.py
 
       - name: Publication des résultats
@@ -89,6 +90,7 @@ jobs:
           cd data
           if [ ! -d omr ]; then echo "Aucun résultat"; exit 0; fi
           git add -A omr
+          if [ -d debug ]; then git add -A debug; fi
           if git diff --cached --quiet; then echo "Rien de nouveau"; exit 0; fi
           git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
             commit -q -m "OMR : fins de page ($(date -u +%F))"

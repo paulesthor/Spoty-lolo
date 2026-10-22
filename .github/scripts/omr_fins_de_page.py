@@ -15,11 +15,13 @@ Variables d'environnement :
   LIMIT                       nombre max de partitions par exécution
   ONLY_IDS                    liste d'ids à (re)traiter, séparés par des virgules
   TIME_BUDGET_MIN             temps max avant de s'arrêter proprement
+  DEBUG_DIR                   si défini, y copie les MusicXML et le journal d'Audiveris
 """
 
 import glob
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -43,6 +45,7 @@ DATA_DIR = os.environ.get('DATA_DIR', 'data')
 LIMIT = int(os.environ.get('LIMIT') or 20)
 ONLY_IDS = [s.strip() for s in (os.environ.get('ONLY_IDS') or '').split(',') if s.strip()]
 TIME_BUDGET = float(os.environ.get('TIME_BUDGET_MIN') or 300) * 60
+DEBUG_DIR = os.environ.get('DEBUG_DIR')
 
 OMR_DIR = os.path.join(DATA_DIR, 'omr')
 INDEX_PATH = os.path.join(OMR_DIR, 'index.json')
@@ -96,6 +99,7 @@ def run_audiveris(page_paths, out_dir):
     res = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
     if res.returncode != 0:
         log(res.stdout[-2000:], res.stderr[-2000:])
+    return res.stdout + res.stderr
 
 
 def read_mxl(path):
@@ -188,7 +192,15 @@ def analyze(partition):
         os.makedirs(pages_dir)
         os.makedirs(out_dir)
         page_paths = split_pages(pdf, pages_dir)
-        run_audiveris(page_paths, out_dir)
+        journal = run_audiveris(page_paths, out_dir)
+        if DEBUG_DIR:
+            dest = os.path.join(DEBUG_DIR, str(partition['id']))
+            shutil.rmtree(dest, ignore_errors=True)
+            os.makedirs(dest)
+            with open(os.path.join(dest, 'audiveris.log'), 'w') as f:
+                f.write(journal)
+            for mxl in glob.glob(os.path.join(out_dir, '**', '*.mxl'), recursive=True):
+                shutil.copy(mxl, dest)
         fins, erreurs = {}, {}
         for i in range(1, len(page_paths) + 1):
             mxl = find_mxl(out_dir, f'p{i:03d}')
