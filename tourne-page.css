@@ -80,3 +80,35 @@ nav a[data-view="tournepage-view"] { white-space: nowrap; }
     #tp-record-btn { flex: 1; }
     .tp-player { min-height: 80vh; }
 }
+
+/* Mode test */
+.tp-test { padding: 15px 20px; }
+.tp-test summary { cursor: pointer; font-weight: bold; color: var(--primary-color); }
+.tp-test[open] summary { margin-bottom: 15px; }
+.tp-test-modes { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px; }
+.tp-test-modes .btn.tp-active-mode { background-color: var(--primary-color); color: white; }
+.tp-test-target-label { font-size: 0.85rem; color: var(--text-muted); }
+.tp-test-target { font-size: 2rem; font-weight: 800; margin-bottom: 5px; }
+.tp-test-target.tp-test-target-seq { font-size: 1.2rem; }
+.tp-test-hint { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 12px; }
+.tp-test-keyboards { display: grid; grid-template-columns: 1fr; gap: 12px; margin-bottom: 15px; }
+.tp-test-keyboards:has(.tp-seq-step) { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.tp-seq-step strong { display: block; margin-bottom: 4px; }
+
+.tp-keyboard { position: relative; height: 140px; max-width: 700px; user-select: none; }
+.tp-keyboard-small { height: 80px; }
+.tp-key { position: absolute; top: 0; border-radius: 0 0 5px 5px; box-sizing: border-box; }
+.tp-key-white { height: 100%; background: #fafafa; border: 1px solid #888; z-index: 1;
+    display: flex; align-items: flex-end; justify-content: center; padding-bottom: 4px; }
+.tp-key-white span { font-size: 0.65rem; color: #555; }
+.tp-keyboard-small .tp-key-white span { font-size: 0.5rem; }
+.tp-key-black { height: 60%; background: #222; z-index: 2; }
+.tp-key-white.tp-key-on { background: var(--accent-color); }
+.tp-key-white.tp-key-on span { color: white; font-weight: bold; }
+.tp-key-black.tp-key-on { background: var(--accent-color); box-shadow: inset 0 0 0 2px #222; }
+
+.tp-test-feedback { display: flex; flex-direction: column; gap: 6px; max-width: 700px; }
+.tp-test-result { min-height: 1.6em; font-size: 1.2rem; font-weight: bold; }
+.tp-test-result.tp-test-ok { color: var(--accent-color); }
+.tp-test-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 12px; }
+.tp-test-score { color: var(--text-muted); font-weight: bold; }
