@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Spoti-Lolo</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="tourne-page.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -45,6 +46,7 @@
             <a href="#playlists" class="nav-link" data-view="playlists-view">Playlists</a>
             <a href="#random" class="nav-link" data-view="random-view">🎲 Aléatoire</a>
             <a href="#stats" class="nav-link" data-view="stats-view">Statistiques</a>
+            <a href="#tournepage" class="nav-link" data-view="tournepage-view"><i class="fas fa-microphone"></i> Tourne-page</a>
             <a href="#settings" class="nav-link" data-view="settings-view"><i class="fas fa-cog"></i> Paramètres</a>
         </nav>
     </header>
@@ -375,6 +377,83 @@
             </div>
         </div>
 
+        <!-- Tourne-page automatique (bêta) : tout est dans tourne-page.js / tourne-page.css -->
+        <div id="tournepage-view" class="app-view" style="display:none;">
+            <div class="main-container tp-container">
+                <div class="card tp-toolbar">
+                    <div class="tp-row">
+                        <select id="tp-partition-select" class="btn tp-select">
+                            <option value="">— Choisir une partition —</option>
+                        </select>
+                        <label class="btn tp-file-btn" title="Ouvrir un PDF depuis l'appareil">
+                            <i class="fas fa-folder-open"></i> PDF local
+                            <input type="file" id="tp-local-file" accept=".pdf" hidden>
+                        </label>
+                        <button id="tp-mic-btn" class="btn tp-mic-btn"><i class="fas fa-microphone-slash"></i> Activer le micro</button>
+                        <label class="tp-switch" title="Tourner la page automatiquement quand la fin est reconnue">
+                            <input type="checkbox" id="tp-auto-toggle" checked>
+                            <span>Tourne auto</span>
+                        </label>
+                    </div>
+
+                    <div class="tp-meters">
+                        <div class="tp-meter-block">
+                            <div class="tp-meter-label">Niveau micro</div>
+                            <div class="tp-meter"><div id="tp-level-bar" class="tp-meter-fill"></div><div id="tp-gate-marker" class="tp-marker" title="Seuil de silence"></div></div>
+                        </div>
+                        <div class="tp-meter-block">
+                            <div class="tp-meter-label">Ressemblance avec la fin de page <strong id="tp-sim-value">—</strong></div>
+                            <div class="tp-meter"><div id="tp-sim-bar" class="tp-meter-fill tp-sim-fill"></div><div id="tp-thr-marker" class="tp-marker" title="Seuil de déclenchement"></div></div>
+                        </div>
+                        <div id="tp-chroma-bars" class="tp-chroma" title="Notes entendues (toutes octaves confondues)"></div>
+                    </div>
+
+                    <details class="tp-settings">
+                        <summary><i class="fas fa-sliders-h"></i> Réglages</summary>
+                        <div class="tp-setting">
+                            <label for="tp-threshold">Seuil de déclenchement <strong id="tp-threshold-label"></strong></label>
+                            <input type="range" id="tp-threshold" min="30" max="95" step="1">
+                            <small>Plus haut = moins de fausses tournes, mais risque de ne pas tourner.</small>
+                        </div>
+                        <div class="tp-setting">
+                            <label for="tp-min-delay">Délai minimum sur une page <strong id="tp-min-delay-label"></strong></label>
+                            <input type="range" id="tp-min-delay" min="0" max="60" step="1">
+                            <small>Évite de tourner trop tôt si le motif de fin apparaît aussi plus haut sur la page.</small>
+                        </div>
+                        <div class="tp-setting">
+                            <label for="tp-gate">Seuil de silence <strong id="tp-gate-label"></strong></label>
+                            <input type="range" id="tp-gate" min="0" max="100" step="1">
+                            <small>Les sons sous ce niveau sont ignorés (barre de niveau grise).</small>
+                        </div>
+                    </details>
+
+                    <p id="tp-status" class="tp-status">Choisissez une partition, puis enregistrez la fin de chaque page (mode apprentissage).</p>
+                </div>
+
+                <div id="tp-player" class="card tp-player">
+                    <div class="tp-page-bar">
+                        <button id="tp-prev-btn" class="btn tp-nav-btn" title="Page précédente"><i class="fas fa-chevron-left"></i></button>
+                        <span id="tp-page-num" class="tp-page-num">– / –</span>
+                        <button id="tp-next-btn" class="btn tp-nav-btn" title="Page suivante"><i class="fas fa-chevron-right"></i></button>
+                        <span id="tp-ref-badge" class="tp-ref-badge"></span>
+                        <div class="tp-page-actions">
+                            <button id="tp-record-btn" class="btn btn-accent" disabled><i class="fas fa-circle"></i> Enregistrer la fin de cette page</button>
+                            <button id="tp-delete-ref-btn" class="btn btn-icon" title="Supprimer l'empreinte de cette page" style="display:none;"><i class="fas fa-trash"></i></button>
+                            <button id="tp-fullscreen-btn" class="btn btn-icon" title="Plein écran"><i class="fas fa-expand"></i></button>
+                        </div>
+                    </div>
+                    <div id="tp-stage" class="tp-stage">
+                        <div id="tp-placeholder" class="tp-placeholder">
+                            <i class="fas fa-file-audio"></i>
+                            <p>Aucune partition ouverte</p>
+                        </div>
+                        <canvas id="tp-canvas" style="display:none;"></canvas>
+                        <div id="tp-flash" class="tp-flash"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </main>
 
     <div id="generic-modal" class="modal-overlay">
@@ -427,5 +506,6 @@
     </script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="app.js"></script>
+    <script src="tourne-page.js"></script>
 </body>
 </html>
