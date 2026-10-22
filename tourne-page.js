@@ -19,6 +19,10 @@
     const SUPABASE_URL = 'https://ikkhvkgcxvlpqejvvuot.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlra2h2a2djeHZscHFlanZ2dW90Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ4MDI1NDMsImV4cCI6MjA4MDM3ODU0M30.I606WGNVllQ5VI_mB1TmheediORTyNvXqpdkKSFa73o';
 
+    // Fins de page lues automatiquement sur les PDF (workflow GitHub
+    // "Lecture des fins de page", publiées sur la branche omr-data)
+    const OMR_DATA_URL = 'https://raw.githubusercontent.com/paulesthor/Spoty-lolo/omr-data/omr/';
+
     const HOP_MS = 100;          // une empreinte toutes les 100 ms
     const FFT_SIZE = 8192;       // ~5.9 Hz de résolution à 48 kHz
     const MIN_FREQ = 60;         // ~Si0 : basses du piano / accordéon
@@ -115,6 +119,45 @@
         return { similarity: 1 - 2 * avgCost, start };
     };
 
+    // Empreinte théorique d'un accord : chaque note ajoute ses premières
+    // harmoniques (comme un vrai instrument), puis même normalisation que
+    // pour le micro.
+    const notesChroma = (midis) => {
+        const c = new Float32Array(12);
+        for (const m of midis) {
+            for (let h = 1; h <= 6; h++) c[Math.round(m + 12 * Math.log2(h)) % 12] += 1 / h;
+        }
+        return normalizeChroma(c);
+    };
+
+    // Construit la référence d'une fin de page à partir des mesures lues
+    // par l'OMR (voir .github/scripts/omr_fins_de_page.py).
+    // anticipation = nombre de mesures avant la fin où la page doit tourner.
+    const templateFromMeasures = (mesures, { bpm, anticipation }) => {
+        const end = mesures.length - anticipation; // exclu
+        if (end < 1) return null;
+        let start = end - 1;
+        let beats = mesures[start].duree;
+        // Au moins 2 mesures et 6 temps, au plus 4 mesures
+        while (start > 0 && end - start < 4 && (end - start < 2 || beats < 6)) {
+            start--;
+            beats += mesures[start].duree;
+        }
+        const notes = [];
+        let offset = 0;
+        for (let i = start; i < end; i++) {
+            for (const [onset, dur, midi] of mesures[i].notes) notes.push([offset + onset, dur, midi]);
+            offset += mesures[i].duree;
+        }
+        const step = bpm / 60 * HOP_MS / 1000; // noires par trame
+        const frames = [];
+        for (let t = 0; t < offset; t += step) {
+            const sounding = notes.filter(([onset, dur]) => onset <= t + 1e-6 && t < onset + dur);
+            if (sounding.length) frames.push(notesChroma(sounding.map(n => n[2])));
+        }
+        return frames.length >= 8 ? { frames, start, end } : null;
+    };
+
     class ChromaListener {
         constructor(onFrame) { this.onFrame = onFrame; this.running = false; }
 
@@ -165,7 +208,7 @@
     }
 
     // Exposé pour les tests et le débogage depuis la console
-    window.TournePageEngine = { buildBinMap, chromaFromSpectrum, normalizeChroma, matchEnd, ChromaListener, NOTE_NAMES };
+    window.TournePageEngine = { buildBinMap, chromaFromSpectrum, normalizeChroma, matchEnd, notesChroma, templateFromMeasures, ChromaListener, NOTE_NAMES };
 
     // =======================================================
     // |                     STOCKAGE LOCAL                   |
@@ -235,10 +278,16 @@
         const delayLabel = $('tp-min-delay-label');
         const gateInput = $('tp-gate');
         const gateLabel = $('tp-gate-label');
+        const thrOmrInput = $('tp-threshold-omr');
+        const thrOmrLabel = $('tp-threshold-omr-label');
+        const bpmInput = $('tp-bpm');
+        const bpmLabel = $('tp-bpm-label');
+        const anticipInput = $('tp-anticipation');
+        const anticipLabel = $('tp-anticipation-label');
         const flash = $('tp-flash');
 
         const settings = Object.assign(
-            { threshold: 0.85, minDelay: 8, gate: 0.01, auto: true },
+            { threshold: 0.85, thresholdOmr: 0.75, bpm: 100, anticipation: 1, minDelay: 8, gate: 0.01, auto: true },
             storage.get('tp-settings', {})
         );
         const saveSettings = () => storage.set('tp-settings', settings);
@@ -249,7 +298,10 @@
             docKey: null,
             pdf: null,
             page: 1,
-            refs: {},
+            refs: {},            // fins enregistrées au micro (prioritaires)
+            omr: null,           // fins lues sur la partition
+            omrStatus: 'none',   // 'loading' | 'ok' | 'absent' | 'none'
+            templates: {},       // cache des références construites depuis l'OMR
             listener: null,
             recording: null,     // tableau d'empreintes pendant l'apprentissage
             live: [],            // flux live (empreintes non silencieuses)
@@ -279,7 +331,12 @@
         const refreshSettingsUI = () => {
             thrInput.value = Math.round(settings.threshold * 100);
             thrLabel.textContent = Math.round(settings.threshold * 100) + ' %';
-            thrMarker.style.left = Math.max(0, settings.threshold * 100) + '%';
+            thrOmrInput.value = Math.round(settings.thresholdOmr * 100);
+            thrOmrLabel.textContent = Math.round(settings.thresholdOmr * 100) + ' %';
+            bpmInput.value = settings.bpm;
+            bpmLabel.textContent = settings.bpm + ' à la noire';
+            anticipInput.value = settings.anticipation;
+            anticipLabel.textContent = settings.anticipation === 0 ? 'à la toute fin' : `${settings.anticipation} mesure${settings.anticipation > 1 ? 's' : ''} avant la fin`;
             delayInput.value = settings.minDelay;
             delayLabel.textContent = settings.minDelay + ' s';
             gateInput.value = sliderFromGate(settings.gate);
@@ -287,7 +344,11 @@
             gateMarker.style.left = rmsToPercent(settings.gate) + '%';
             autoToggle.checked = settings.auto;
         };
-        thrInput.addEventListener('input', () => { settings.threshold = thrInput.value / 100; saveSettings(); refreshSettingsUI(); });
+        thrInput.addEventListener('input', () => { settings.threshold = thrInput.value / 100; saveSettings(); refreshSettingsUI(); refreshRefUI(); });
+        thrOmrInput.addEventListener('input', () => { settings.thresholdOmr = thrOmrInput.value / 100; saveSettings(); refreshSettingsUI(); refreshRefUI(); });
+        const onTemplateSetting = () => { state.templates = {}; saveSettings(); refreshSettingsUI(); resetLive(); refreshRefUI(); };
+        bpmInput.addEventListener('input', () => { settings.bpm = Number(bpmInput.value); onTemplateSetting(); });
+        anticipInput.addEventListener('input', () => { settings.anticipation = Number(anticipInput.value); onTemplateSetting(); });
         delayInput.addEventListener('input', () => { settings.minDelay = Number(delayInput.value); saveSettings(); refreshSettingsUI(); });
         gateInput.addEventListener('input', () => { settings.gate = gateFromSlider(Number(gateInput.value)); saveSettings(); refreshSettingsUI(); });
         autoToggle.addEventListener('change', () => { settings.auto = autoToggle.checked; saveSettings(); resetLive(); });
@@ -332,6 +393,8 @@
                 state.pdf = pdf;
                 state.docKey = docKey;
                 state.refs = loadRefs(docKey);
+                state.templates = {};
+                loadOmr(docKey);
                 placeholder.style.display = 'none';
                 canvas.style.display = 'block';
                 await goToPage(1);
@@ -340,6 +403,44 @@
                 console.error(e);
                 setStatus('Impossible d\'ouvrir le PDF : ' + e.message);
             }
+        };
+
+        const loadOmr = async (docKey) => {
+            state.omr = null;
+            if (!docKey.startsWith('id:')) { state.omrStatus = 'none'; refreshRefUI(); return; }
+            state.omrStatus = 'loading';
+            refreshRefUI();
+            try {
+                const res = await fetch(OMR_DATA_URL + docKey.slice(3) + '.json', { cache: 'no-cache' });
+                const data = res.ok ? await res.json() : null;
+                if (state.docKey !== docKey) return; // une autre partition a été ouverte entre-temps
+                state.omr = data;
+                state.omrStatus = data ? 'ok' : 'absent';
+            } catch (e) {
+                if (state.docKey !== docKey) return;
+                state.omrStatus = 'absent';
+            }
+            state.templates = {};
+            resetLive();
+            refreshRefUI();
+        };
+
+        // Référence de la page courante : fin enregistrée au micro si elle
+        // existe, sinon fin lue sur la partition.
+        const currentReference = () => {
+            if (!state.pdf) return null;
+            const rec = state.refs[state.page];
+            if (rec) return { kind: 'rec', frames: rec.frames, threshold: settings.threshold };
+            const fin = state.omr && state.omr.fins && state.omr.fins[state.page];
+            if (!fin) return null;
+            if (!(state.page in state.templates)) {
+                state.templates[state.page] = templateFromMeasures(fin.mesures, settings);
+            }
+            const tpl = state.templates[state.page];
+            if (!tpl) return null;
+            const first = fin.nbMesuresPage - fin.mesures.length + 1; // n° de la 1re mesure conservée
+            return { kind: 'omr', frames: tpl.frames, threshold: settings.thresholdOmr,
+                     from: first + tpl.start, to: first + tpl.end - 1, total: fin.nbMesuresPage };
         };
 
         selectEl.addEventListener('change', () => {
@@ -417,15 +518,22 @@
         // ---------- Empreintes de fin de page ----------
         const refreshRefUI = () => {
             const hasPdf = !!state.pdf;
-            const ref = state.refs[state.page];
+            const rec = state.refs[state.page];
+            const ref = currentReference();
             const isLast = hasPdf && state.page === state.pdf.numPages;
             recordBtn.disabled = !hasPdf || isLast;
-            deleteRefBtn.style.display = ref && !state.recording ? 'inline-flex' : 'none';
+            deleteRefBtn.style.display = rec && !state.recording ? 'inline-flex' : 'none';
             if (!hasPdf) refBadge.textContent = '';
             else if (isLast) refBadge.textContent = 'Dernière page';
-            else if (ref) refBadge.innerHTML = `<i class="fas fa-check-circle"></i> Fin enregistrée (${(ref.frames.length * HOP_MS / 1000).toFixed(1)} s)`;
-            else refBadge.innerHTML = '<i class="fas fa-exclamation-circle"></i> Pas encore de fin enregistrée';
+            else if (rec) refBadge.innerHTML = `<i class="fas fa-check-circle"></i> Fin jouée au micro (${(rec.frames.length * HOP_MS / 1000).toFixed(1)} s)`;
+            else if (ref) refBadge.innerHTML = `<i class="fas fa-check-circle"></i> Fin lue sur la partition (mesures ${ref.from}–${ref.to} sur ${ref.total})`;
+            else if (state.omrStatus === 'loading') refBadge.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Recherche de la lecture automatique...';
+            else if (state.omrStatus === 'ok') refBadge.innerHTML = '<i class="fas fa-exclamation-circle"></i> Fin de page non lue sur la partition : jouez-la une fois pour corriger';
+            else if (state.omrStatus === 'absent') refBadge.innerHTML = '<i class="fas fa-hourglass-half"></i> Partition pas encore analysée (analyse automatique chaque nuit)';
+            else refBadge.innerHTML = '<i class="fas fa-exclamation-circle"></i> PDF local : jouez la fin de page une fois pour l\'enregistrer';
             refBadge.classList.toggle('tp-ok', !!ref);
+            // Le repère de seuil suit la référence utilisée sur cette page
+            thrMarker.style.left = Math.max(0, (ref ? ref.threshold : settings.thresholdOmr) * 100) + '%';
         };
 
         recordBtn.addEventListener('click', async () => {
@@ -443,7 +551,7 @@
             const frames = state.recording;
             state.recording = null;
             recordBtn.classList.remove('tp-recording');
-            recordBtn.innerHTML = '<i class="fas fa-circle"></i> Enregistrer la fin de cette page';
+            recordBtn.innerHTML = '<i class="fas fa-circle"></i> Corriger : jouer la fin';
             if (save && frames) {
                 if (frames.length < MIN_RECORD_FRAMES) {
                     setStatus('Trop court : aucun son détecté ou moins de 1,5 s. Vérifiez le niveau du micro et recommencez.');
@@ -458,7 +566,7 @@
         };
 
         deleteRefBtn.addEventListener('click', () => {
-            if (!confirm(`Supprimer l'empreinte de fin de la page ${state.page} ?`)) return;
+            if (!confirm(`Supprimer la fin jouée au micro pour la page ${state.page} ? (la lecture automatique de la partition sera utilisée si elle existe)`)) return;
             delete state.refs[state.page];
             saveRefs(state.docKey, state.refs);
             refreshRefUI();
@@ -529,8 +637,8 @@
                 return;
             }
 
-            const ref = state.refs[state.page];
-            if (!state.pdf || !ref) return;
+            const ref = currentReference();
+            if (!ref) return;
 
             state.live.push(chroma);
             const maxLive = Math.ceil(ref.frames.length * 2.2) + 5;
@@ -544,11 +652,11 @@
 
             const armed = settings.auto && (Date.now() - state.pageStart) / 1000 >= settings.minDelay;
             simBar.classList.toggle('tp-armed', armed);
-            simBar.classList.toggle('tp-hit', sim >= settings.threshold);
+            simBar.classList.toggle('tp-hit', sim >= ref.threshold);
             if (!armed) { state.hits = 0; return; }
 
             // Deux trames consécutives au-dessus du seuil pour éviter les faux départs
-            state.hits = sim >= settings.threshold ? state.hits + 1 : 0;
+            state.hits = sim >= ref.threshold ? state.hits + 1 : 0;
             if (state.hits >= 2 && state.page < state.pdf.numPages) autoTurn();
         };
 

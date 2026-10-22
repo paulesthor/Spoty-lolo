@@ -411,9 +411,23 @@
                     <details class="tp-settings">
                         <summary><i class="fas fa-sliders-h"></i> Réglages</summary>
                         <div class="tp-setting">
-                            <label for="tp-threshold">Seuil de déclenchement <strong id="tp-threshold-label"></strong></label>
-                            <input type="range" id="tp-threshold" min="30" max="95" step="1">
+                            <label for="tp-anticipation">Tourner la page <strong id="tp-anticipation-label"></strong></label>
+                            <input type="range" id="tp-anticipation" min="0" max="3" step="1">
+                            <small>Pour avoir le temps de lire le début de la page suivante.</small>
+                        </div>
+                        <div class="tp-setting">
+                            <label for="tp-bpm">Tempo approximatif <strong id="tp-bpm-label"></strong></label>
+                            <input type="range" id="tp-bpm" min="40" max="220" step="5">
+                            <small>Pas besoin d'être précis : de la moitié au double de ce tempo, la fin de page est reconnue.</small>
+                        </div>
+                        <div class="tp-setting">
+                            <label for="tp-threshold-omr">Seuil de déclenchement (fin lue sur la partition) <strong id="tp-threshold-omr-label"></strong></label>
+                            <input type="range" id="tp-threshold-omr" min="30" max="95" step="1">
                             <small>Plus haut = moins de fausses tournes, mais risque de ne pas tourner.</small>
+                        </div>
+                        <div class="tp-setting">
+                            <label for="tp-threshold">Seuil de déclenchement (fin jouée au micro) <strong id="tp-threshold-label"></strong></label>
+                            <input type="range" id="tp-threshold" min="30" max="95" step="1">
                         </div>
                         <div class="tp-setting">
                             <label for="tp-min-delay">Délai minimum sur une page <strong id="tp-min-delay-label"></strong></label>
@@ -427,7 +441,7 @@
                         </div>
                     </details>
 
-                    <p id="tp-status" class="tp-status">Choisissez une partition, puis enregistrez la fin de chaque page (mode apprentissage).</p>
+                    <p id="tp-status" class="tp-status">Choisissez une partition et activez le micro : la page tourne quand la fin de page est jouée.</p>
                 </div>
 
                 <div id="tp-player" class="card tp-player">
@@ -437,8 +451,8 @@
                         <button id="tp-next-btn" class="btn tp-nav-btn" title="Page suivante"><i class="fas fa-chevron-right"></i></button>
                         <span id="tp-ref-badge" class="tp-ref-badge"></span>
                         <div class="tp-page-actions">
-                            <button id="tp-record-btn" class="btn btn-accent" disabled><i class="fas fa-circle"></i> Enregistrer la fin de cette page</button>
-                            <button id="tp-delete-ref-btn" class="btn btn-icon" title="Supprimer l'empreinte de cette page" style="display:none;"><i class="fas fa-trash"></i></button>
+                            <button id="tp-record-btn" class="btn btn-accent" disabled><i class="fas fa-circle"></i> Corriger : jouer la fin</button>
+                            <button id="tp-delete-ref-btn" class="btn btn-icon" title="Supprimer la fin jouée au micro" style="display:none;"><i class="fas fa-trash"></i></button>
                             <button id="tp-fullscreen-btn" class="btn btn-icon" title="Plein écran"><i class="fas fa-expand"></i></button>
                         </div>
                     </div>

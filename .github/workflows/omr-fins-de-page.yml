@@ -58,10 +58,14 @@ jobs:
             --jq '.assets[].name | select(test("ubuntu24.*x86_64.*\\.deb$"))' | head -1)
           echo "Paquet : $asset"
           gh release download --repo Audiveris/audiveris --pattern "$asset" --dir /tmp
-          sudo apt-get update -q
-          sudo apt-get install -y -q "/tmp/$asset" xvfb
-          bin=$(dpkg -L "$(dpkg-deb -f "/tmp/$asset" Package)" | grep -E '/bin/Audiveris$' | head -1)
+          # Extraction simple : le script d'installation du paquet échoue sans bureau
+          dpkg-deb -x "/tmp/$asset" /tmp/audiveris
+          bin=$(find /tmp/audiveris -type f -path '*/bin/Audiveris' | head -1)
+          echo "Exécutable : $bin"
+          test -x "$bin"
           echo "AUDIVERIS=$bin" >> "$GITHUB_ENV"
+          sudo apt-get update -q
+          sudo apt-get install -y -q xvfb
 
       - uses: actions/setup-python@v5
         with:
@@ -83,6 +87,7 @@ jobs:
         if: always()
         run: |
           cd data
+          if [ ! -d omr ]; then echo "Aucun résultat"; exit 0; fi
           git add -A omr
           if git diff --cached --quiet; then echo "Rien de nouveau"; exit 0; fi
           git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
