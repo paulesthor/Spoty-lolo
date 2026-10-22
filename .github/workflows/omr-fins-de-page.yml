@@ -1,0 +1,97 @@
+name: Lecture des fins de page (Tourne-page)
+
+# Lit automatiquement (OMR Audiveris) les dernières mesures de chaque page
+# des partitions, pour que l'onglet Tourne-page reconnaisse les fins de page
+# sans enregistrement préalable. Les résultats sont publiés sur la branche
+# "omr-data" (dossier omr/), lue directement par l'application.
+
+on:
+  schedule:
+    # Tous les jours à 3h17 UTC : traite les nouvelles partitions
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'Nombre max de partitions à analyser'
+        default: '40'
+      ids:
+        description: 'Ids précis à (ré)analyser, séparés par des virgules (vide = nouvelles partitions)'
+        default: ''
+  push:
+    # Essai pendant le développement : quelques partitions de test
+    branches: [feature/tourne-page]
+    paths:
+      - '.github/workflows/omr-fins-de-page.yml'
+      - '.github/scripts/omr_fins_de_page.py'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: omr-fins-de-page
+  cancel-in-progress: false
+
+jobs:
+  omr:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Branche de données omr-data
+        run: |
+          if git ls-remote --exit-code --heads origin omr-data >/dev/null; then
+            git fetch --depth 1 origin omr-data
+            git worktree add data origin/omr-data
+            git -C data checkout -B omr-data
+          else
+            git worktree add --detach data
+            git -C data checkout --orphan omr-data
+            git -C data rm -rfq .
+          fi
+
+      - name: Installation d'Audiveris
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          asset=$(gh release view --repo Audiveris/audiveris --json assets \
+            --jq '.assets[].name | select(test("ubuntu24.*x86_64.*\\.deb$"))' | head -1)
+          echo "Paquet : $asset"
+          gh release download --repo Audiveris/audiveris --pattern "$asset" --dir /tmp
+          # Extraction simple : le script d'installation du paquet échoue sans bureau
+          dpkg-deb -x "/tmp/$asset" /tmp/audiveris
+          bin=$(find /tmp/audiveris -type f -path '*/bin/Audiveris' | head -1)
+          echo "Exécutable : $bin"
+          test -x "$bin"
+          echo "AUDIVERIS=$bin" >> "$GITHUB_ENV"
+          sudo apt-get update -q
+          sudo apt-get install -y -q xvfb
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - run: pip install pypdf
+
+      - name: Analyse des partitions
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          DATA_DIR: data
+          LIMIT: ${{ github.event.inputs.limit || '40' }}
+          ONLY_IDS: ${{ github.event_name == 'push' && '14,989,24,25,12' || github.event.inputs.ids }}
+          TIME_BUDGET_MIN: '300'
+          DEBUG_DIR: ${{ github.event_name == 'push' && 'data/debug' || '' }}
+        run: xvfb-run -a python .github/scripts/omr_fins_de_page.py
+
+      - name: Publication des résultats
+        if: always()
+        run: |
+          cd data
+          if [ ! -d omr ]; then echo "Aucun résultat"; exit 0; fi
+          git add -A omr
+          if [ -d debug ]; then git add -A debug; fi
+          if git diff --cached --quiet; then echo "Rien de nouveau"; exit 0; fi
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "OMR : fins de page ($(date -u +%F))"
+          git push origin omr-data
