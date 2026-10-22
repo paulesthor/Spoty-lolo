@@ -444,6 +444,30 @@
                     <p id="tp-status" class="tp-status">Choisissez une partition et activez le micro : la page tourne quand la fin de page est jouée.</p>
                 </div>
 
+                <details id="tp-test" class="card tp-test">
+                    <summary><i class="fas fa-flask"></i> Mode test : vérifier que le micro reconnaît le piano</summary>
+                    <div class="tp-test-modes">
+                        <button class="btn" data-test-mode="notes">Notes une à une</button>
+                        <button class="btn" data-test-mode="chords">Accords</button>
+                        <button class="btn" data-test-mode="sequence">Enchaînement (fin de page)</button>
+                    </div>
+                    <div class="tp-test-target-label">À jouer :</div>
+                    <div id="tp-test-target" class="tp-test-target"></div>
+                    <p id="tp-test-hint" class="tp-test-hint"></p>
+                    <div id="tp-test-keyboards" class="tp-test-keyboards"></div>
+                    <div class="tp-test-feedback">
+                        <div>J'entends : <strong id="tp-test-heard">…</strong></div>
+                        <div class="tp-meter-label">Ressemblance avec ce qu'il faut jouer <strong id="tp-test-sim-value">—</strong></div>
+                        <div class="tp-meter"><div id="tp-test-sim-bar" class="tp-meter-fill tp-sim-fill tp-armed"></div><div id="tp-test-thr-marker" class="tp-marker"></div></div>
+                        <div id="tp-test-result" class="tp-test-result"></div>
+                    </div>
+                    <div class="tp-test-actions">
+                        <button id="tp-test-retry" class="btn"><i class="fas fa-redo"></i> Recommencer</button>
+                        <button id="tp-test-next" class="btn btn-accent">Suivant <i class="fas fa-arrow-right"></i></button>
+                        <span id="tp-test-score" class="tp-test-score"></span>
+                    </div>
+                </details>
+
                 <div id="tp-player" class="card tp-player">
                     <div class="tp-page-bar">
                         <button id="tp-prev-btn" class="btn tp-nav-btn" title="Page précédente"><i class="fas fa-chevron-left"></i></button>

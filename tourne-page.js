@@ -627,6 +627,7 @@
             const sounding = rms >= settings.gate;
             levelBar.classList.toggle('tp-sounding', sounding);
             chromaFills.forEach((f, i) => { f.style.height = (sounding ? Math.max(0, chroma[i]) * 100 : 0) + '%'; });
+            if (test.active) { testOnFrame(chroma, sounding); return; }
             if (!sounding) return; // les silences sont ignorés (pauses, respiration du soufflet)
 
             if (state.recording) {
@@ -667,6 +668,181 @@
             setStatus(`Page tournée automatiquement (${new Date().toLocaleTimeString()}). Utilisez ◀ en cas d'erreur.`);
             goToPage(state.page + 1);
         };
+
+        // ---------- Mode test (sans partition) ----------
+        // Pour vérifier la reconnaissance au piano sans savoir lire une
+        // partition : on allume les touches à jouer sur un clavier dessiné.
+        const CHORD_TYPES = [
+            { suffix: ' majeur', intervals: [0, 4, 7] },
+            { suffix: ' mineur', intervals: [0, 3, 7] },
+            { suffix: ' 7', intervals: [0, 4, 7, 10] }
+        ];
+        const NOTE_TARGETS = NOTE_NAMES.map((name, pc) => ({ name, midis: [60 + pc], chroma: notesChroma([60 + pc]) }));
+        const ALL_CHORDS = [];
+        NOTE_NAMES.forEach((root, pc) => CHORD_TYPES.forEach(({ suffix, intervals }) => {
+            const midis = intervals.map(i => 60 + pc + i);
+            ALL_CHORDS.push({ name: root + suffix, midis, chroma: notesChroma(midis) });
+        }));
+        const chordByName = (name) => ALL_CHORDS.find(c => c.name === name);
+        // Touches blanches d'abord, puis les noires
+        const PRACTICE_NOTES = [0, 2, 4, 5, 7, 9, 11, 1, 3, 6, 8, 10].map(pc => NOTE_TARGETS[pc]);
+        const PRACTICE_CHORDS = ['Do majeur', 'Fa majeur', 'Sol majeur', 'La mineur', 'Ré mineur', 'Mi mineur',
+                                 'Sol 7', 'Ré majeur', 'La majeur', 'Mi majeur'].map(chordByName);
+        const SEQUENCES = [
+            ['Do majeur', 'Fa majeur', 'Sol majeur', 'Do majeur'],
+            ['La mineur', 'Ré mineur', 'Mi mineur', 'La mineur'],
+            ['Do majeur', 'La mineur', 'Fa majeur', 'Sol 7']
+        ].map(names => names.map(chordByName));
+        const FRAMES_PER_SEQ_CHORD = 10; // ~1 s par accord
+
+        const testPanel = $('tp-test');
+        const testTarget = $('tp-test-target');
+        const testHint = $('tp-test-hint');
+        const testKeyboards = $('tp-test-keyboards');
+        const testHeard = $('tp-test-heard');
+        const testSimBar = $('tp-test-sim-bar');
+        const testSimValue = $('tp-test-sim-value');
+        const testThrMarker = $('tp-test-thr-marker');
+        const testResult = $('tp-test-result');
+        const testScore = $('tp-test-score');
+        const testNextBtn = $('tp-test-next');
+        const testModeBtns = testPanel.querySelectorAll('[data-test-mode]');
+
+        const test = { active: false, mode: 'notes', index: 0, streak: 0, done: false, ok: 0, total: 0,
+                       live: [], hits: 0, template: null, timer: null };
+
+        // Clavier de deux octaves (Do4 à Si5), touches repérées par n° MIDI
+        const buildKeyboard = (highlight, small) => {
+            const kb = document.createElement('div');
+            kb.className = 'tp-keyboard' + (small ? ' tp-keyboard-small' : '');
+            const whites = [];
+            for (let m = 60; m < 84; m++) if (![1, 3, 6, 8, 10].includes(m % 12)) whites.push(m);
+            const w = 100 / whites.length;
+            whites.forEach((m, i) => {
+                const key = document.createElement('div');
+                key.className = 'tp-key tp-key-white' + (highlight.includes(m) ? ' tp-key-on' : '');
+                key.style.left = (i * w) + '%';
+                key.style.width = w + '%';
+                key.innerHTML = `<span>${NOTE_NAMES[m % 12]}</span>`;
+                kb.appendChild(key);
+            });
+            whites.forEach((m, i) => {
+                const black = m + 1;
+                if (black >= 84 || ![1, 3, 6, 8, 10].includes(black % 12)) return;
+                const key = document.createElement('div');
+                key.className = 'tp-key tp-key-black' + (highlight.includes(black) ? ' tp-key-on' : '');
+                key.style.left = ((i + 1) * w - w * 0.3) + '%';
+                key.style.width = (w * 0.6) + '%';
+                key.title = NOTE_NAMES[black % 12];
+                kb.appendChild(key);
+            });
+            return kb;
+        };
+
+        const currentTarget = () => {
+            if (test.mode === 'notes') return PRACTICE_NOTES[test.index % PRACTICE_NOTES.length];
+            if (test.mode === 'chords') return PRACTICE_CHORDS[test.index % PRACTICE_CHORDS.length];
+            return SEQUENCES[test.index % SEQUENCES.length];
+        };
+
+        const renderTest = () => {
+            clearTimeout(test.timer);
+            test.streak = 0; test.done = false; test.live = []; test.hits = 0;
+            testResult.textContent = '';
+            testResult.className = 'tp-test-result';
+            testSimBar.style.width = '0%';
+            testSimValue.textContent = '—';
+            testHeard.textContent = '…';
+            testKeyboards.innerHTML = '';
+            testModeBtns.forEach(b => b.classList.toggle('tp-active-mode', b.dataset.testMode === test.mode));
+            const target = currentTarget();
+            testTarget.classList.toggle('tp-test-target-seq', test.mode === 'sequence');
+            if (test.mode === 'sequence') {
+                testTarget.textContent = target.map(c => c.name).join('  →  ');
+                testHint.textContent = 'Jouez les 4 accords dans l\'ordre, environ 1 seconde chacun, comme une fin de page. ' +
+                    'Quand l\'enchaînement est reconnu, la page aurait tourné. Essayez aussi de jouer autre chose : ça ne doit pas se déclencher.';
+                target.forEach((c, i) => {
+                    const box = document.createElement('div');
+                    box.className = 'tp-seq-step';
+                    box.innerHTML = `<strong>${i + 1}. ${c.name}</strong>`;
+                    box.appendChild(buildKeyboard(c.midis, true));
+                    testKeyboards.appendChild(box);
+                });
+                test.template = target.flatMap(c => Array(FRAMES_PER_SEQ_CHORD).fill(c.chroma));
+                testThrMarker.style.left = settings.thresholdOmr * 100 + '%';
+            } else {
+                testTarget.textContent = target.name;
+                testHint.textContent = test.mode === 'notes'
+                    ? 'Appuyez sur la touche allumée et laissez-la sonner. N\'importe quelle touche du même nom convient, plus haut ou plus bas sur le piano.'
+                    : 'Appuyez les touches allumées en même temps et gardez-les enfoncées.';
+                testKeyboards.appendChild(buildKeyboard(target.midis, false));
+                testThrMarker.style.left = '0%';
+            }
+        };
+
+        const showTestSuccess = (text) => {
+            test.done = true;
+            test.ok++; test.total++;
+            testResult.textContent = text;
+            testResult.className = 'tp-test-result tp-test-ok';
+            testScore.textContent = `Réussis : ${test.ok} / ${test.total}`;
+        };
+
+        const testOnFrame = (chroma, sounding) => {
+            if (test.done) return;
+            const target = currentTarget();
+            if (!sounding) {
+                if (test.mode !== 'sequence') { test.streak = 0; testHeard.textContent = '… (silence)'; }
+                return;
+            }
+            const candidates = test.mode === 'notes' ? NOTE_TARGETS : ALL_CHORDS;
+            let best = null, bestSim = -2;
+            for (const c of candidates) {
+                const sim = dot(chroma, c.chroma);
+                if (sim > bestSim) { bestSim = sim; best = c; }
+            }
+            testHeard.textContent = `${best.name} (${Math.round(bestSim * 100)} %)`;
+
+            if (test.mode === 'sequence') {
+                test.live.push(chroma);
+                const maxLive = Math.ceil(test.template.length * 2.2) + 5;
+                if (test.live.length > maxLive) test.live.splice(0, test.live.length - maxLive);
+                const res = matchEnd(test.template, test.live);
+                if (!res) return;
+                testSimBar.style.width = Math.max(0, res.similarity * 100) + '%';
+                testSimValue.textContent = Math.round(res.similarity * 100) + ' %';
+                test.hits = res.similarity >= settings.thresholdOmr ? test.hits + 1 : 0;
+                if (test.hits >= 2) showTestSuccess('✓ Enchaînement reconnu : la page aurait tourné ici.');
+                return;
+            }
+
+            const simTarget = dot(chroma, target.chroma);
+            testSimBar.style.width = Math.max(0, simTarget * 100) + '%';
+            testSimValue.textContent = Math.round(simTarget * 100) + ' %';
+            test.streak = best === target ? test.streak + 1 : 0;
+            if (test.streak >= 3) {
+                showTestSuccess(`✓ ${target.name} reconnu !`);
+                test.timer = setTimeout(() => { test.index++; renderTest(); }, 1500);
+            }
+        };
+
+        testModeBtns.forEach(b => b.addEventListener('click', () => { test.mode = b.dataset.testMode; test.index = 0; renderTest(); }));
+        testNextBtn.addEventListener('click', () => {
+            if (!test.done) { test.total++; testScore.textContent = `Réussis : ${test.ok} / ${test.total}`; }
+            test.index++;
+            renderTest();
+        });
+        $('tp-test-retry').addEventListener('click', renderTest);
+        testPanel.addEventListener('toggle', () => {
+            test.active = testPanel.open;
+            if (test.active) {
+                renderTest();
+                if (!state.listener) startMic();
+            } else {
+                clearTimeout(test.timer);
+                resetLive();
+            }
+        });
 
         // ---------- Cycle de vie de l'onglet ----------
         // Le routeur d'app.js affiche/masque la vue : on réagit à ces changements.
