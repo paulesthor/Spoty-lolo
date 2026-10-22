@@ -2,14 +2,14 @@ INFO  []                      Main 259  | Running in batch mode
 WARN  []                 Languages 142  | *** No installed OCR languages ***
 INFO  []             AliasPatterns 146  | Alias patterns: [(IMSLP[0-9]*)-.*]
 INFO  []                      Main 194  | Submitting 2 task(s) in sequence:
-    Input "/tmp/tmprjcen_lf/pages/p001.pdf"
-    Input "/tmp/tmprjcen_lf/pages/p002.pdf"
-INFO  [p001]                      Book 560  | 1 sheet in /tmp/tmprjcen_lf/pages/p001.pdf
+    Input "/tmp/tmp_j6xfd0v/pages/p001.pdf"
+    Input "/tmp/tmp_j6xfd0v/pages/p002.pdf"
+INFO  [p001]                      Book 560  | 1 sheet in /tmp/tmp_j6xfd0v/pages/p001.pdf
 INFO  []                      Book 2565 | Stored /book.xml
-INFO  []                      Book 2525 | Book stored as /tmp/tmprjcen_lf/out/p001.omr
+INFO  []                      Book 2525 | Book stored as /tmp/tmp_j6xfd0v/out/p001.omr
 INFO  []                      Book 1929 | Book reaching PAGE on sheets:[#1]
 INFO  [p001]            StepMonitoring 98   | LOAD
-INFO  [p001]                 SheetStub 1278 | Loaded image #1 2479x3508 from /tmp/tmprjcen_lf/pages/p001.pdf
+INFO  [p001]                 SheetStub 1278 | Loaded image #1 2479x3508 from /tmp/tmp_j6xfd0v/pages/p001.pdf
 INFO  [p001]            StepMonitoring 98   | BINARY
 INFO  [p001]            StepMonitoring 98   | SCALE
 INFO  [p001]              ScaleBuilder 254  | Beam  guessed height: 11 -- 0.25 of [9..18] range
@@ -54,7 +54,7 @@ INFO  [p001]              SlursBuilder 240  | Slurs: 0
 INFO  [p001]           SegmentsBuilder 155  | Segments: 16
 INFO  [p001]            StepMonitoring 98   | SYMBOLS
 INFO  [p001]            StepMonitoring 98   | LINKS
-INFO  [p001]                  KeyInter 1331 | Key built KeyInter#6921{(0.381) staff:7 KEY_FLAT_1 pitch:-0.5 fifths:-1}
+INFO  [p001]                  KeyInter 1331 | Key built KeyInter#6927{(0.381) staff:7 KEY_FLAT_1 pitch:-0.5 fifths:-1}
 INFO  [p001]            StepMonitoring 98   | RHYTHMS
 INFO  [p001]            StepMonitoring 98   | PAGE
 WARN  [p001]              MeasureFixer 343  | System#1 No target duration for measures local IDs [1, 2], please check time signatures
@@ -65,20 +65,20 @@ INFO  [p001]                      Book 2584 | Book{p001} storing
 INFO  [p001]                      Book 2565 | Stored /book.xml
 INFO  [p001]                DataHolder 348  | Stored /sheet#1/BINARY.png
 INFO  [p001]                     Sheet 1583 | Stored /sheet#1/sheet#1.xml
-INFO  [p001]                      Book 2525 | Book stored as /tmp/tmprjcen_lf/out/p001.omr
+INFO  [p001]                      Book 2525 | Book stored as /tmp/tmp_j6xfd0v/out/p001.omr
 INFO  [p001]                 SheetStub 1655 | Sheet disposed
 INFO  [p001]                      Book 2050 | End of Stub#1
 INFO  [p001]                      Book 2057 | End of Book{p001}
 INFO  [p001]                 SheetStub 1000 | Loaded /sheet#1/sheet#1.xml
 INFO  [p001]           PartwiseBuilder 2707 | Exporting sheet(s): [#1]
-INFO  [p001]             ScoreExporter 164  | Score p001 exported to /tmp/tmprjcen_lf/out/p001.mxl
+INFO  [p001]             ScoreExporter 164  | Score p001 exported to /tmp/tmp_j6xfd0v/out/p001.mxl
 INFO  [p001]                     Score 181  | Closing {Score 1}
-INFO  [p002]                      Book 560  | 1 sheet in /tmp/tmprjcen_lf/pages/p002.pdf
+INFO  [p002]                      Book 560  | 1 sheet in /tmp/tmp_j6xfd0v/pages/p002.pdf
 INFO  []                      Book 2565 | Stored /book.xml
-INFO  []                      Book 2525 | Book stored as /tmp/tmprjcen_lf/out/p002.omr
+INFO  []                      Book 2525 | Book stored as /tmp/tmp_j6xfd0v/out/p002.omr
 INFO  []                      Book 1929 | Book reaching PAGE on sheets:[#1]
 INFO  [p002]            StepMonitoring 98   | LOAD
-INFO  [p002]                 SheetStub 1278 | Loaded image #1 2479x3508 from /tmp/tmprjcen_lf/pages/p002.pdf
+INFO  [p002]                 SheetStub 1278 | Loaded image #1 2479x3508 from /tmp/tmp_j6xfd0v/pages/p002.pdf
 INFO  [p002]            StepMonitoring 98   | BINARY
 INFO  [p002]            StepMonitoring 98   | SCALE
 INFO  [p002]              ScaleBuilder 254  | Beam  guessed height: 14 -- 0.25 of [11..23] range
@@ -134,13 +134,13 @@ INFO  [p002]                      Book 2584 | Book{p002} storing
 INFO  [p002]                      Book 2565 | Stored /book.xml
 INFO  [p002]                DataHolder 348  | Stored /sheet#1/BINARY.png
 INFO  [p002]                     Sheet 1583 | Stored /sheet#1/sheet#1.xml
-INFO  [p002]                      Book 2525 | Book stored as /tmp/tmprjcen_lf/out/p002.omr
+INFO  [p002]                      Book 2525 | Book stored as /tmp/tmp_j6xfd0v/out/p002.omr
 INFO  [p002]                 SheetStub 1655 | Sheet disposed
 INFO  [p002]                      Book 2050 | End of Stub#1
 INFO  [p002]                      Book 2057 | End of Book{p002}
 INFO  [p002]                 SheetStub 1000 | Loaded /sheet#1/sheet#1.xml
 INFO  [p002]           PartwiseBuilder 2707 | Exporting sheet(s): [#1]
-INFO  [p002]             ScoreExporter 164  | Score p002 exported to /tmp/tmprjcen_lf/out/p002.mxl
+INFO  [p002]             ScoreExporter 164  | Score p002 exported to /tmp/tmp_j6xfd0v/out/p002.mxl
 INFO  [p002]                     Score 181  | Closing {Score 1}
 
-(Audiveris:2822): dbind-WARNING **: 18:43:53.763: AT-SPI: Error retrieving accessibility bus address: org.freedesktop.DBus.Error.ServiceUnknown: The name org.a11y.Bus was not provided by any .service files
+(Audiveris:2702): dbind-WARNING **: 19:28:40.759: AT-SPI: Error retrieving accessibility bus address: org.freedesktop.DBus.Error.ServiceUnknown: The name org.a11y.Bus was not provided by any .service files

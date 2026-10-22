@@ -2,13 +2,13 @@ INFO  []                      Main 259  | Running in batch mode
 WARN  []                 Languages 142  | *** No installed OCR languages ***
 INFO  []             AliasPatterns 146  | Alias patterns: [(IMSLP[0-9]*)-.*]
 INFO  []                      Main 194  | Submitting 1 task(s) in sequence:
-    Input "/tmp/tmpszvpbfhz/pages/p001.pdf"
-INFO  [p001]                      Book 560  | 1 sheet in /tmp/tmpszvpbfhz/pages/p001.pdf
+    Input "/tmp/tmp3ufbx4m1/pages/p001.pdf"
+INFO  [p001]                      Book 560  | 1 sheet in /tmp/tmp3ufbx4m1/pages/p001.pdf
 INFO  []                      Book 2565 | Stored /book.xml
-INFO  []                      Book 2525 | Book stored as /tmp/tmpszvpbfhz/out/p001.omr
+INFO  []                      Book 2525 | Book stored as /tmp/tmp3ufbx4m1/out/p001.omr
 INFO  []                      Book 1929 | Book reaching PAGE on sheets:[#1]
 INFO  [p001]            StepMonitoring 98   | LOAD
-INFO  [p001]                 SheetStub 1278 | Loaded image #1 2479x3508 from /tmp/tmpszvpbfhz/pages/p001.pdf
+INFO  [p001]                 SheetStub 1278 | Loaded image #1 2479x3508 from /tmp/tmp3ufbx4m1/pages/p001.pdf
 INFO  [p001]            StepMonitoring 98   | BINARY
 INFO  [p001]            StepMonitoring 98   | SCALE
 INFO  [p001]              ScaleBuilder 254  | Beam  guessed height: 10 -- 0.25 of [8..17] range
@@ -53,22 +53,22 @@ INFO  [p001]              SlursBuilder 240  | Slurs: 14
 INFO  [p001]           SegmentsBuilder 155  | Segments: 24
 INFO  [p001]            StepMonitoring 98   | SYMBOLS
 INFO  [p001]            StepMonitoring 98   | LINKS
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#10027{(0.216) staff:1 NATURAL pitch:-3.0}
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#10345{(0.176) staff:1 NATURAL pitch:4.0}
-INFO  [p001]                  KeyInter 1331 | Key built KeyInter#11501{(0.271) staff:1 KEY_FLAT_1 pitch:1.6 fifths:-1}
-INFO  [p001]                  KeyInter 1331 | Key built KeyInter#11503{(0.133) staff:2 KEY_FLAT_1 pitch:0.1 fifths:-1}
-INFO  [p001]                  KeyInter 1331 | Key built KeyInter#11505{(0.643) staff:2 KEY_FLAT_1 pitch:-0.3 fifths:-1}
-INFO  [p001]             SymbolsLinker 258  | No chord linked to OctaveShiftInter#10963{(0.374) staff:4 VENTIDUESIMA BASSA} at java.awt.Point[x=152,y=1679]
-INFO  [p001]                  KeyInter 1331 | Key built KeyInter#11507{(0.165) staff:4 KEY_FLAT_1 pitch:-0.3 fifths:-1}
-INFO  [p001]                  KeyInter 1331 | Key built KeyInter#11509{(0.344) staff:4 KEY_FLAT_1 pitch:0.1 fifths:-1}
-INFO  [p001]             SymbolsLinker 258  | No chord linked to OctaveShiftInter#11094{(0.374) staff:5 VENTIDUESIMA ALTA} at java.awt.Point[x=152,y=1679]
-INFO  [p001]             SymbolsLinker 258  | No chord linked to OctaveShiftInter#11097{(0.135) staff:5 VENTIDUESIMA BASSA} at java.awt.Point[x=152,y=1945]
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#11107{(0.223) staff:5 NATURAL pitch:0.0}
-INFO  [p001]             SymbolsLinker 258  | No chord linked to OctaveShiftInter#11182{(0.135) staff:6 VENTIDUESIMA ALTA} at java.awt.Point[x=152,y=1945]
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#11201{(0.790) staff:6 NATURAL pitch:0.0}
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#11361{(0.435) staff:7 NATURAL pitch:0.0}
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#11412{(0.195) staff:7 NATURAL pitch:-5.0}
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#11447{(0.143) staff:7 NATURAL pitch:2.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#10014{(0.216) staff:1 NATURAL pitch:-3.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#10332{(0.176) staff:1 NATURAL pitch:4.0}
+INFO  [p001]                  KeyInter 1331 | Key built KeyInter#11487{(0.271) staff:1 KEY_FLAT_1 pitch:1.6 fifths:-1}
+INFO  [p001]                  KeyInter 1331 | Key built KeyInter#11489{(0.133) staff:2 KEY_FLAT_1 pitch:0.1 fifths:-1}
+INFO  [p001]                  KeyInter 1331 | Key built KeyInter#11491{(0.643) staff:2 KEY_FLAT_1 pitch:-0.3 fifths:-1}
+INFO  [p001]             SymbolsLinker 258  | No chord linked to OctaveShiftInter#10950{(0.374) staff:4 VENTIDUESIMA BASSA} at java.awt.Point[x=152,y=1679]
+INFO  [p001]                  KeyInter 1331 | Key built KeyInter#11493{(0.165) staff:4 KEY_FLAT_1 pitch:-0.3 fifths:-1}
+INFO  [p001]                  KeyInter 1331 | Key built KeyInter#11495{(0.344) staff:4 KEY_FLAT_1 pitch:0.1 fifths:-1}
+INFO  [p001]             SymbolsLinker 258  | No chord linked to OctaveShiftInter#11079{(0.374) staff:5 VENTIDUESIMA ALTA} at java.awt.Point[x=152,y=1679]
+INFO  [p001]             SymbolsLinker 258  | No chord linked to OctaveShiftInter#11083{(0.135) staff:5 VENTIDUESIMA BASSA} at java.awt.Point[x=152,y=1945]
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#11093{(0.223) staff:5 NATURAL pitch:0.0}
+INFO  [p001]             SymbolsLinker 258  | No chord linked to OctaveShiftInter#11168{(0.135) staff:6 VENTIDUESIMA ALTA} at java.awt.Point[x=152,y=1945]
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#11187{(0.790) staff:6 NATURAL pitch:0.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#11347{(0.435) staff:7 NATURAL pitch:0.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#11398{(0.195) staff:7 NATURAL pitch:-5.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#11433{(0.143) staff:7 NATURAL pitch:2.0}
 INFO  [p001]            StepMonitoring 98   | RHYTHMS
 INFO  [p001]            StepMonitoring 98   | PAGE
 WARN  [p001]              MeasureFixer 343  | System#1 No target duration for measures local IDs [1, 2, 3, 4, 5], please check time signatures
@@ -82,13 +82,13 @@ INFO  [p001]                      Book 2584 | Book{p001} storing
 INFO  [p001]                      Book 2565 | Stored /book.xml
 INFO  [p001]                DataHolder 348  | Stored /sheet#1/BINARY.png
 INFO  [p001]                     Sheet 1583 | Stored /sheet#1/sheet#1.xml
-INFO  [p001]                      Book 2525 | Book stored as /tmp/tmpszvpbfhz/out/p001.omr
+INFO  [p001]                      Book 2525 | Book stored as /tmp/tmp3ufbx4m1/out/p001.omr
 INFO  [p001]                 SheetStub 1655 | Sheet disposed
 INFO  [p001]                      Book 2050 | End of Stub#1
 INFO  [p001]                      Book 2057 | End of Book{p001}
 INFO  [p001]                 SheetStub 1000 | Loaded /sheet#1/sheet#1.xml
 INFO  [p001]           PartwiseBuilder 2707 | Exporting sheet(s): [#1]
-INFO  [p001]             ScoreExporter 164  | Score p001 exported to /tmp/tmpszvpbfhz/out/p001.mxl
+INFO  [p001]             ScoreExporter 164  | Score p001 exported to /tmp/tmp3ufbx4m1/out/p001.mxl
 INFO  [p001]                     Score 181  | Closing {Score 1}
 
-(Audiveris:2883): dbind-WARNING **: 18:44:18.115: AT-SPI: Error retrieving accessibility bus address: org.freedesktop.DBus.Error.ServiceUnknown: The name org.a11y.Bus was not provided by any .service files
+(Audiveris:2772): dbind-WARNING **: 19:29:10.973: AT-SPI: Error retrieving accessibility bus address: org.freedesktop.DBus.Error.ServiceUnknown: The name org.a11y.Bus was not provided by any .service files

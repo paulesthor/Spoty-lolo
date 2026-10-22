@@ -1,32 +1,42 @@
 {
 "12": {
-"date": "2026-10-22T18:42:58+00:00",
+"date": "2026-10-22T19:27:27+00:00",
 "pages": 3,
+"pagesFiables": 1,
 "pagesLues": 3,
-"statut": "ok"
+"statut": "ok",
+"version": 2
 },
 "14": {
-"date": "2026-10-22T18:43:32+00:00",
+"date": "2026-10-22T19:28:12+00:00",
 "pages": 2,
+"pagesFiables": 2,
 "pagesLues": 2,
-"statut": "ok"
+"statut": "ok",
+"version": 2
 },
 "24": {
-"date": "2026-10-22T18:43:52+00:00",
+"date": "2026-10-22T19:28:38+00:00",
 "pages": 1,
+"pagesFiables": 1,
 "pagesLues": 1,
-"statut": "ok"
+"statut": "ok",
+"version": 2
 },
 "25": {
-"date": "2026-10-22T18:44:17+00:00",
+"date": "2026-10-22T19:29:09+00:00",
 "pages": 2,
+"pagesFiables": 0,
 "pagesLues": 2,
-"statut": "ok"
+"statut": "ok",
+"version": 2
 },
 "989": {
-"date": "2026-10-22T18:44:30+00:00",
+"date": "2026-10-22T19:29:26+00:00",
 "pages": 1,
+"pagesFiables": 0,
 "pagesLues": 1,
-"statut": "ok"
+"statut": "ok",
+"version": 2
 }
 }

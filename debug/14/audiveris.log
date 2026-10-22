@@ -2,14 +2,14 @@ INFO  []                      Main 259  | Running in batch mode
 WARN  []                 Languages 142  | *** No installed OCR languages ***
 INFO  []             AliasPatterns 146  | Alias patterns: [(IMSLP[0-9]*)-.*]
 INFO  []                      Main 194  | Submitting 2 task(s) in sequence:
-    Input "/tmp/tmpb23vfjak/pages/p001.pdf"
-    Input "/tmp/tmpb23vfjak/pages/p002.pdf"
-INFO  [p001]                      Book 560  | 1 sheet in /tmp/tmpb23vfjak/pages/p001.pdf
+    Input "/tmp/tmp5p_a6bbw/pages/p001.pdf"
+    Input "/tmp/tmp5p_a6bbw/pages/p002.pdf"
+INFO  [p001]                      Book 560  | 1 sheet in /tmp/tmp5p_a6bbw/pages/p001.pdf
 INFO  []                      Book 2565 | Stored /book.xml
-INFO  []                      Book 2525 | Book stored as /tmp/tmpb23vfjak/out/p001.omr
+INFO  []                      Book 2525 | Book stored as /tmp/tmp5p_a6bbw/out/p001.omr
 INFO  []                      Book 1929 | Book reaching PAGE on sheets:[#1]
 INFO  [p001]            StepMonitoring 98   | LOAD
-INFO  [p001]                 SheetStub 1278 | Loaded image #1 2479x3508 from /tmp/tmpb23vfjak/pages/p001.pdf
+INFO  [p001]                 SheetStub 1278 | Loaded image #1 2479x3508 from /tmp/tmp5p_a6bbw/pages/p001.pdf
 INFO  [p001]            StepMonitoring 98   | BINARY
 INFO  [p001]            StepMonitoring 98   | SCALE
 INFO  [p001]              ScaleBuilder 254  | Beam  guessed height: 10 -- 0.25 of [8..17] range
@@ -46,86 +46,86 @@ INFO  [p001]              SlursBuilder 240  | Slurs: 54
 INFO  [p001]           SegmentsBuilder 155  | Segments: 68
 INFO  [p001]            StepMonitoring 98   | SYMBOLS
 INFO  [p001]            StepMonitoring 98   | LINKS
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#19451{(0.569) staff:1 NATURAL pitch:5.0}
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#19462{(0.216) staff:1 NATURAL pitch:4.0}
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#19471{(0.141) staff:1 NATURAL pitch:5.0}
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#19480{(0.179) staff:1 NATURAL pitch:-1.0}
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#19503{(0.137) staff:1 NATURAL pitch:-1.0}
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#19541{(0.141) staff:1 NATURAL pitch:3.0}
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#19686{(0.234) staff:3 NATURAL pitch:-1.0}
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#19963{(0.176) staff:3 NATURAL pitch:-4.0}
-INFO  [p001]                  KeyInter 1331 | Key built KeyInter#21427{(0.160) staff:3 KEY_SHARP_1 pitch:-4.1 fifths:1}
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#19683{(0.547) staff:4 NATURAL pitch:3.0}
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#20016{(0.141) staff:4 NATURAL pitch:-2.0}
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#20017{(0.141) staff:4 NATURAL pitch:0.0}
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#19665{(0.528) staff:5 NATURAL pitch:2.0}
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#19680{(0.436) staff:5 NATURAL pitch:3.0}
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#19685{(0.363) staff:5 NATURAL pitch:-2.0}
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#20137{(0.143) staff:6 NATURAL pitch:-3.0}
-INFO  [p001]                  KeyInter 1331 | Key built KeyInter#21429{(0.160) staff:6 KEY_SHARP_1 pitch:-4.1 fifths:1}
-INFO  [p001]                  KeyInter 1331 | Key built KeyInter#21431{(0.160) staff:6 KEY_SHARP_1 pitch:-4.1 fifths:1}
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#20249{(0.141) staff:8 NATURAL pitch:0.0}
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#20604{(0.176) staff:9 NATURAL pitch:4.0}
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#20742{(0.487) staff:9 NATURAL pitch:-3.0}
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#20840{(0.487) staff:9 NATURAL pitch:-3.0}
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#20870{(0.176) staff:9 NATURAL pitch:-5.0}
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#20880{(0.363) staff:9 NATURAL pitch:-4.0}
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#20701{(0.141) staff:10 NATURAL pitch:-4.0}
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#20856{(0.347) staff:10 NATURAL pitch:2.0}
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#20874{(0.484) staff:10 NATURAL pitch:-3.0}
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#20892{(0.234) staff:10 NATURAL pitch:-4.0}
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#20740{(0.141) staff:11 NATURAL pitch:-2.0}
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#20877{(0.440) staff:11 NATURAL pitch:5.0}
-INFO  [p001]             SymbolsLinker 258  | No chord linked to OctaveShiftInter#20978{(0.380) staff:12 QUINDICESIMA BASSA} at java.awt.Point[x=476,y=2764]
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#21050{(0.176) staff:12 NATURAL pitch:-4.0}
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#21326{(0.141) staff:12 NATURAL pitch:-5.0}
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#21348{(0.451) staff:12 NATURAL pitch:-4.0}
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#21009{(0.283) staff:13 NATURAL pitch:-3.0}
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#21048{(0.145) staff:13 NATURAL pitch:-4.0}
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#21131{(0.174) staff:13 NATURAL pitch:3.0}
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#21179{(0.136) staff:13 NATURAL pitch:-1.0}
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#21180{(0.141) staff:13 NATURAL pitch:4.0}
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#21323{(0.574) staff:13 NATURAL pitch:4.0}
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#21134{(0.495) staff:14 NATURAL pitch:1.0}
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#21313{(0.440) staff:14 NATURAL pitch:5.0}
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#21365{(0.176) staff:14 NATURAL pitch:2.0}
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#21368{(0.487) staff:14 NATURAL pitch:5.0}
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#21387{(0.128) staff:14 NATURAL pitch:-4.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#19253{(0.569) staff:1 NATURAL pitch:5.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#19264{(0.216) staff:1 NATURAL pitch:4.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#19273{(0.141) staff:1 NATURAL pitch:5.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#19282{(0.179) staff:1 NATURAL pitch:-1.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#19305{(0.137) staff:1 NATURAL pitch:-1.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#19343{(0.141) staff:1 NATURAL pitch:3.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#19484{(0.234) staff:3 NATURAL pitch:-1.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#19761{(0.176) staff:3 NATURAL pitch:-4.0}
+INFO  [p001]                  KeyInter 1331 | Key built KeyInter#21229{(0.160) staff:3 KEY_SHARP_1 pitch:-4.1 fifths:1}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#19481{(0.547) staff:4 NATURAL pitch:3.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#19814{(0.141) staff:4 NATURAL pitch:-2.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#19815{(0.141) staff:4 NATURAL pitch:0.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#19467{(0.528) staff:5 NATURAL pitch:2.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#19478{(0.436) staff:5 NATURAL pitch:3.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#19483{(0.363) staff:5 NATURAL pitch:-2.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#19935{(0.143) staff:6 NATURAL pitch:-3.0}
+INFO  [p001]                  KeyInter 1331 | Key built KeyInter#21231{(0.160) staff:6 KEY_SHARP_1 pitch:-4.1 fifths:1}
+INFO  [p001]                  KeyInter 1331 | Key built KeyInter#21233{(0.160) staff:6 KEY_SHARP_1 pitch:-4.1 fifths:1}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#20047{(0.141) staff:8 NATURAL pitch:0.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#20402{(0.176) staff:9 NATURAL pitch:4.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#20540{(0.487) staff:9 NATURAL pitch:-3.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#20638{(0.487) staff:9 NATURAL pitch:-3.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#20668{(0.176) staff:9 NATURAL pitch:-5.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#20678{(0.363) staff:9 NATURAL pitch:-4.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#20499{(0.141) staff:10 NATURAL pitch:-4.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#20660{(0.347) staff:10 NATURAL pitch:2.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#20672{(0.484) staff:10 NATURAL pitch:-3.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#20690{(0.234) staff:10 NATURAL pitch:-4.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#20538{(0.141) staff:11 NATURAL pitch:-2.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#20675{(0.440) staff:11 NATURAL pitch:5.0}
+INFO  [p001]             SymbolsLinker 258  | No chord linked to OctaveShiftInter#20776{(0.380) staff:12 QUINDICESIMA BASSA} at java.awt.Point[x=476,y=2764]
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#20848{(0.176) staff:12 NATURAL pitch:-4.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#21128{(0.141) staff:12 NATURAL pitch:-5.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#21150{(0.451) staff:12 NATURAL pitch:-4.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#20807{(0.283) staff:13 NATURAL pitch:-3.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#20846{(0.145) staff:13 NATURAL pitch:-4.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#20929{(0.174) staff:13 NATURAL pitch:3.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#20977{(0.136) staff:13 NATURAL pitch:-1.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#20978{(0.141) staff:13 NATURAL pitch:4.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#21125{(0.574) staff:13 NATURAL pitch:4.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#20932{(0.495) staff:14 NATURAL pitch:1.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#21115{(0.440) staff:14 NATURAL pitch:5.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#21167{(0.176) staff:14 NATURAL pitch:2.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#21170{(0.487) staff:14 NATURAL pitch:5.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#21189{(0.128) staff:14 NATURAL pitch:-4.0}
 INFO  [p001]            StepMonitoring 98   | RHYTHMS
-INFO  [p001]             MeasureRhythm 1044 | Measure{#6} No timeOffset for HeadChordInter#14130{(0.931/0.931) staff:2 slot#3 dur:1/4}
+INFO  [p001]             MeasureRhythm 1044 | Measure{#6} No timeOffset for HeadChordInter#13932{(0.931/0.931) staff:2 slot#3 dur:1/4}
 INFO  [p001]               StackRhythm 224  | S1 MeasureStack#6 no correct rhythm
-INFO  [p001]             MeasureRhythm 1044 | Measure{#26P2} No timeOffset for HeadChordInter#14267{(0.948/0.948) staff:7 slot#3 dur:1/4}
-INFO  [p001]             MeasureRhythm 1044 | Measure{#26P2} No timeOffset for HeadChordInter#14292{(0.928/0.928) staff:8 slot#3 dur:1/4}
+INFO  [p001]             MeasureRhythm 1044 | Measure{#26P2} No timeOffset for HeadChordInter#14069{(0.948/0.948) staff:7 slot#3 dur:1/4}
+INFO  [p001]             MeasureRhythm 1044 | Measure{#26P2} No timeOffset for HeadChordInter#14094{(0.928/0.928) staff:8 slot#3 dur:1/4}
 INFO  [p001]               StackRhythm 224  | S3 MeasureStack#26 no correct rhythm
-INFO  [p001]             MeasureRhythm 1044 | Measure{#32P2} No timeOffset for HeadChordInter#14328{(0.961/0.961) staff:10 slot#3 dur:1/4}
-INFO  [p001]             MeasureRhythm 1044 | Measure{#32P2} No timeOffset for HeadChordInter#14341{(0.943/0.943) staff:11 slot#3 dur:1/4}
+INFO  [p001]             MeasureRhythm 1044 | Measure{#32P2} No timeOffset for HeadChordInter#14130{(0.961/0.961) staff:10 slot#3 dur:1/4}
+INFO  [p001]             MeasureRhythm 1044 | Measure{#32P2} No timeOffset for HeadChordInter#14143{(0.943/0.943) staff:11 slot#3 dur:1/4}
 INFO  [p001]               StackRhythm 224  | S4 MeasureStack#32 no correct rhythm
-INFO  [p001]             MeasureRhythm 1044 | Measure{#33P2} No timeOffset for HeadChordInter#14343{(0.932/0.932) staff:11 slot#3 dur:1/4}
+INFO  [p001]             MeasureRhythm 1044 | Measure{#33P2} No timeOffset for HeadChordInter#14145{(0.932/0.932) staff:11 slot#3 dur:1/4}
 INFO  [p001]                     Voice 257  | Measure{#33P2} Voice{#5 excess:1/4} too long
 INFO  [p001]               StackRhythm 224  | S4 MeasureStack#33 no correct rhythm
 INFO  [p001]            StepMonitoring 98   | PAGE
-INFO  [p001]            SheetReduction 154  | Gutter. Different glyphs 2/3 LedgerInter#3120{(0.648/0.648) staff:5 LEDGER} vs ArticulationInter#20136{(0.752/0.862) STACCATO}
-INFO  [p001]            SheetReduction 154  | Gutter. Different glyphs 4/5 DynamicsInter#20729{(0.391/0.683) DYNAMICS_P} vs DynamicsInter#21170{(0.611/0.611) DYNAMICS_P}
+INFO  [p001]            SheetReduction 154  | Gutter. Different glyphs 2/3 LedgerInter#3120{(0.648/0.648) staff:5 LEDGER} vs ArticulationInter#19934{(0.752/0.862) STACCATO}
+INFO  [p001]            SheetReduction 154  | Gutter. Different glyphs 4/5 DynamicsInter#20527{(0.391/0.683) DYNAMICS_P} vs DynamicsInter#20968{(0.611/0.611) DYNAMICS_P}
 INFO  [p001]                     Voice 257  | Measure{#33P2} Voice{#5 excess:1/4} too long
 INFO  [p001]                      Book 2584 | Book{p001} storing
 INFO  [p001]                      Book 2565 | Stored /book.xml
 INFO  [p001]                DataHolder 348  | Stored /sheet#1/BINARY.png
 INFO  [p001]                     Sheet 1583 | Stored /sheet#1/sheet#1.xml
-INFO  [p001]                      Book 2525 | Book stored as /tmp/tmpb23vfjak/out/p001.omr
+INFO  [p001]                      Book 2525 | Book stored as /tmp/tmp5p_a6bbw/out/p001.omr
 INFO  [p001]                 SheetStub 1655 | Sheet disposed
 INFO  [p001]                      Book 2050 | End of Stub#1
 INFO  [p001]                      Book 2057 | End of Book{p001}
 INFO  [p001]                 SheetStub 1000 | Loaded /sheet#1/sheet#1.xml
 INFO  [p001]           PartwiseBuilder 2707 | Exporting sheet(s): [#1]
 INFO  [p001]                      Part 351  | Sheet#1 System#1 Part#2{ staves[1,2] configs:[5,5]} dummyPart id: 1
-INFO  [p001]             ScoreExporter 164  | Score p001 exported to /tmp/tmpb23vfjak/out/p001.mxl
+INFO  [p001]             ScoreExporter 164  | Score p001 exported to /tmp/tmp5p_a6bbw/out/p001.mxl
 INFO  [p001]                     Score 181  | Closing {Score 1}
-INFO  [p002]                      Book 560  | 1 sheet in /tmp/tmpb23vfjak/pages/p002.pdf
+INFO  [p002]                      Book 560  | 1 sheet in /tmp/tmp5p_a6bbw/pages/p002.pdf
 INFO  []                      Book 2565 | Stored /book.xml
-INFO  []                      Book 2525 | Book stored as /tmp/tmpb23vfjak/out/p002.omr
+INFO  []                      Book 2525 | Book stored as /tmp/tmp5p_a6bbw/out/p002.omr
 INFO  []                      Book 1929 | Book reaching PAGE on sheets:[#1]
 INFO  [p002]            StepMonitoring 98   | LOAD
-INFO  [p002]                 SheetStub 1278 | Loaded image #1 2479x3508 from /tmp/tmpb23vfjak/pages/p002.pdf
+INFO  [p002]                 SheetStub 1278 | Loaded image #1 2479x3508 from /tmp/tmp5p_a6bbw/pages/p002.pdf
 INFO  [p002]            StepMonitoring 98   | BINARY
 INFO  [p002]            StepMonitoring 98   | SCALE
 INFO  [p002]              ScaleBuilder 254  | Beam  guessed height: 10 -- 0.25 of [8..17] range
@@ -165,50 +165,50 @@ INFO  [p002]              SlursBuilder 240  | Slurs: 67
 INFO  [p002]           SegmentsBuilder 155  | Segments: 63
 INFO  [p002]            StepMonitoring 98   | SYMBOLS
 INFO  [p002]            StepMonitoring 98   | LINKS
-INFO  [p002]             SymbolsLinker 258  | No chord linked to OctaveShiftInter#17279{(0.157) staff:1 QUINDICESIMA BASSA} at java.awt.Point[x=1051,y=389]
-INFO  [p002]             SymbolsLinker 258  | No chord linked to OctaveShiftInter#17438{(0.152) staff:1 QUINDICESIMA BASSA} at java.awt.Point[x=1934,y=390]
-INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#17284{(0.145) staff:1 NATURAL pitch:-2.0}
-INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#17183{(0.451) staff:2 NATURAL pitch:4.0}
-INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#17258{(0.234) staff:2 NATURAL pitch:3.0}
-INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#17260{(0.141) staff:2 NATURAL pitch:0.0}
-INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#17315{(0.364) staff:2 NATURAL pitch:-5.0}
-INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#17316{(0.234) staff:2 NATURAL pitch:2.0}
-INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#17185{(0.192) staff:3 NATURAL pitch:2.0}
-INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#17543{(0.487) staff:4 NATURAL pitch:-2.0}
-INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#17547{(0.145) staff:4 NATURAL pitch:-5.0}
-INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#17850{(0.141) staff:4 NATURAL pitch:4.0}
-INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#17897{(0.595) staff:4 NATURAL pitch:-2.0}
-INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#17902{(0.192) staff:4 NATURAL pitch:-5.0}
-INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#17548{(0.343) staff:5 NATURAL pitch:4.0}
-INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#17772{(0.145) staff:5 NATURAL pitch:-3.0}
-INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#17665{(0.363) staff:6 NATURAL pitch:1.0}
-INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#17666{(0.363) staff:6 NATURAL pitch:5.0}
-INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#17668{(0.234) staff:6 NATURAL pitch:3.0}
-INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#17864{(0.778) staff:6 NATURAL pitch:1.0}
-INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#18050{(0.197) staff:7 NATURAL pitch:-3.0}
-INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#18065{(0.487) staff:8 NATURAL pitch:-2.0}
-INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#18258{(0.343) staff:9 NATURAL pitch:-4.0}
-INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#18260{(0.487) staff:9 NATURAL pitch:-2.0}
-INFO  [p002]             SymbolsLinker 258  | No chord linked to OctaveShiftInter#18367{(0.219) staff:10 QUINDICESIMA BASSA} at java.awt.Point[x=402,y=2217]
-INFO  [p002]             SymbolsLinker 258  | No chord linked to OctaveShiftInter#18611{(0.148) staff:10 OTTAVA BASSA} at java.awt.Point[x=1476,y=2211]
-INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#18531{(0.234) staff:10 NATURAL pitch:3.0}
-INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#18587{(0.145) staff:10 NATURAL pitch:-1.0}
-INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#18592{(0.145) staff:10 NATURAL pitch:-3.0}
-INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#18516{(0.788) staff:11 NATURAL pitch:3.0}
-INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#18669{(0.152) staff:11 NATURAL pitch:3.0}
-INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#18670{(0.791) staff:11 NATURAL pitch:3.0}
-INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#18566{(0.206) staff:12 NATURAL pitch:4.0}
-INFO  [p002]             SymbolsLinker 258  | No chord linked to OctaveShiftInter#18993{(0.133) staff:15 QUINDICESIMA BASSA} at java.awt.Point[x=1218,y=3253]
-INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#18923{(0.487) staff:14 NATURAL pitch:-3.0}
-INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#18815{(0.434) staff:15 NATURAL pitch:0.0}
-INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#18897{(0.283) staff:15 NATURAL pitch:3.0}
+INFO  [p002]             SymbolsLinker 258  | No chord linked to OctaveShiftInter#17139{(0.157) staff:1 QUINDICESIMA BASSA} at java.awt.Point[x=1051,y=389]
+INFO  [p002]             SymbolsLinker 258  | No chord linked to OctaveShiftInter#17298{(0.152) staff:1 QUINDICESIMA BASSA} at java.awt.Point[x=1934,y=390]
+INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#17144{(0.145) staff:1 NATURAL pitch:-2.0}
+INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#17043{(0.451) staff:2 NATURAL pitch:4.0}
+INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#17118{(0.234) staff:2 NATURAL pitch:3.0}
+INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#17120{(0.141) staff:2 NATURAL pitch:0.0}
+INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#17175{(0.364) staff:2 NATURAL pitch:-5.0}
+INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#17176{(0.234) staff:2 NATURAL pitch:2.0}
+INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#17045{(0.192) staff:3 NATURAL pitch:2.0}
+INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#17403{(0.487) staff:4 NATURAL pitch:-2.0}
+INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#17407{(0.145) staff:4 NATURAL pitch:-5.0}
+INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#17705{(0.141) staff:4 NATURAL pitch:4.0}
+INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#17752{(0.595) staff:4 NATURAL pitch:-2.0}
+INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#17757{(0.192) staff:4 NATURAL pitch:-5.0}
+INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#17408{(0.343) staff:5 NATURAL pitch:4.0}
+INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#17627{(0.145) staff:5 NATURAL pitch:-3.0}
+INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#17520{(0.363) staff:6 NATURAL pitch:1.0}
+INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#17521{(0.363) staff:6 NATURAL pitch:5.0}
+INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#17523{(0.234) staff:6 NATURAL pitch:3.0}
+INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#17719{(0.778) staff:6 NATURAL pitch:1.0}
+INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#17901{(0.197) staff:7 NATURAL pitch:-3.0}
+INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#17916{(0.487) staff:8 NATURAL pitch:-2.0}
+INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#18109{(0.343) staff:9 NATURAL pitch:-4.0}
+INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#18111{(0.487) staff:9 NATURAL pitch:-2.0}
+INFO  [p002]             SymbolsLinker 258  | No chord linked to OctaveShiftInter#18218{(0.219) staff:10 QUINDICESIMA BASSA} at java.awt.Point[x=402,y=2217]
+INFO  [p002]             SymbolsLinker 258  | No chord linked to OctaveShiftInter#18460{(0.148) staff:10 OTTAVA BASSA} at java.awt.Point[x=1476,y=2211]
+INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#18382{(0.234) staff:10 NATURAL pitch:3.0}
+INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#18438{(0.145) staff:10 NATURAL pitch:-3.0}
+INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#18442{(0.145) staff:10 NATURAL pitch:-1.0}
+INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#18366{(0.788) staff:11 NATURAL pitch:3.0}
+INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#18520{(0.152) staff:11 NATURAL pitch:3.0}
+INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#18521{(0.791) staff:11 NATURAL pitch:3.0}
+INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#18417{(0.206) staff:12 NATURAL pitch:4.0}
+INFO  [p002]             SymbolsLinker 258  | No chord linked to OctaveShiftInter#18844{(0.133) staff:15 QUINDICESIMA BASSA} at java.awt.Point[x=1218,y=3253]
+INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#18774{(0.487) staff:14 NATURAL pitch:-3.0}
+INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#18666{(0.434) staff:15 NATURAL pitch:0.0}
+INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#18748{(0.283) staff:15 NATURAL pitch:3.0}
 INFO  [p002]            StepMonitoring 98   | RHYTHMS
-INFO  [p002]             MeasureRhythm 1044 | Measure{#1P2} No timeOffset for HeadChordInter#13838{(0.916/0.916) staff:12 slot#2 dur:1/4}
-INFO  [p002]        AbstractChordInter 635  | Measure{#1P2} No timeOffset for HeadChordInter#13838{(0.916/0.916) staff:12 slot#2 dur:1/4}
+INFO  [p002]             MeasureRhythm 1044 | Measure{#1P2} No timeOffset for HeadChordInter#13698{(0.916/0.916) staff:12 slot#2 dur:1/4}
+INFO  [p002]        AbstractChordInter 635  | Measure{#1P2} No timeOffset for HeadChordInter#13698{(0.916/0.916) staff:12 slot#2 dur:1/4}
 INFO  [p002]               StackRhythm 224  | S4 MeasureStack#1 no correct rhythm
-INFO  [p002]             MeasureRhythm 1044 | Measure{#4P1} No timeOffset for HeadChordInter#13796{(0.932/0.932) staff:10 slot#3 dur:1/4}
+INFO  [p002]             MeasureRhythm 1044 | Measure{#4P1} No timeOffset for HeadChordInter#13656{(0.932/0.932) staff:10 slot#3 dur:1/4}
 INFO  [p002]               StackRhythm 224  | S4 MeasureStack#4 no correct rhythm
-INFO  [p002]             MeasureRhythm 1044 | Measure{#14P2} No timeOffset for RestChordInter#19429{(0.733/0.733) staff:15 slot#3 dur:1/4}
+INFO  [p002]             MeasureRhythm 1044 | Measure{#14P2} No timeOffset for RestChordInter#19292{(0.733/0.733) staff:15 slot#3 dur:1/4}
 INFO  [p002]               StackRhythm 224  | S5 MeasureStack#14 no correct rhythm
 INFO  [p002]            StepMonitoring 98   | PAGE
 WARN  [p002]              MeasureFixer 343  | System#1 No target duration for measures local IDs [1, 2, 3, 4, 5, 6, 7, 8, 9], please check time signatures
@@ -218,16 +218,16 @@ INFO  [p002]                      Book 2584 | Book{p002} storing
 INFO  [p002]                      Book 2565 | Stored /book.xml
 INFO  [p002]                DataHolder 348  | Stored /sheet#1/BINARY.png
 INFO  [p002]                     Sheet 1583 | Stored /sheet#1/sheet#1.xml
-INFO  [p002]                      Book 2525 | Book stored as /tmp/tmpb23vfjak/out/p002.omr
+INFO  [p002]                      Book 2525 | Book stored as /tmp/tmp5p_a6bbw/out/p002.omr
 INFO  [p002]                 SheetStub 1655 | Sheet disposed
 INFO  [p002]                      Book 2050 | End of Stub#1
 INFO  [p002]                      Book 2057 | End of Book{p002}
 INFO  [p002]                 SheetStub 1000 | Loaded /sheet#1/sheet#1.xml
 INFO  [p002]           PartwiseBuilder 2707 | Exporting sheet(s): [#1]
-INFO  [p002]             ScoreExporter 164  | Score p002.mvt1 exported to /tmp/tmpb23vfjak/out/p002.mvt1.mxl
+INFO  [p002]             ScoreExporter 164  | Score p002.mvt1 exported to /tmp/tmp5p_a6bbw/out/p002.mvt1.mxl
 INFO  [p002]           PartwiseBuilder 2707 | Exporting sheet(s): [#1]
-INFO  [p002]             ScoreExporter 164  | Score p002.mvt2 exported to /tmp/tmpb23vfjak/out/p002.mvt2.mxl
+INFO  [p002]             ScoreExporter 164  | Score p002.mvt2 exported to /tmp/tmp5p_a6bbw/out/p002.mvt2.mxl
 INFO  [p002]                     Score 181  | Closing {Score 1}
 INFO  [p002]                     Score 181  | Closing {Score 2}
 
-(Audiveris:2693): dbind-WARNING **: 18:42:59.210: AT-SPI: Error retrieving accessibility bus address: org.freedesktop.DBus.Error.ServiceUnknown: The name org.a11y.Bus was not provided by any .service files
+(Audiveris:2560): dbind-WARNING **: 19:27:30.189: AT-SPI: Error retrieving accessibility bus address: org.freedesktop.DBus.Error.ServiceUnknown: The name org.a11y.Bus was not provided by any .service files

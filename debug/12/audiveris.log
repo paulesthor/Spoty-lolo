@@ -3,15 +3,15 @@ INFO  []              TesseractOCR 137  | Creating OCR folder /home/runner/.conf
 WARN  []                 Languages 142  | *** No installed OCR languages ***
 INFO  []             AliasPatterns 146  | Alias patterns: [(IMSLP[0-9]*)-.*]
 INFO  []                      Main 194  | Submitting 3 task(s) in sequence:
-    Input "/tmp/tmp_c9ehm0m/pages/p001.pdf"
-    Input "/tmp/tmp_c9ehm0m/pages/p002.pdf"
-    Input "/tmp/tmp_c9ehm0m/pages/p003.pdf"
-INFO  [p001]                      Book 560  | 1 sheet in /tmp/tmp_c9ehm0m/pages/p001.pdf
+    Input "/tmp/tmpvm1zcdk9/pages/p001.pdf"
+    Input "/tmp/tmpvm1zcdk9/pages/p002.pdf"
+    Input "/tmp/tmpvm1zcdk9/pages/p003.pdf"
+INFO  [p001]                      Book 560  | 1 sheet in /tmp/tmpvm1zcdk9/pages/p001.pdf
 INFO  []                      Book 2565 | Stored /book.xml
-INFO  []                      Book 2525 | Book stored as /tmp/tmp_c9ehm0m/out/p001.omr
+INFO  []                      Book 2525 | Book stored as /tmp/tmpvm1zcdk9/out/p001.omr
 INFO  []                      Book 1929 | Book reaching PAGE on sheets:[#1]
 INFO  [p001]            StepMonitoring 98   | LOAD
-INFO  [p001]                 SheetStub 1278 | Loaded image #1 2479x3508 from /tmp/tmp_c9ehm0m/pages/p001.pdf
+INFO  [p001]                 SheetStub 1278 | Loaded image #1 2479x3508 from /tmp/tmpvm1zcdk9/pages/p001.pdf
 INFO  [p001]            StepMonitoring 98   | BINARY
 INFO  [p001]            StepMonitoring 98   | SCALE
 INFO  [p001]              ScaleBuilder 254  | Beam  guessed height: 14 -- 0.25 of [11..24] range
@@ -56,10 +56,10 @@ INFO  [p001]              SlursBuilder 240  | Slurs: 1
 INFO  [p001]           SegmentsBuilder 155  | Segments: 10
 INFO  [p001]            StepMonitoring 98   | SYMBOLS
 INFO  [p001]            StepMonitoring 98   | LINKS
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#5216{(0.171) staff:1 NATURAL pitch:0.0}
-WARN  [p001]                  KeyInter 1174 | No effective clef before AlterInter#5316{(0.568) staff:2 FLAT pitch:-1.0}
-WARN  [p001]                  KeyInter 1174 | No effective clef before AlterInter#5338{(0.152) staff:2 SHARP pitch:4.0}
-WARN  [p001]                  KeyInter 1174 | No effective clef before AlterInter#5353{(0.152) staff:2 SHARP pitch:2.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#5219{(0.171) staff:1 NATURAL pitch:0.0}
+WARN  [p001]                  KeyInter 1174 | No effective clef before AlterInter#5319{(0.568) staff:2 FLAT pitch:-1.0}
+WARN  [p001]                  KeyInter 1174 | No effective clef before AlterInter#5341{(0.152) staff:2 SHARP pitch:4.0}
+WARN  [p001]                  KeyInter 1174 | No effective clef before AlterInter#5356{(0.152) staff:2 SHARP pitch:2.0}
 INFO  [p001]            StepMonitoring 98   | RHYTHMS
 INFO  [p001]            StepMonitoring 98   | PAGE
 WARN  [p001]              MeasureFixer 343  | System#1 No target duration for measures local IDs [1, 2, 3], please check time signatures
@@ -69,23 +69,23 @@ INFO  [p001]                      Book 2584 | Book{p001} storing
 INFO  [p001]                      Book 2565 | Stored /book.xml
 INFO  [p001]                DataHolder 348  | Stored /sheet#1/BINARY.png
 INFO  [p001]                     Sheet 1583 | Stored /sheet#1/sheet#1.xml
-INFO  [p001]                      Book 2525 | Book stored as /tmp/tmp_c9ehm0m/out/p001.omr
+INFO  [p001]                      Book 2525 | Book stored as /tmp/tmpvm1zcdk9/out/p001.omr
 INFO  [p001]                 SheetStub 1655 | Sheet disposed
 INFO  [p001]                      Book 2050 | End of Stub#1
 INFO  [p001]                      Book 2057 | End of Book{p001}
 INFO  [p001]                 SheetStub 1000 | Loaded /sheet#1/sheet#1.xml
 INFO  [p001]           PartwiseBuilder 2707 | Exporting sheet(s): [#1]
-INFO  [p001]             ScoreExporter 164  | Score p001.mvt1 exported to /tmp/tmp_c9ehm0m/out/p001.mvt1.mxl
+INFO  [p001]             ScoreExporter 164  | Score p001.mvt1 exported to /tmp/tmpvm1zcdk9/out/p001.mvt1.mxl
 INFO  [p001]           PartwiseBuilder 2707 | Exporting sheet(s): [#1]
-INFO  [p001]             ScoreExporter 164  | Score p001.mvt2 exported to /tmp/tmp_c9ehm0m/out/p001.mvt2.mxl
+INFO  [p001]             ScoreExporter 164  | Score p001.mvt2 exported to /tmp/tmpvm1zcdk9/out/p001.mvt2.mxl
 INFO  [p001]                     Score 181  | Closing {Score 1}
 INFO  [p001]                     Score 181  | Closing {Score 2}
-INFO  [p002]                      Book 560  | 1 sheet in /tmp/tmp_c9ehm0m/pages/p002.pdf
+INFO  [p002]                      Book 560  | 1 sheet in /tmp/tmpvm1zcdk9/pages/p002.pdf
 INFO  []                      Book 2565 | Stored /book.xml
-INFO  []                      Book 2525 | Book stored as /tmp/tmp_c9ehm0m/out/p002.omr
+INFO  []                      Book 2525 | Book stored as /tmp/tmpvm1zcdk9/out/p002.omr
 INFO  []                      Book 1929 | Book reaching PAGE on sheets:[#1]
 INFO  [p002]            StepMonitoring 98   | LOAD
-INFO  [p002]                 SheetStub 1278 | Loaded image #1 2479x3508 from /tmp/tmp_c9ehm0m/pages/p002.pdf
+INFO  [p002]                 SheetStub 1278 | Loaded image #1 2479x3508 from /tmp/tmpvm1zcdk9/pages/p002.pdf
 INFO  [p002]            StepMonitoring 98   | BINARY
 INFO  [p002]            StepMonitoring 98   | SCALE
 INFO  [p002]              ScaleBuilder 254  | Beam  guessed height: 14 -- 0.25 of [11..22] range
@@ -123,20 +123,20 @@ INFO  [p002]              SlursBuilder 240  | Slurs: 2
 INFO  [p002]           SegmentsBuilder 155  | Segments: 10
 INFO  [p002]            StepMonitoring 98   | SYMBOLS
 INFO  [p002]            StepMonitoring 98   | LINKS
-INFO  [p002]                  KeyInter 1331 | Key built KeyInter#11593{(0.249) staff:1 KEY_CANCEL pitch:0.0 fifths:null}
-INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#10733{(0.610) staff:2 NATURAL pitch:2.0}
-INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#10938{(0.379) staff:3 NATURAL pitch:0.0}
-INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#10975{(0.555) staff:3 NATURAL pitch:3.0}
-INFO  [p002]                  KeyInter 1331 | Key built KeyInter#11595{(0.152) staff:3 KEY_SHARP_1 pitch:-3.9 fifths:1}
-INFO  [p002]                  KeyInter 1331 | Key built KeyInter#11597{(0.152) staff:4 KEY_SHARP_1 pitch:-3.9 fifths:1}
-INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#11336{(0.148) staff:5 NATURAL pitch:2.0}
-INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#11426{(0.171) staff:5 NATURAL pitch:2.0}
-INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#11438{(0.767) staff:5 NATURAL pitch:1.0}
-INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#11417{(0.243) staff:5 NATURAL pitch:-3.0}
-INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#11463{(0.526) staff:5 NATURAL pitch:-4.0}
-INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#11468{(0.212) staff:5 NATURAL pitch:1.0}
-INFO  [p002]                  KeyInter 1331 | Key built KeyInter#11599{(0.152) staff:5 KEY_SHARP_1 pitch:-4.2 fifths:1}
-INFO  [p002]                  KeyInter 1331 | Key built KeyInter#11601{(0.152) staff:6 KEY_SHARP_1 pitch:-3.9 fifths:1}
+INFO  [p002]                  KeyInter 1331 | Key built KeyInter#11507{(0.249) staff:1 KEY_CANCEL pitch:0.0 fifths:null}
+INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#10647{(0.610) staff:2 NATURAL pitch:2.0}
+INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#10852{(0.379) staff:3 NATURAL pitch:0.0}
+INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#10889{(0.555) staff:3 NATURAL pitch:3.0}
+INFO  [p002]                  KeyInter 1331 | Key built KeyInter#11509{(0.152) staff:3 KEY_SHARP_1 pitch:-3.9 fifths:1}
+INFO  [p002]                  KeyInter 1331 | Key built KeyInter#11511{(0.152) staff:4 KEY_SHARP_1 pitch:-3.9 fifths:1}
+INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#11250{(0.148) staff:5 NATURAL pitch:2.0}
+INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#11340{(0.171) staff:5 NATURAL pitch:2.0}
+INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#11352{(0.767) staff:5 NATURAL pitch:1.0}
+INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#11331{(0.243) staff:5 NATURAL pitch:-3.0}
+INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#11377{(0.526) staff:5 NATURAL pitch:-4.0}
+INFO  [p002]                  KeyInter 1198 | No effective key before AlterInter#11382{(0.212) staff:5 NATURAL pitch:1.0}
+INFO  [p002]                  KeyInter 1331 | Key built KeyInter#11513{(0.152) staff:5 KEY_SHARP_1 pitch:-4.2 fifths:1}
+INFO  [p002]                  KeyInter 1331 | Key built KeyInter#11515{(0.152) staff:6 KEY_SHARP_1 pitch:-3.9 fifths:1}
 INFO  [p002]            StepMonitoring 98   | RHYTHMS
 INFO  [p002]            StepMonitoring 98   | PAGE
 WARN  [p002]              MeasureFixer 343  | System#1 No target duration for measures local IDs [1, 2, 3, 4, 5], please check time signatures
@@ -149,7 +149,7 @@ INFO  [p002]                      Book 2584 | Book{p002} storing
 INFO  [p002]                      Book 2565 | Stored /book.xml
 INFO  [p002]                DataHolder 348  | Stored /sheet#1/BINARY.png
 INFO  [p002]                     Sheet 1583 | Stored /sheet#1/sheet#1.xml
-INFO  [p002]                      Book 2525 | Book stored as /tmp/tmp_c9ehm0m/out/p002.omr
+INFO  [p002]                      Book 2525 | Book stored as /tmp/tmpvm1zcdk9/out/p002.omr
 INFO  [p002]                 SheetStub 1655 | Sheet disposed
 INFO  [p002]                      Book 2050 | End of Stub#1
 INFO  [p002]                      Book 2057 | End of Book{p002}
@@ -246,14 +246,14 @@ java.lang.IllegalStateException: PartBarline with no proper StaffBarline in {Sta
 	at org.audiveris.omr.Main.runBatchTasks(Main.java:370)
 	at org.audiveris.omr.Main.main(Main.java:272)
 	at Audiveris.main(Audiveris.java:50)
-INFO  [p002]             ScoreExporter 164  | Score p002 exported to /tmp/tmp_c9ehm0m/out/p002.mxl
+INFO  [p002]             ScoreExporter 164  | Score p002 exported to /tmp/tmpvm1zcdk9/out/p002.mxl
 INFO  [p002]                     Score 181  | Closing {Score 1}
-INFO  [p003]                      Book 560  | 1 sheet in /tmp/tmp_c9ehm0m/pages/p003.pdf
+INFO  [p003]                      Book 560  | 1 sheet in /tmp/tmpvm1zcdk9/pages/p003.pdf
 INFO  []                      Book 2565 | Stored /book.xml
-INFO  []                      Book 2525 | Book stored as /tmp/tmp_c9ehm0m/out/p003.omr
+INFO  []                      Book 2525 | Book stored as /tmp/tmpvm1zcdk9/out/p003.omr
 INFO  []                      Book 1929 | Book reaching PAGE on sheets:[#1]
 INFO  [p003]            StepMonitoring 98   | LOAD
-INFO  [p003]                 SheetStub 1278 | Loaded image #1 2479x3508 from /tmp/tmp_c9ehm0m/pages/p003.pdf
+INFO  [p003]                 SheetStub 1278 | Loaded image #1 2479x3508 from /tmp/tmpvm1zcdk9/pages/p003.pdf
 INFO  [p003]            StepMonitoring 98   | BINARY
 INFO  [p003]            StepMonitoring 98   | SCALE
 INFO  [p003]              ScaleBuilder 254  | Beam  guessed height: 14 -- 0.25 of [11..22] range
@@ -303,27 +303,27 @@ INFO  [p003]              SlursBuilder 240  | Slurs: 3
 INFO  [p003]           SegmentsBuilder 155  | Segments: 24
 INFO  [p003]            StepMonitoring 98   | SYMBOLS
 INFO  [p003]            StepMonitoring 98   | LINKS
-WARN  [p003]                  KeyInter 1174 | No effective clef before AlterInter#9965{(0.191) staff:2 NATURAL pitch:-3.0}
-WARN  [p003]                  KeyInter 1174 | No effective clef before AlterInter#10016{(0.152) staff:2 SHARP pitch:-4.0}
-WARN  [p003]                  KeyInter 1174 | No effective clef before AlterInter#10030{(0.152) staff:2 SHARP pitch:4.0}
-WARN  [p003]                  KeyInter 1174 | No effective clef before AlterInter#10063{(0.352) staff:2 FLAT pitch:1.0}
-WARN  [p003]                  KeyInter 1174 | No effective clef before AlterInter#10065{(0.152) staff:2 SHARP pitch:-2.0}
-INFO  [p003]                  KeyInter 1198 | No effective key before AlterInter#10077{(0.452) staff:3 NATURAL pitch:-1.0}
-INFO  [p003]                  KeyInter 1331 | Key built KeyInter#10755{(0.152) staff:4 KEY_SHARP_1 pitch:-4.0 fifths:1}
-WARN  [p003]                  KeyInter 1174 | No effective clef before AlterInter#10278{(0.171) staff:5 NATURAL pitch:-4.0}
-WARN  [p003]                  KeyInter 1174 | No effective clef before AlterInter#10279{(0.326) staff:5 NATURAL pitch:3.0}
-WARN  [p003]                  KeyInter 1174 | No effective clef before AlterInter#10288{(0.241) staff:5 FLAT pitch:-3.0}
-WARN  [p003]                  KeyInter 1174 | No effective clef before AlterInter#10303{(0.152) staff:5 SHARP pitch:2.0}
+WARN  [p003]                  KeyInter 1174 | No effective clef before AlterInter#9963{(0.191) staff:2 NATURAL pitch:-3.0}
+WARN  [p003]                  KeyInter 1174 | No effective clef before AlterInter#10014{(0.152) staff:2 SHARP pitch:-4.0}
+WARN  [p003]                  KeyInter 1174 | No effective clef before AlterInter#10028{(0.152) staff:2 SHARP pitch:4.0}
+WARN  [p003]                  KeyInter 1174 | No effective clef before AlterInter#10061{(0.352) staff:2 FLAT pitch:1.0}
+WARN  [p003]                  KeyInter 1174 | No effective clef before AlterInter#10063{(0.152) staff:2 SHARP pitch:-2.0}
+INFO  [p003]                  KeyInter 1198 | No effective key before AlterInter#10075{(0.452) staff:3 NATURAL pitch:-1.0}
+INFO  [p003]                  KeyInter 1331 | Key built KeyInter#10753{(0.152) staff:4 KEY_SHARP_1 pitch:-4.0 fifths:1}
+WARN  [p003]                  KeyInter 1174 | No effective clef before AlterInter#10276{(0.171) staff:5 NATURAL pitch:-4.0}
+WARN  [p003]                  KeyInter 1174 | No effective clef before AlterInter#10277{(0.326) staff:5 NATURAL pitch:3.0}
+WARN  [p003]                  KeyInter 1174 | No effective clef before AlterInter#10286{(0.241) staff:5 FLAT pitch:-3.0}
+WARN  [p003]                  KeyInter 1174 | No effective clef before AlterInter#10301{(0.152) staff:5 SHARP pitch:2.0}
 WARN  [p003]                  KeyInter 1174 | No effective clef before KeyAlterInter#250{(0.725/0.725) staff:6 FLAT pitch:0.0}
-WARN  [p003]                  KeyInter 1174 | No effective clef before AlterInter#10396{(0.363) staff:6 NATURAL pitch:-2.0}
-WARN  [p003]                  KeyInter 1174 | No effective clef before AlterInter#10407{(0.152) staff:6 SHARP pitch:0.0}
-WARN  [p003]                  KeyInter 1174 | No effective clef before AlterInter#10449{(0.625) staff:6 NATURAL pitch:3.0}
-WARN  [p003]                  KeyInter 1174 | No effective clef before AlterInter#10455{(0.185) staff:6 NATURAL pitch:-3.0}
-WARN  [p003]                  KeyInter 1174 | No effective clef before AlterInter#10456{(0.620) staff:6 SHARP pitch:0.0}
-WARN  [p003]                  KeyInter 1174 | No effective clef before AlterInter#10534{(0.152) staff:6 SHARP pitch:-4.0}
-WARN  [p003]                  KeyInter 1174 | No effective clef before AlterInter#10563{(0.152) staff:6 SHARP pitch:-4.0}
-WARN  [p003]                  KeyInter 1174 | No effective clef before AlterInter#10566{(0.182) staff:6 NATURAL pitch:2.0}
-INFO  [p003]                  KeyInter 1198 | No effective key before AlterInter#10740{(0.185) staff:7 NATURAL pitch:3.0}
+WARN  [p003]                  KeyInter 1174 | No effective clef before AlterInter#10394{(0.363) staff:6 NATURAL pitch:-2.0}
+WARN  [p003]                  KeyInter 1174 | No effective clef before AlterInter#10405{(0.152) staff:6 SHARP pitch:0.0}
+WARN  [p003]                  KeyInter 1174 | No effective clef before AlterInter#10447{(0.625) staff:6 NATURAL pitch:3.0}
+WARN  [p003]                  KeyInter 1174 | No effective clef before AlterInter#10453{(0.185) staff:6 NATURAL pitch:-3.0}
+WARN  [p003]                  KeyInter 1174 | No effective clef before AlterInter#10454{(0.620) staff:6 SHARP pitch:0.0}
+WARN  [p003]                  KeyInter 1174 | No effective clef before AlterInter#10532{(0.152) staff:6 SHARP pitch:-4.0}
+WARN  [p003]                  KeyInter 1174 | No effective clef before AlterInter#10561{(0.152) staff:6 SHARP pitch:-4.0}
+WARN  [p003]                  KeyInter 1174 | No effective clef before AlterInter#10564{(0.182) staff:6 NATURAL pitch:2.0}
+INFO  [p003]                  KeyInter 1198 | No effective key before AlterInter#10738{(0.185) staff:7 NATURAL pitch:3.0}
 INFO  [p003]            StepMonitoring 98   | RHYTHMS
 INFO  [p003]            StepMonitoring 98   | PAGE
 WARN  [p003]              MeasureFixer 343  | System#1 No target duration for measures local IDs [1, 2, 3, 4], please check time signatures
@@ -337,19 +337,19 @@ INFO  [p003]                      Book 2584 | Book{p003} storing
 INFO  [p003]                      Book 2565 | Stored /book.xml
 INFO  [p003]                DataHolder 348  | Stored /sheet#1/BINARY.png
 INFO  [p003]                     Sheet 1583 | Stored /sheet#1/sheet#1.xml
-INFO  [p003]                      Book 2525 | Book stored as /tmp/tmp_c9ehm0m/out/p003.omr
+INFO  [p003]                      Book 2525 | Book stored as /tmp/tmpvm1zcdk9/out/p003.omr
 INFO  [p003]                 SheetStub 1655 | Sheet disposed
 INFO  [p003]                      Book 2050 | End of Stub#1
 INFO  [p003]                      Book 2057 | End of Book{p003}
 INFO  [p003]                 SheetStub 1000 | Loaded /sheet#1/sheet#1.xml
 INFO  [p003]           PartwiseBuilder 2707 | Exporting sheet(s): [#1]
-INFO  [p003]             ScoreExporter 164  | Score p003.mvt1 exported to /tmp/tmp_c9ehm0m/out/p003.mvt1.mxl
+INFO  [p003]             ScoreExporter 164  | Score p003.mvt1 exported to /tmp/tmpvm1zcdk9/out/p003.mvt1.mxl
 INFO  [p003]           PartwiseBuilder 2707 | Exporting sheet(s): [#1]
-INFO  [p003]             ScoreExporter 164  | Score p003.mvt2 exported to /tmp/tmp_c9ehm0m/out/p003.mvt2.mxl
+INFO  [p003]             ScoreExporter 164  | Score p003.mvt2 exported to /tmp/tmpvm1zcdk9/out/p003.mvt2.mxl
 INFO  [p003]           PartwiseBuilder 2707 | Exporting sheet(s): [#1]
-INFO  [p003]             ScoreExporter 164  | Score p003.mvt3 exported to /tmp/tmp_c9ehm0m/out/p003.mvt3.mxl
+INFO  [p003]             ScoreExporter 164  | Score p003.mvt3 exported to /tmp/tmpvm1zcdk9/out/p003.mvt3.mxl
 INFO  [p003]                     Score 181  | Closing {Score 1}
 INFO  [p003]                     Score 181  | Closing {Score 2}
 INFO  [p003]                     Score 181  | Closing {Score 3}
 
-(Audiveris:2619): dbind-WARNING **: 18:42:29.889: AT-SPI: Error retrieving accessibility bus address: org.freedesktop.DBus.Error.ServiceUnknown: The name org.a11y.Bus was not provided by any .service files
+(Audiveris:2488): dbind-WARNING **: 19:26:52.427: AT-SPI: Error retrieving accessibility bus address: org.freedesktop.DBus.Error.ServiceUnknown: The name org.a11y.Bus was not provided by any .service files

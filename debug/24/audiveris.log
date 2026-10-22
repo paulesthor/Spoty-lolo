@@ -2,13 +2,13 @@ INFO  []                      Main 259  | Running in batch mode
 WARN  []                 Languages 142  | *** No installed OCR languages ***
 INFO  []             AliasPatterns 146  | Alias patterns: [(IMSLP[0-9]*)-.*]
 INFO  []                      Main 194  | Submitting 1 task(s) in sequence:
-    Input "/tmp/tmptuvjsc4z/pages/p001.pdf"
-INFO  [p001]                      Book 560  | 1 sheet in /tmp/tmptuvjsc4z/pages/p001.pdf
+    Input "/tmp/tmpri6kcnb9/pages/p001.pdf"
+INFO  [p001]                      Book 560  | 1 sheet in /tmp/tmpri6kcnb9/pages/p001.pdf
 INFO  []                      Book 2565 | Stored /book.xml
-INFO  []                      Book 2525 | Book stored as /tmp/tmptuvjsc4z/out/p001.omr
+INFO  []                      Book 2525 | Book stored as /tmp/tmpri6kcnb9/out/p001.omr
 INFO  []                      Book 1929 | Book reaching PAGE on sheets:[#1]
 INFO  [p001]            StepMonitoring 98   | LOAD
-INFO  [p001]                 SheetStub 1278 | Loaded image #1 2479x3508 from /tmp/tmptuvjsc4z/pages/p001.pdf
+INFO  [p001]                 SheetStub 1278 | Loaded image #1 2479x3508 from /tmp/tmpri6kcnb9/pages/p001.pdf
 INFO  [p001]            StepMonitoring 98   | BINARY
 INFO  [p001]            StepMonitoring 98   | SCALE
 INFO  [p001]              ScaleBuilder 254  | Beam  guessed height: 18 -- 0.25 of [14..29] range
@@ -47,16 +47,16 @@ INFO  [p001]              SlursBuilder 240  | Slurs: 25
 INFO  [p001]           SegmentsBuilder 155  | Segments: 8
 INFO  [p001]            StepMonitoring 98   | SYMBOLS
 INFO  [p001]            StepMonitoring 98   | LINKS
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#5044{(0.513) staff:3 NATURAL pitch:1.0}
-INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#5465{(0.133) staff:7 NATURAL pitch:2.0}
-INFO  [p001]                  KeyInter 1331 | Key built KeyInter#5484{(0.266) staff:7 KEY_SHARP_1 pitch:-0.2 fifths:1}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#5022{(0.513) staff:3 NATURAL pitch:1.0}
+INFO  [p001]                  KeyInter 1198 | No effective key before AlterInter#5443{(0.133) staff:7 NATURAL pitch:2.0}
+INFO  [p001]                  KeyInter 1331 | Key built KeyInter#5462{(0.266) staff:7 KEY_SHARP_1 pitch:-0.2 fifths:1}
 INFO  [p001]            StepMonitoring 98   | RHYTHMS
-INFO  [p001]             MeasureRhythm 1044 | Measure{#6} No timeOffset for HeadChordInter#3928{(0.934/0.934) staff:1 slot#8 dur:1/4}
-INFO  [p001]        AbstractChordInter 635  | Measure{#6} No timeOffset for HeadChordInter#3928{(0.934/0.934) staff:1 slot#8 dur:1/4}
+INFO  [p001]             MeasureRhythm 1044 | Measure{#6} No timeOffset for HeadChordInter#3906{(0.934/0.934) staff:1 slot#8 dur:1/4}
+INFO  [p001]        AbstractChordInter 635  | Measure{#6} No timeOffset for HeadChordInter#3906{(0.934/0.934) staff:1 slot#8 dur:1/4}
 INFO  [p001]                     Voice 257  | Measure{#6} Voice{#3 excess:1/4} too long
 INFO  [p001]               StackRhythm 224  | S1 MeasureStack#6 no correct rhythm
-INFO  [p001]             MeasureRhythm 1044 | Measure{#33} No timeOffset for HeadChordInter#4000{(0.944/0.944) staff:5 slot#5 dur:1/4}
-INFO  [p001]        AbstractChordInter 635  | Measure{#33} No timeOffset for HeadChordInter#4000{(0.944/0.944) staff:5 slot#5 dur:1/4}
+INFO  [p001]             MeasureRhythm 1044 | Measure{#33} No timeOffset for HeadChordInter#3978{(0.944/0.944) staff:5 slot#5 dur:1/4}
+INFO  [p001]        AbstractChordInter 635  | Measure{#33} No timeOffset for HeadChordInter#3978{(0.944/0.944) staff:5 slot#5 dur:1/4}
 INFO  [p001]               StackRhythm 224  | S5 MeasureStack#33 no correct rhythm
 INFO  [p001]            StepMonitoring 98   | PAGE
 INFO  [p001]                     Voice 257  | Measure{#6} Voice{#3 excess:1/4} too long
@@ -64,7 +64,7 @@ INFO  [p001]                      Book 2584 | Book{p001} storing
 INFO  [p001]                      Book 2565 | Stored /book.xml
 INFO  [p001]                DataHolder 348  | Stored /sheet#1/BINARY.png
 INFO  [p001]                     Sheet 1583 | Stored /sheet#1/sheet#1.xml
-INFO  [p001]                      Book 2525 | Book stored as /tmp/tmptuvjsc4z/out/p001.omr
+INFO  [p001]                      Book 2525 | Book stored as /tmp/tmpri6kcnb9/out/p001.omr
 INFO  [p001]                 SheetStub 1655 | Sheet disposed
 INFO  [p001]                      Book 2050 | End of Stub#1
 INFO  [p001]                      Book 2057 | End of Book{p001}
@@ -160,7 +160,7 @@ java.lang.IllegalStateException: PartBarline with no proper StaffBarline in {Sta
 	at org.audiveris.omr.Main.runBatchTasks(Main.java:370)
 	at org.audiveris.omr.Main.main(Main.java:272)
 	at Audiveris.main(Audiveris.java:50)
-INFO  [p001]             ScoreExporter 164  | Score p001 exported to /tmp/tmptuvjsc4z/out/p001.mxl
+INFO  [p001]             ScoreExporter 164  | Score p001 exported to /tmp/tmpri6kcnb9/out/p001.mxl
 INFO  [p001]                     Score 181  | Closing {Score 1}
 
-(Audiveris:2762): dbind-WARNING **: 18:43:34.091: AT-SPI: Error retrieving accessibility bus address: org.freedesktop.DBus.Error.ServiceUnknown: The name org.a11y.Bus was not provided by any .service files
+(Audiveris:2641): dbind-WARNING **: 19:28:14.830: AT-SPI: Error retrieving accessibility bus address: org.freedesktop.DBus.Error.ServiceUnknown: The name org.a11y.Bus was not provided by any .service files
