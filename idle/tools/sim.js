@@ -8,6 +8,8 @@ const Big = globalThis.Big;
 const STRATS = {
   actif: { desc: 'Joue en continu, prestige dès que le gain double sa monnaie, achète les améliorations les moins chères.', mult: 1 },
   patient: { desc: 'Joue en continu, prestige seulement quand le gain vaut 10× sa monnaie.', mult: 10 },
+  patient100: { desc: 'Prestige seulement quand le gain vaut 100× sa monnaie.', mult: 100 },
+  patient1000: { desc: 'Prestige seulement quand le gain vaut 1 000× sa monnaie (très peu de prestiges).', mult: 1000 },
   spam: { desc: 'Prestige dès que possible (aucun seuil), pour tester les abus de reset.', mult: 0, minTime: 0 },
   econome: { desc: "N'achète une amélioration répétable que si elle coûte ≤ 10 % de la monnaie (garde les bonus de monnaie non dépensée).", mult: 1, thrift: 0.1 },
   cher: { desc: "Achète d'abord l'amélioration la plus chère qu'il peut payer.", mult: 1, expensiveFirst: true },
