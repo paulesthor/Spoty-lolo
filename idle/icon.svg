@@ -1,12 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <defs>
-    <radialGradient id="g" cx="50%" cy="50%" r="50%">
-      <stop offset="0" stop-color="#c4b5fd"/>
-      <stop offset=".45" stop-color="#7c3aed"/>
-      <stop offset="1" stop-color="#0b0d1a"/>
-    </radialGradient>
-  </defs>
-  <rect width="512" height="512" rx="96" fill="#0b0d1a"/>
-  <circle cx="256" cy="256" r="190" fill="url(#g)"/>
-  <path d="M136 256c0-50 30-80 66-80 58 0 92 160 150 160 36 0 66-30 66-80s-30-80-66-80c-58 0-92 160-150 160-36 0-66-30-66-80z" fill="none" stroke="#fff" stroke-width="34" stroke-linecap="round"/>
+  <rect width="512" height="512" rx="96" fill="#12140d"/>
+  <ellipse cx="256" cy="300" rx="190" ry="150" fill="#e6db74" opacity=".08"/>
+  <!-- effluves -->
+  <g fill="none" stroke="#a6e22e" stroke-width="22" stroke-linecap="round">
+    <path d="M170 210c-30-30 30-50 0-80s30-50 0-80"/>
+    <path d="M256 200c-30-30 30-50 0-80s30-50 0-80" stroke="#e6db74"/>
+    <path d="M342 210c-30-30 30-50 0-80s30-50 0-80"/>
+  </g>
+  <!-- chaussette -->
+  <path d="M200 230h110v120c0 20 10 30 40 40l40 14c30 10 34 66-6 66H230c-28 0-30-30-30-60z" fill="#d9d2a6" stroke="#5c5a3a" stroke-width="10" stroke-linejoin="round"/>
+  <rect x="196" y="226" width="118" height="34" rx="8" fill="#a6e22e"/>
+  <circle cx="268" cy="330" r="12" fill="#8a8450" opacity=".7"/>
+  <circle cx="330" cy="420" r="9" fill="#8a8450" opacity=".7"/>
 </svg>

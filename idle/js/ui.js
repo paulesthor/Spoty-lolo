@@ -1,4 +1,4 @@
-/* Cosmos Infini : interface mobile. */
+/* Big Odeur : interface mobile. */
 (function () {
   'use strict';
   const G = window.Game;
@@ -115,13 +115,13 @@
 
   function tabs() {
     const S = G.S;
-    const list = [{ id: 'gens', ic: '⚛', label: 'Générer' }];
-    if (S.seen[1] || G.resets(1)) list.push({ id: 'L1', ic: '✧', label: 'Supernova', layer: 1 });
-    if (S.seen[2] || G.resets(2)) list.push({ id: 'L2', ic: '●', label: 'Effondr.', layer: 2 });
-    if (S.seen[3] || G.resets(3)) list.push({ id: 'L3', ic: '∞', label: 'Infini', layer: 3 });
-    if (G.resets(3) >= 1) list.push({ id: 'chal', ic: '⚔', label: 'Défis' });
-    if (S.seen[4] || G.resets(4)) list.push({ id: 'L4', ic: 'Ⓔ', label: 'Éternité', layer: 4 });
-    if (S.seen[5] || G.resets(5)) list.push({ id: 'meta', ic: '◈', label: 'Strates' });
+    const list = [{ id: 'gens', ic: '🧦', label: 'Puer' }];
+    if (S.seen[1] || G.resets(1)) list.push({ id: 'L1', ic: '🐛', label: 'Mise en prod', layer: 1 });
+    if (S.seen[2] || G.resets(2)) list.push({ id: 'L2', ic: '💀', label: 'Burn-out', layer: 2 });
+    if (S.seen[3] || G.resets(3)) list.push({ id: 'L3', ic: '📋', label: 'Évacuation', layer: 3 });
+    if (G.resets(3) >= 1) list.push({ id: 'chal', ic: '📝', label: 'Plans RH' });
+    if (S.seen[4] || G.resets(4)) list.push({ id: 'L4', ic: '💸', label: 'Licencié', layer: 4 });
+    if (S.seen[5] || G.resets(5)) list.push({ id: 'meta', ic: '☣️', label: 'Contagion' });
     list.push({ id: 'stats', ic: '📊', label: 'Stats' });
     list.push({ id: 'opts', ic: '⚙', label: 'Options' });
     return list;
@@ -183,7 +183,7 @@
       if (blocked) return blocked;
       if (!G.reached(k)) return d.verb + ' — ' + d.reqText();
       if (!G.canReset(k)) return d.verb + ' : +' + fmt(G.gain(k)) + ' ' + d.cur + ' (dans ' + Math.ceil(G.waitLeft(k)) + ' s)';
-      if (k === 3 && G.S.chal.active) return 'Terminer le défi (' + d.verb + ')';
+      if (k === 3 && G.S.chal.active) return 'Valider le plan RH (' + d.verb + ')';
       return d.verb + ' : +' + fmt(G.gain(k)) + ' ' + d.cur + ratio(k);
     }));
     liveClass(btn, 'can', () => G.canReset(k));
@@ -208,7 +208,7 @@
       for (let j = 1; j < k; j++) below.push(G.layerDef(j).cur);
       modal(h('div', null,
         h('h2', { text: d.verb + ' ?' }),
-        h('p', { text: 'Tu vas remettre à zéro la Poussière, les générateurs' + (below.length ? ', ' + below.join(', ') : '') + '. En échange : +' + fmt(G.gain(k)) + ' ' + d.cur + '.' })),
+        h('p', { text: 'Tu vas remettre à zéro tes Relents, tes générateurs' + (below.length ? ', ' + below.join(', ') : '') + '. En échange : +' + fmt(G.gain(k)) + ' ' + d.cur + '.' })),
       [{ label: 'Annuler' }, { label: d.verb, cls: 'can', fn: () => { G.doReset(k); } }]);
       return;
     }
@@ -242,8 +242,9 @@
     liveClass(accBtn, 'can', () => accelLabel().can);
     acc.append(h('div', { class: 'row' },
       h('div', { class: 'grow' },
-        h('div', { class: 'title' }, 'Accélérateur ', live(() => '(' + S.accel + ')', 'span', 'muted')),
-        live(() => G.M.accelOn ? '×' + G.M.accelBase.toFixed(3).replace('.', ',') + ' par achat sur la Poussière, total ×' + fmt(Big.pow10(S.accel * Math.log10(G.M.accelBase))) : 'Désactivé par le défi', 'div', 'sub')),
+        h('div', { class: 'title' }, h('span', { class: 'gen-ic', text: '💻' }), 'Laptop qui chauffe ', live(() => '(' + S.accel + ')', 'span', 'muted')),
+        h('div', { class: 'flavor', text: 'Posé sur les cuisses depuis 9 h. Le ventilo crache ton odeur dans tout l\'étage.' }),
+        live(() => G.M.accelOn ? '×' + G.M.accelBase.toFixed(3).replace('.', ',') + ' par achat sur les Relents, total ×' + fmt(Big.pow10(S.accel * Math.log10(G.M.accelBase))) : 'Désactivé par le défi', 'div', 'sub')),
       accBtn));
     root.append(acc);
 
@@ -254,7 +255,8 @@
       liveClass(btn, 'can', () => buyLabel(i).can);
       card.append(h('div', { class: 'row' },
         h('div', { class: 'grow' },
-          h('div', { class: 'name' }, (i + 1) + '. ' + gd.name),
+          h('div', { class: 'name' }, h('span', { class: 'gen-ic', text: gd.icon || '•' }), gd.name),
+          h('div', { class: 'flavor', text: gd.flavor || '' }),
           live(() => fmt(S.gens[i].amount) + ' (' + S.gens[i].bought + ')', 'div', 'amt num'),
           live(() => '×' + fmt(G.genMult(i)) + (i === 0 ? '' : ' → ' + fmt(S.gens[i].amount.mul(G.genMult(i))) + '/s ' + G.GENS[i - 1].name), 'div', 'amt num')),
         btn));
@@ -264,7 +266,7 @@
     if (G.autoGensUnlocked() || G.autoAccelUnlocked()) {
       const a = h('div', { class: 'card' }, h('div', { class: 'title' }, 'Automates'));
       if (G.autoGensUnlocked()) a.append(toggleRow('Acheter les générateurs', () => S.auto.gens, (v) => { S.auto.gens = v; }));
-      if (G.autoAccelUnlocked()) a.append(toggleRow("Acheter l'Accélérateur", () => S.auto.accel, (v) => { S.auto.accel = v; }));
+      if (G.autoAccelUnlocked()) a.append(toggleRow('Acheter le Laptop qui chauffe', () => S.auto.accel, (v) => { S.auto.accel = v; }));
       root.append(a);
     }
   }
@@ -290,9 +292,11 @@
     const L = G.lay(k);
 
     root.append(h('div', { class: 'card big-cur' },
+      h('div', { class: 'layer-name', text: d.name }),
       h('div', { class: 'amount num' }, d.sym + ' ', live(() => fmt(L.cur))),
       h('div', { class: 'muted', text: d.cur }),
-      live(() => d.effectText(), 'div', 'sub')));
+      live(() => d.effectText(), 'div', 'sub'),
+      d.flavor ? h('div', { class: 'flavor', text: d.flavor }) : null));
 
     root.append(prestigeButton(k));
     const bar = progressBar(() => G.progress(k), () => 'Seuil : ' + d.reqText());
@@ -305,7 +309,7 @@
     if (k === 1 && G.autoSnUpgUnlocked()) {
       root.append(h('div', { class: 'card auto-box', style: 'margin-top:8px' },
         toggleRow('Achat automatique des améliorations', () => G.S.auto.snUpg, (v) => { G.S.auto.snUpg = v; }),
-        h('div', { class: 'muted', text: 'Achète la moins chère dès que possible. Désactive-le pour garder tes Éclats (leur bonus dépend de ce que tu gardes).' })));
+        h('div', { class: 'muted', text: 'Achète la moins chère dès que possible. Désactive-le pour garder tes Bugs en prod (leur bonus dépend de ce que tu gardes).' })));
     }
 
     root.append(h('h3', { text: 'Améliorations' }));
@@ -341,6 +345,7 @@
       h('div', { class: 'grow' },
         h('div', { class: 'title' }, u.name, ' ', live(() => u.max === 1 ? '' : (u.max === Infinity ? 'niv. ' + G.lvl(k, u.id) : G.lvl(k, u.id) + '/' + u.max), 'span', 'muted')),
         h('div', { class: 'sub', text: u.desc() }),
+        u.flavor ? h('div', { class: 'flavor', text: u.flavor }) : null,
         live(() => G.lvl(k, u.id) > 0 ? 'Actuel : ' + u.eff(G.lvl(k, u.id)) : '', 'div', 'sub')),
       btn));
     return card;
@@ -375,9 +380,9 @@
   function buildChal(root) {
     const S = G.S;
     root.append(h('div', { class: 'card' },
-      h('div', { class: 'sub', text: "Un défi recommence ton Big Bang à zéro (améliorations de Supernova et d'Effondrement comprises) avec une contrainte. Tu retrouves tes améliorations en sortant du défi. Atteins l'Infini pour le terminer et gagner sa récompense pour toujours." }),
-      live(() => 'Défis terminés : ' + G.chalCount() + '/' + G.CHALLENGES.length + ' — ' + G.BREAK_CHALLENGES + " requis pour Briser l'Infini", 'div', 'sub')));
-    const exit = h('button', { class: 'primary danger', onclick: () => G.exitChallenge() }, 'Quitter le défi en cours');
+      h('div', { class: 'sub', text: "Les RH t'imposent un « plan d'amélioration personnelle » : tout repart de zéro (améliorations comprises) avec une contrainte. Atteins quand même le seuil de la Convention de Genève pour le valider : la récompense est permanente. Tu retrouves tes améliorations à la fin." }),
+      live(() => 'Plans RH survécus : ' + G.chalCount() + '/' + G.CHALLENGES.length + ' — ' + G.BREAK_CHALLENGES + ' requis pour violer la Convention de Genève', 'div', 'sub')));
+    const exit = h('button', { class: 'primary danger', onclick: () => G.exitChallenge() }, 'Abandonner le plan RH (les RH notent ta lâcheté)');
     liveClass(exit, 'hidden', () => !S.chal.active);
     root.append(exit);
     for (const c of G.CHALLENGES) {
@@ -385,11 +390,11 @@
       liveClass(card, 'done', () => G.chalDone(c.id));
       const btn = h('button', { class: 'small', onclick: () => {
         if (S.chal.active) return;
-        modal(h('div', null, h('h2', { text: c.name }), h('p', { text: c.desc }), h('p', { class: 'muted', text: 'Tout repart de zéro : Poussière, générateurs, Éclats, Singularités et leurs améliorations. Tu retrouveras tes améliorations en sortant du défi.' })),
+        modal(h('div', null, h('h2', { text: c.name }), h('p', { text: c.desc }), h('p', { class: 'muted', text: 'Tout repart de zéro : Relents, générateurs, Bugs en prod, Points de cynisme et leurs améliorations. Tu les retrouveras à la fin du plan RH.' })),
           [{ label: 'Annuler' }, { label: 'Commencer', cls: 'can', fn: () => G.startChallenge(c.id) }]);
       } }, 'Commencer');
       liveClass(btn, 'hidden', () => !!S.chal.active || !G.chalUnlocked(c.id));
-      const lockTxt = live(() => G.chalUnlocked(c.id) ? '' : '🔒 ' + G.chalUnlockAt(c.id) + ' Big Bangs', 'span', 'muted');
+      const lockTxt = live(() => G.chalUnlocked(c.id) ? '' : '🔒 ' + G.chalUnlockAt(c.id) + ' Évacuations', 'span', 'muted');
       card.append(h('div', { class: 'row' },
         h('div', { class: 'grow' },
           h('div', { class: 'title' }, c.name, ' ', live(() => G.chalDone(c.id) ? '✓' : (S.chal.active === c.id ? '(en cours)' : ''), 'span', 'muted')),
@@ -408,7 +413,7 @@
     const avail = [];
     for (let k = 5; k <= n; k++) if (G.S.seen[k] || G.resets(k)) avail.push(k);
     if (!avail.includes(metaSel)) metaSel = avail[avail.length - 1] || 5;
-    root.append(h('div', { class: 'card' }, h('div', { class: 'sub', text: "Chaque strate se nourrit de la précédente et la renforce. Il n'y a pas de dernière strate." })));
+    root.append(h('div', { class: 'card' }, h('div', { class: 'sub', text: "Ton odeur ne connaît plus de frontières. Chaque niveau de contagion se nourrit du précédent et le renforce. Il n'y a pas de dernier niveau. Il n'y a pas d'issue de secours." })));
     const chips = h('div', { class: 'chips' });
     for (const k of avail) {
       chips.append(h('button', { class: k === metaSel ? 'on' : '', onclick: () => { metaSel = k; viewKey = ''; } }, G.layerDef(k).sym + ' ' + G.layerDef(k).name));
@@ -425,8 +430,8 @@
     const t = h('table', { class: 'stats' });
     const row = (label, fn) => t.append(h('tr', null, h('td', { text: label }), h('td', null, live(fn))));
     row('Temps de jeu', () => duration(S.stats.time));
-    row('Meilleure Poussière', () => fmt(S.stats.bestDust));
-    row('Poussière produite', () => fmt(S.stats.totalDust));
+    row('Record de Relents', () => fmt(S.stats.bestDust));
+    row('Relents produits (total)', () => fmt(S.stats.totalDust));
     row('Vitesse du jeu', () => '×' + G.M.speed.toFixed(2));
     row('Mode admin utilisé', () => S.stats.admin ? 'oui' : 'non');
     row('Ressources admin (×1000) utilisées', () => S.stats.adminRes ? 'oui' : 'non');
@@ -439,9 +444,9 @@
     const keys = Object.keys(f).sort((a, b) => (f[a].t ?? -1) - (f[b].t ?? -1));
     if (keys.length) {
       const names = (key) => {
-        if (key === 'break') return "Infini brisé";
-        if (key.startsWith('défi ')) { const c = G.CHALLENGES.find((x) => x.id === key.slice(5)); return 'Défi « ' + (c ? c.name : key) + ' »'; }
-        return 'Première ' + G.layerDef(+key.slice(1)).verb;
+        if (key === 'break') return 'Convention de Genève violée';
+        if (key.startsWith('défi ')) { const c = G.CHALLENGES.find((x) => x.id === key.slice(5)); return 'Plan RH « ' + (c ? c.name : key) + ' »'; }
+        return G.layerDef(+key.slice(1)).verb + ' (1re fois)';
       };
       const tl = h('table', { class: 'stats' });
       for (const key of keys) {
@@ -533,7 +538,7 @@
 
     box.append(h('h3', { text: 'Ressources' }));
     const res = h('div', { class: 'row wrap' });
-    res.append(h('button', { class: 'small', onclick: () => { S.stats.admin = true; S.stats.adminRes = true; S.dust = S.dust.max(10).mul(1000); } }, 'Poussière ×1000'));
+    res.append(h('button', { class: 'small', onclick: () => { S.stats.admin = true; S.stats.adminRes = true; S.dust = S.dust.max(10).mul(1000); } }, 'Relents ×1000'));
     const n = G.layerCount();
     for (let k = 1; k <= n; k++) {
       if (!G.resets(k) && !S.seen[k]) continue;
@@ -618,16 +623,47 @@
     }
   }
 
+  // niveau olfactif affiché sous la production (selon l'ordre de grandeur des Relents)
+  const SMELL = [
+    [0, 'Légère moiteur'], [3, 'Réunion de 9 h sans fenêtre'], [6, 'Vestiaire de foot en juin'],
+    [10, 'Open space en août'], [15, 'Salle serveur, clim en panne'], [25, 'Fromagerie industrielle'],
+    [50, 'Décharge à ciel ouvert'], [100, 'Station d\'épuration'], [200, 'Incident diplomatique'],
+    [308, 'Arme chimique (Convention de Genève)'], [1000, 'Trou noir olfactif'], [1e4, 'Fin du monde, version parfumée'],
+    [1e5, 'Les dieux se bouchent le nez'], [1e6, 'Au-delà de la biologie'],
+  ];
+  function smellLevel(l) { let t = SMELL[0][1]; for (const [n, txt] of SMELL) if (l >= n) t = txt; return t; }
+  // mouches : une de plus tous les 40 ordres de grandeur, jusqu'à 8
+  let flyCount = -1;
+  function renderFlies() {
+    const l = Math.max(0, G.S.dust.log10());
+    const n = Math.min(8, l < 2 ? 0 : 1 + Math.floor(l / 40));
+    if (n === flyCount) return;
+    flyCount = n;
+    const box = $('flies');
+    box.innerHTML = '';
+    for (let i = 0; i < n; i++) {
+      const f = h('span', { class: 'fly', text: '🪰' });
+      const r = (a, b) => (a + Math.random() * (b - a)).toFixed(0) + 'px';
+      f.style.cssText = 'left:' + (10 + Math.random() * 75).toFixed(0) + '%;top:' + (6 + Math.random() * 40).toFixed(0) + 'px;--d:' + (4 + Math.random() * 5).toFixed(1) + 's;--delay:-' + (Math.random() * 5).toFixed(1) + 's;--x1:' + r(-60, 60) + ';--y1:' + r(-10, 30) + ';--x2:' + r(-60, 60) + ';--y2:' + r(-10, 30) + ';--x3:' + r(-60, 60) + ';--y3:' + r(-10, 30);
+      box.append(f);
+    }
+  }
+
   function renderHeader() {
     const S = G.S;
+    const sm = 'Niveau olfactif : ' + smellLevel(S.dust.log10());
+    if ($('smell')._v !== sm) { $('smell')._v = sm; $('smell').textContent = sm; }
+    renderFlies();
     const d = fmt(S.dust);
     if ($('dust')._v !== d) { $('dust')._v = d; $('dust').textContent = d; }
-    let r = G.isBroken() || S.dust.lt(G.INF) ? fmt(G.dustRate().mul(G.M.speed)) + '/s' : "Infini atteint ! Fais un Big Bang.";
+    let r = G.isBroken() || S.dust.lt(G.INF) ? fmt(G.dustRate().mul(G.M.speed)) + '/s' : 'Seuil de Genève atteint ! Évacue l\'open space.';
     if (S.options.admin) r += ' · Admin ×' + (S.options.adminSpeed || 1);
+    const alert = !(G.isBroken() || S.dust.lt(G.INF));
+    if ($('rate')._a !== alert) { $('rate')._a = alert; $('rate').parentNode.classList.toggle('alert', alert); }
     if ($('rate')._v !== r) { $('rate')._v = r; $('rate').textContent = r; }
     const ban = $('chal-banner');
     const c = S.chal.active && G.CHALLENGES.find((x) => x.id === S.chal.active);
-    const bt = c ? 'Défi : ' + c.name + ' — ' + c.desc : '';
+    const bt = c ? 'Plan RH : ' + c.name + ' — ' + c.desc : '';
     if (ban._v !== bt) { ban._v = bt; ban.textContent = bt; ban.classList.toggle('hidden', !c); }
     const goal = G.nextGoal();
     const gl = goal ? goal.label : '';
@@ -710,13 +746,13 @@
     G.simulate(seconds, 6000);
     if (!showSummary) return;
     const lines = [h('p', { text: (title ? 'Temps avancé : ' : 'Absent pendant ') + duration(seconds) + '.' })];
-    lines.push(h('p', { text: 'Poussière : ' + fmt(before) + ' → ' + fmt(S.dust) }));
+    lines.push(h('p', { text: 'Relents : ' + fmt(before) + ' → ' + fmt(S.dust) }));
     for (let k = 1; k <= G.layerCount(); k++) {
       const a = beforeRes[k] || Big.ZERO;
       const b = G.cur(k);
       if (!a.eq(b)) lines.push(h('p', { text: G.layerDef(k).cur + ' : ' + fmt(a) + ' → ' + fmt(b) }));
     }
-    modal(h('div', null, h('h2', { text: title || 'Bon retour !' }), ...lines));
+    modal(h('div', null, h('h2', { text: title || 'Te revoilà. On t\'a senti arriver.' }), ...lines));
   }
 
   let last = Date.now();
@@ -808,14 +844,21 @@
     }
   }
 
+  const FIRST_TOASTS = {
+    1: 'Le canal #incidents ne s\'éteindra plus jamais.',
+    2: 'Ton médecin du travail a démissionné.',
+    3: 'Les pompiers ont classé l\'étage zone rouge.',
+    4: 'Le vigile t\'escorte jusqu\'à la sortie, en apnée.',
+    5: 'Les investisseurs ont signé sans retirer leur masque.',
+  };
   G.on((type, data) => {
     if (type === 'reset') pushParty(true);
     if (type === 'chal') {
       const c = G.CHALLENGES.find((x) => x.id === data);
-      toast('Défi terminé : ' + c.name + ' !');
+      toast('Plan RH survécu : ' + c.name + ' ! Les RH sont déçus.');
     }
-    if (type === 'reset' && G.resets(data) === 1) toast('Première ' + G.layerDef(data).verb + ' !');
-    if (type === 'reset' && data === 3 && G.resets(3) === G.SN_AUTO_AT) toast('Débloqué : achat automatique des améliorations de Supernova (onglet Supernova)');
+    if (type === 'reset' && G.resets(data) === 1) toast(G.layerDef(data).verb + ' : première fois ! ' + (FIRST_TOASTS[data] || ''));
+    if (type === 'reset' && data === 3 && G.resets(3) === G.SN_AUTO_AT) toast('Débloqué : achat automatique des améliorations de Mise en prod (onglet Mise en prod)');
   });
 
   function start() {

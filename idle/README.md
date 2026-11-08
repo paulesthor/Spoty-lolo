@@ -1,4 +1,6 @@
-# Cosmos Infini
+# Big Odeur
+
+> Jeu privé, humour noir : un data scientist dont l'odeur contamine l'open space, puis la planète, puis l'univers.
 
 Jeu incrémental (idle) pour mobile, à prestiges empilés à l'infini. PWA : HTML/CSS/JS sans dépendance, jouable hors connexion et installable sur l'écran d'accueil.
 
@@ -6,6 +8,7 @@ Jeu incrémental (idle) pour mobile, à prestiges empilés à l'infini. PWA : HT
 Servir le dossier `idle/` en HTTP(S), par exemple `python3 -m http.server` puis ouvrir `http://localhost:8000/` sur le téléphone. (En `file://` le jeu marche, mais sans mode hors-ligne.)
 
 ## Mécaniques
+- **Univers** : Relents (ressource), Mise en prod du vendredi → Burn-out → Évacuation de l'open space (seuil de la Convention de Genève) → Licenciement → contagion à l'infini (Startup, Licorne, GAFAM, Ministère du Numérique, Commission européenne, ONU…). Les noms internes (couches 1, 2, 3…) restent ceux du moteur.
 - **Générateurs** (8 étages) : chaque étage produit le précédent, les Particules produisent la Poussière. Le prix monte de 12 % à chaque achat et fait un grand saut tous les 10 achats, qui doublent la production de l'étage. **Accélérateur** : multiplie la Poussière.
 - **Barre d'objectif** en haut de l'écran : progression (en %) vers le prochain prestige à débloquer.
 - **Achats** : un tap = un achat ; appui long = achats en continu ; rien n'est acheté en faisant défiler. Les achats automatiques (débloqués par l'Effondrement) sont désactivés par défaut.
