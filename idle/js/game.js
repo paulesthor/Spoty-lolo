@@ -71,7 +71,7 @@
       chal: { active: null, done: {} },
       seen: {},
       auto: { gens: false, accel: false },
-      stats: { time: 0, bestDust: B(10), totalDust: Big.ZERO, created: Date.now(), admin: false },
+      stats: { time: 0, bestDust: B(10), totalDust: Big.ZERO, created: Date.now(), admin: false, firsts: {} },
       options: { notation: 'scientifique', buy: '1', offline: true, admin: false, adminSpeed: 1 },
       lastTick: Date.now(),
     };
@@ -518,19 +518,25 @@
     M = computeMods();
   }
 
+  // chronologie : temps de jeu (et date réelle) de chaque première étape
+  function markFirst(key) {
+    const f = S.stats.firsts || (S.stats.firsts = {});
+    if (!f[key]) f[key] = { t: S.stats.time, date: Date.now(), admin: !!S.stats.admin };
+  }
   function doReset(k, silent) {
     if (!canReset(k)) return false;
     const g = gain(k);
     const l = lay(k);
     if (k === 3 && S.chal.active) {
       const id = S.chal.active;
-      if (!S.chal.done[id]) { S.chal.done[id] = true; emit('chal', id); }
+      if (!S.chal.done[id]) { S.chal.done[id] = true; markFirst('défi ' + id); emit('chal', id); }
       S.chal.active = null;
     }
     l.cur = l.cur.add(g);
     l.total = l.total.add(g);
     if (g.gt(l.best)) l.best = g;
     l.resets++;
+    if (l.resets === 1) markFirst('L' + k);
     S.seen[k] = true;
     resetBelow(k);
     if (!silent) emit('reset', k);
@@ -605,7 +611,7 @@
       n++;
       if (!max) break;
     }
-    if (n) M = computeMods();
+    if (n) { M = computeMods(); if (id === 'in_break') markFirst('break'); }
     return n;
   }
 
@@ -725,6 +731,15 @@
       s.layers[k].auto = Object.assign(newLayerState().auto, s.layers[k].auto || {});
     }
     if (!Array.isArray(s.gens) || s.gens.length !== GENS.length) s.gens = newState().gens;
+    // sauvegardes sans chronologie : estimation à partir du temps de jeu
+    if (!(o.stats && o.stats.firsts)) {
+      s.stats.firsts = {};
+      for (const k in s.layers) {
+        const l = s.layers[k];
+        if (l.resets === 1) s.stats.firsts['L' + k] = { t: Math.max(0, s.stats.time - l.time), approx: true };
+        else if (l.resets > 1) s.stats.firsts['L' + k] = { t: null, approx: true };
+      }
+    }
     // v2 : les achats automatiques sont désactivés par défaut (le joueur les active lui-même)
     if (!(s.version >= 2)) { s.auto.gens = false; s.auto.accel = false; s.version = 2; }
     const int = (x) => (Number.isFinite(x) && x > 0 ? Math.floor(x) : 0);

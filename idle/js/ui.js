@@ -427,6 +427,24 @@
     row('Exposant de production', () => '^' + G.M.dustExp.toFixed(3));
     row('Bonus par 10 achats', () => '×' + G.M.perTen.toFixed(2));
     root.append(h('div', { class: 'card' }, t));
+
+    // chronologie des premières fois
+    const f = S.stats.firsts || {};
+    const keys = Object.keys(f).sort((a, b) => (f[a].t ?? -1) - (f[b].t ?? -1));
+    if (keys.length) {
+      const names = (key) => {
+        if (key === 'break') return "Infini brisé";
+        if (key.startsWith('défi ')) { const c = G.CHALLENGES.find((x) => x.id === key.slice(5)); return 'Défi « ' + (c ? c.name : key) + ' »'; }
+        return 'Première ' + G.layerDef(+key.slice(1)).verb;
+      };
+      const tl = h('table', { class: 'stats' });
+      for (const key of keys) {
+        const e = f[key];
+        const when = e.t == null ? 'avant la chronologie' : (e.approx ? '≈ ' : '') + duration(e.t) + (e.admin ? ' (admin)' : '');
+        tl.append(h('tr', null, h('td', { text: names(key) }), h('td', { text: when })));
+      }
+      root.append(h('h3', { text: 'Chronologie (temps de jeu)' }), h('div', { class: 'card' }, tl));
+    }
     const n = G.layerCount();
     for (let k = 1; k <= n; k++) {
       if (!G.resets(k) && !S.seen[k]) continue;
