@@ -1,5 +1,5 @@
 // Service worker : le jeu fonctionne hors connexion.
-const CACHE = 'cosmos-infini-v1';
+const CACHE = 'cosmos-infini-v2';
 const FILES = ['./', 'index.html', 'style.css', 'js/big.js', 'js/game.js', 'js/ui.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', (e) => {

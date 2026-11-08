@@ -156,14 +156,23 @@
     btn.append(live(() => {
       const blocked = d.blocked();
       if (blocked) return blocked;
-      if (!G.canReset(k)) return d.verb + ' — ' + d.reqText();
+      if (!G.reached(k)) return d.verb + ' — ' + d.reqText();
+      if (!G.canReset(k)) return d.verb + ' : +' + fmt(G.gain(k)) + ' ' + d.cur + ' (dans ' + Math.ceil(G.waitLeft(k)) + ' s)';
       if (k === 3 && G.S.chal.active) return 'Terminer le défi (' + d.verb + ')';
-      return d.verb + ' : +' + fmt(G.gain(k)) + ' ' + d.cur;
+      return d.verb + ' : +' + fmt(G.gain(k)) + ' ' + d.cur + ratio(k);
     }));
     liveClass(btn, 'can', () => G.canReset(k));
     liveClass(btn, 'off', () => !G.canReset(k));
-    if (compact) liveClass(btn, 'hidden', () => !G.canReset(k) || (G.lay(k).auto.on && G.autoUnlocked(k)));
+    if (compact) liveClass(btn, 'hidden', () => !G.reached(k) || (G.lay(k).auto.on && G.autoUnlocked(k)));
     return btn;
+  }
+
+  // combien de fois le total actuel ce prestige rapporterait (aide à choisir le bon moment)
+  function ratio(k) {
+    const c = G.cur(k);
+    if (c.isZero() || (k === 3 && !G.isBroken())) return '';
+    const r = G.gain(k).div(c);
+    return ' (×' + (r.lt(10) ? r.toNumber().toFixed(1).replace('.', ',') : fmt(r)) + ')';
   }
 
   function confirmReset(k) {
@@ -209,7 +218,7 @@
     acc.append(h('div', { class: 'row' },
       h('div', { class: 'grow' },
         h('div', { class: 'title' }, 'Accélérateur ', live(() => '(' + S.accel + ')', 'span', 'muted')),
-        live(() => G.M.accelOn ? '×' + G.M.accelBase.toFixed(3).replace('.', ',') + ' par achat, total ×' + fmt(Big.pow10(S.accel * Math.log10(G.M.accelBase))) : 'Désactivé par le défi', 'div', 'sub')),
+        live(() => G.M.accelOn ? '×' + G.M.accelBase.toFixed(3).replace('.', ',') + ' par achat sur la Poussière, total ×' + fmt(Big.pow10(S.accel * Math.log10(G.M.accelBase))) : 'Désactivé par le défi', 'div', 'sub')),
       accBtn));
     root.append(acc);
 
@@ -318,6 +327,7 @@
     inp.value = L.auto.value;
     inp.addEventListener('change', () => { const v = parseFloat(inp.value); L.auto.value = isFinite(v) && v >= 0 ? v : 1; inp.value = L.auto.value; });
     box.append(h('div', { class: 'row' }, h('div', { class: 'grow' }, sel), h('span', { text: 'X =' }), inp));
+    box.append(h('div', { class: 'muted', text: 'Conseil : attendre un gain d\'au moins ×10 rapporte bien plus que prestiger dès que le gain double.' }));
     return box;
   }
 
@@ -332,7 +342,7 @@
   function buildChal(root) {
     const S = G.S;
     root.append(h('div', { class: 'card' },
-      h('div', { class: 'sub', text: "Un défi recommence ton Big Bang avec une contrainte (et la production est mise à la puissance 0,9). Atteins l'Infini pour le terminer et gagner sa récompense pour toujours." }),
+      h('div', { class: 'sub', text: "Un défi recommence ton Big Bang avec une contrainte. Atteins l'Infini pour le terminer et gagner sa récompense pour toujours." }),
       live(() => 'Défis terminés : ' + G.chalCount() + '/' + G.CHALLENGES.length + ' — ' + G.BREAK_CHALLENGES + " requis pour Briser l'Infini", 'div', 'sub')));
     const exit = h('button', { class: 'primary danger', onclick: () => G.exitChallenge() }, 'Quitter le défi en cours');
     liveClass(exit, 'hidden', () => !S.chal.active);
@@ -549,7 +559,7 @@
     const before = S.dust;
     const beforeRes = {};
     for (let k = 1; k <= G.layerCount(); k++) beforeRes[k] = G.cur(k);
-    G.simulate(seconds, 3000);
+    G.simulate(seconds, 6000);
     if (!showSummary) return;
     const lines = [h('p', { text: 'Absent pendant ' + duration(seconds) + '.' })];
     lines.push(h('p', { text: 'Poussière : ' + fmt(before) + ' → ' + fmt(S.dust) }));

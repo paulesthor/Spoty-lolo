@@ -18,8 +18,28 @@ Servir le dossier `idle/` en HTTP(S), par exemple `python3 -m http.server` puis 
 - `js/big.js` : grands nombres (mantisse × 10^exposant), affichage.
 - `js/game.js` : moteur du jeu (sans DOM). Tous les réglages d'équilibrage sont ici.
 - `js/ui.js` : interface mobile.
-- `tools/sim.js` : bot d'équilibrage, `node tools/sim.js <heures> <pas>`.
+- `tools/sim.js` : bot joueur, 9 profils (`node tools/sim.js` pour la liste ; `node tools/sim.js patient 300 1 sortie.json`).
+- `tools/campaign.js` : lance tous les profils en parallèle (`node tools/campaign.js 300 1 resultats/`).
+- `tools/tests.js` : 34 tests de robustesse (resets instantanés, pas de temps, hors-ligne, valeurs extrêmes, sauvegardes corrompues, défis…).
+- `tools/rapport.js` : génère le rapport d'équilibrage à partir des résultats (`tools/resultats/`).
 - `tools/icons.js` : régénère les icônes PNG depuis `icon.svg`.
 
-## Rythme mesuré (bot actif)
-Supernova ~5 min · Effondrement ~1 h · Big Bang ~3 h · Infini brisé ~21 h · Éternité ~23 h · Multivers ~3 j · Omnivers ~4 j.
+## Garde-fous d'équilibrage
+- **Exposant critique < 1** (0,39 au départ, 0,76 au maximum) : la production ne peut pas s'emballer, quelle que soit la vitesse des ticks.
+- **Plafond progressif** sur chaque effet de monnaie (au-delà de ×1e60, puissance 0,7) : pas de boucle prestige → production → prestige.
+- **10 s minimum** entre deux prestiges d'une même couche (manuel ou automatique).
+- **Poussière de départ < seuil de Supernova**, seuils des Strates croissants (1e10, 1e15, 1e20…).
+
+## Rythme mesuré (bot réagissant chaque seconde, 300 h)
+| Étape | Patient (prestige à ×10) | Actif (prestige à ×2) | Idle 3×15 min/jour |
+|---|---|---|---|
+| Supernova | 9 min | 9 min | 9 min |
+| Effondrement | 1,2 h | 2,7 h | 16 h |
+| Big Bang | 3,2 h | 7,4 h | 2 j |
+| Infini brisé | 5,1 h | 9,7 h | 3,3 j |
+| Éternité | 5,1 h | 9,8 h | 3,3 j |
+| Multivers | 5,2 h | 10,5 h | 3,7 j |
+| Omnivers | 5,3 h | — | 4,7 j |
+| Hypervers | 40 h | — | 11 j |
+
+Détails et limites : `tools/resultats/rapport.html`.

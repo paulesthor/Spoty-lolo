@@ -1,0 +1,232 @@
+<title>Équilibrage de Cosmos Infini</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Mise en page : une colonne de lecture, tableaux et frise débordent dans leur propre zone défilante. */
+:root {
+  --bg: #f4f5fa;
+  --surface: #ffffff;
+  --ink: #161a33;
+  --muted: #5b6080;
+  --line: #dadced;
+  --accent: #4b3fd1;
+  --accent-soft: #e7e5fb;
+  --ok: #157a52;
+  --ok-bg: #ddf3e8;
+  --ko: #b42340;
+  --ko-bg: #fbe1e6;
+  --warn: #8a5a00;
+  --s1: #8f8aa8; --s2: #6a63b8; --s3: #4b3fd1; --s4: #2f7fbf; --s5: #158a8a; --s6: #2f9a52; --s7: #8a9a1a; --s8: #c07a10; --s9: #c0412a;
+  --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-data: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1022; --surface: #161933; --ink: #e6e8f5; --muted: #a1a6c8; --line: #2b2f52;
+    --accent: #9a93ff; --accent-soft: #242650; --ok: #5fd39f; --ok-bg: #12352a; --ko: #ff8095; --ko-bg: #3d1622; --warn: #ffc56b;
+    --s1: #8f8aa8; --s2: #8a83d8; --s3: #9a93ff; --s4: #5aa8e6; --s5: #3cc0c0; --s6: #5fc77f; --s7: #b9c94a; --s8: #e9a33d; --s9: #f06a52;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1022; --surface: #161933; --ink: #e6e8f5; --muted: #a1a6c8; --line: #2b2f52;
+  --accent: #9a93ff; --accent-soft: #242650; --ok: #5fd39f; --ok-bg: #12352a; --ko: #ff8095; --ko-bg: #3d1622; --warn: #ffc56b;
+  --s1: #8f8aa8; --s2: #8a83d8; --s3: #9a93ff; --s4: #5aa8e6; --s5: #3cc0c0; --s6: #5fc77f; --s7: #b9c94a; --s8: #e9a33d; --s9: #f06a52;
+  color-scheme: dark;
+}
+body { background: var(--bg); color: var(--ink); font: 16px/1.6 var(--font-body); }
+.wrap { max-width: 860px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 32px 64px; display: grid; gap: 40px; }
+header { display: grid; gap: 10px; }
+.eyebrow { font: 600 12px/1 var(--font-data); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+h1 { font: 800 clamp(30px, 6vw, 44px)/1.08 var(--font-display); margin: 0; text-wrap: balance; letter-spacing: -.01em; }
+h2 { font: 700 24px/1.2 var(--font-display); margin: 0 0 12px; text-wrap: balance; }
+h3 { font: 700 17px/1.3 var(--font-display); margin: 18px 0 6px; }
+p { margin: 0 0 12px; max-width: 68ch; }
+.lead { font-size: 18px; color: var(--muted); max-width: 62ch; }
+section { display: grid; gap: 6px; min-width: 0; }
+.verdict { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; display: grid; gap: 10px; }
+.verdict ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.kpi { border-left: 3px solid var(--accent); padding: 4px 0 4px 12px; }
+.kpi b { display: block; font: 600 22px/1.2 var(--font-data); font-variant-numeric: tabular-nums; }
+.kpi span { color: var(--muted); font-size: 14px; }
+.scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+thead th { font: 600 12px/1.3 var(--font-data); text-transform: uppercase; letter-spacing: .04em; color: var(--muted); white-space: nowrap; }
+table.times td { font-family: var(--font-data); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
+table.times th[scope=row] { white-space: nowrap; font-weight: 400; }
+table.times tr.main th[scope=row] { font-weight: 700; }
+table.times td.none { color: var(--muted); }
+table.times td.faster { color: var(--ok); font-weight: 600; }
+table.times td.slower { color: var(--warn); }
+tbody tr:last-child > * { border-bottom: 0; }
+table.small { max-width: 520px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+table.small td { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+.note { color: var(--muted); font-size: 14px; }
+.chart { padding: 10px 8px 4px; }
+.chart svg { display: block; width: 100%; min-width: 620px; height: auto; }
+.chart .grid { stroke: var(--line); stroke-width: 1; }
+.chart .track { stroke: var(--line); stroke-width: 2; }
+.chart .axis { fill: var(--muted); font: 11px var(--font-data); }
+.chart .lab { fill: var(--ink); font: 13px var(--font-body); }
+.chart .dot { stroke: var(--surface); stroke-width: 2; }
+.chart .dotn { fill: #fff; font: 600 10px var(--font-data); pointer-events: none; }
+.s1 { fill: var(--s1); background: var(--s1); } .s2 { fill: var(--s2); background: var(--s2); } .s3 { fill: var(--s3); background: var(--s3); }
+.s4 { fill: var(--s4); background: var(--s4); } .s5 { fill: var(--s5); background: var(--s5); } .s6 { fill: var(--s6); background: var(--s6); }
+.s7 { fill: var(--s7); background: var(--s7); } .s8 { fill: var(--s8); background: var(--s8); } .s9 { fill: var(--s9); background: var(--s9); }
+.legend { list-style: none; padding: 0; margin: 8px 0 0; display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 14px; }
+.legend li { display: flex; align-items: center; gap: 6px; }
+.dot-l { width: 18px; height: 18px; border-radius: 50%; color: #fff; font: 600 10px/18px var(--font-data); text-align: center; display: inline-block; }
+.issues { display: grid; gap: 12px; }
+.issue { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: grid; gap: 6px; min-width: 0; }
+.issue h3 { margin: 0; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.sev { font: 600 11px/1 var(--font-data); text-transform: uppercase; letter-spacing: .06em; padding: 4px 7px; border-radius: 6px; }
+.sev.crit { background: var(--ko-bg); color: var(--ko); }
+.sev.maj { background: var(--accent-soft); color: var(--accent); }
+.sev.min { background: var(--line); color: var(--muted); }
+.issue p { margin: 0; font-size: 15px; }
+.issue .fix { color: var(--ok); }
+.issue .fix::before { content: "Correctif : "; font-weight: 700; }
+.pill { font: 600 11px/1 var(--font-data); padding: 4px 7px; border-radius: 6px; display: inline-block; white-space: nowrap; }
+.pill.ok { background: var(--ok-bg); color: var(--ok); }
+.pill.ko { background: var(--ko-bg); color: var(--ko); }
+.detail { color: var(--muted); font-size: 13px; font-family: var(--font-data); word-break: break-word; }
+ul.plain { margin: 0; padding-left: 20px; display: grid; gap: 6px; max-width: 70ch; }
+code { font-family: var(--font-data); font-size: .92em; background: var(--accent-soft); padding: 1px 5px; border-radius: 4px; }
+.formula { font-family: var(--font-data); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; overflow-x: auto; font-size: 14px; }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Rapport d'équilibrage · 300 h de jeu simulées par profil</div>
+    <h1>Équilibrage de Cosmos Infini</h1>
+    <p class="lead">Neuf profils de joueurs simulés, une batterie de 34 tests de robustesse, neuf problèmes corrigés. Combien de temps prend chaque étape, et peut-on casser le jeu ?</p>
+  </header>
+
+  <section class="verdict" aria-labelledby="v">
+    <h2 id="v">En bref</h2>
+    <p><b>Le jeu ne se casse plus.</b> Aucune boucle infinie, aucun prestige gratuit, aucune valeur invalide, et le hors-ligne rapporte exactement ce que rapporterait le jeu ouvert. En revanche, la fin de partie dépend beaucoup trop de la façon de jouer : c'est le prochain chantier.</p><ul><li><b>Robustesse :</b> 34 tests sur 34 réussis. Le spam de prestige est la pire stratégie : Éternité à 107 h contre 10 h en jouant normalement.</li><li><b>Début et milieu de partie, homogènes :</b> Supernova en 9 min pour tous ; Effondrement en 1 à 3 h, Big Bang en 3 à 8 h, Infini brisé en 5 à 10,5 h pour les joueurs actifs.</li><li><b>Fin de partie, très inégale :</b> un joueur qui prestige dès que son gain double reste bloqué au Multivers pendant 290 h. Un joueur qui attend un gain ×10 atteint l'Hypervers en 40 h.</li><li><b>Embouteillage :</b> Infini brisé, Éternité et Multivers tombent en moins d'une heure, puis vient un long mur.</li></ul>
+    <div class="kpis">
+      <div class="kpi"><b>34/34</b><span>tests de robustesse réussis</span></div>
+      <div class="kpi"><b>0,76</b><span>exposant critique max (doit rester &lt; 1)</span></div>
+      <div class="kpi"><b>0,08 ms</b><span>par tick en fin de partie (PC)</span></div>
+      <div class="kpi"><b>66 ms</b><span>pour rattraper 7 jours hors-ligne</span></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="t">
+    <h2 id="t">Temps pour atteindre chaque étape</h2>
+    <p>Temps de jeu écoulé depuis le début de la partie. En vert : plus de 20 % plus rapide que le profil Actif ; en orange : plus de 25 % plus lent ; « — » : pas atteint en 300 h.</p>
+    <div class="scroll"><table class="times"><thead><tr><th scope="col">Étape</th><th scope="col">Actif</th><th scope="col">Patient</th><th scope="col">Économe</th><th scope="col">Achats chers</th><th scope="col">Spam de prestige</th><th scope="col">Défis tardifs</th><th scope="col">Sans défis</th><th scope="col">Idle 3×/jour</th><th scope="col">Idle 1×/jour</th></tr></thead><tbody><tr class="main"><th scope="row">Première Supernova</th><td class="">9 min</td><td class="">9 min</td><td class="">9 min</td><td class="">9 min</td><td class="">9 min</td><td class="">9 min</td><td class="">9 min</td><td class="">9 min</td><td class="">9 min</td></tr><tr class="main"><th scope="row">Premier Effondrement</th><td class="">2,7 h</td><td class="faster">1,2 h</td><td class="">2,4 h</td><td class="">2,7 h</td><td class="slower">2,2 j</td><td class="">2,7 h</td><td class="">2,7 h</td><td class="slower">16 h</td><td class="slower">3,0 j</td></tr><tr class="main"><th scope="row">Premier Big Bang (Infini)</th><td class="">7,4 h</td><td class="faster">3,2 h</td><td class="faster">5,9 h</td><td class="">7,9 h</td><td class="slower">4,2 j</td><td class="">7,4 h</td><td class="">7,4 h</td><td class="slower">2,0 j</td><td class="slower">7,0 j</td></tr><tr><th scope="row">Défi « Nuit noire »</th><td class="">8,5 h</td><td class="faster">3,9 h</td><td class="">6,9 h</td><td class="">9,2 h</td><td class="slower">4,4 j</td><td class="">8,7 h</td><td class="none">—</td><td class="slower">2,3 j</td><td class="slower">8,0 j</td></tr><tr><th scope="row">Défi « Quatuor »</th><td class="">9,5 h</td><td class="faster">4,9 h</td><td class="">8,0 h</td><td class="">10 h</td><td class="slower">4,4 j</td><td class="">9,7 h</td><td class="none">—</td><td class="slower">2,7 j</td><td class="slower">9,0 j</td></tr><tr><th scope="row">Défi « Inflation »</th><td class="">9,5 h</td><td class="faster">4,9 h</td><td class="">8,0 h</td><td class="">10 h</td><td class="slower">4,4 j</td><td class="">9,7 h</td><td class="none">—</td><td class="slower">2,7 j</td><td class="slower">9,0 j</td></tr><tr><th scope="row">Défi « Vide quantique »</th><td class="">9,5 h</td><td class="faster">4,9 h</td><td class="">8,0 h</td><td class="">10 h</td><td class="slower">4,4 j</td><td class="">9,7 h</td><td class="none">—</td><td class="slower">2,7 j</td><td class="slower">9,0 j</td></tr><tr><th scope="row">Défi « Racine »</th><td class="">9,6 h</td><td class="faster">4,9 h</td><td class="">8,0 h</td><td class="">10 h</td><td class="slower">4,4 j</td><td class="">9,7 h</td><td class="none">—</td><td class="slower">2,7 j</td><td class="slower">9,0 j</td></tr><tr class="main"><th scope="row">Briser l'Infini</th><td class="">9,7 h</td><td class="faster">5,1 h</td><td class="">8,3 h</td><td class="">10 h</td><td class="slower">4,4 j</td><td class="">9,8 h</td><td class="none">—</td><td class="slower">3,3 j</td><td class="slower">11,0 j</td></tr><tr class="main"><th scope="row">Première Éternité</th><td class="">9,8 h</td><td class="faster">5,1 h</td><td class="">8,3 h</td><td class="">10 h</td><td class="slower">4,4 j</td><td class="">9,8 h</td><td class="none">—</td><td class="slower">3,3 j</td><td class="slower">11,0 j</td></tr><tr class="main"><th scope="row">Strate 1 : Multivers</th><td class="">10 h</td><td class="faster">5,2 h</td><td class="">8,9 h</td><td class="">11 h</td><td class="none">—</td><td class="">11 h</td><td class="none">—</td><td class="slower">3,7 j</td><td class="slower">12,0 j</td></tr><tr class="main"><th scope="row">Strate 2 : Omnivers</th><td class="none">—</td><td class="">5,3 h</td><td class="none">—</td><td class="none">—</td><td class="none">—</td><td class="none">—</td><td class="none">—</td><td class="">4,7 j</td><td class="none">—</td></tr><tr class="main"><th scope="row">Strate 3 : Hypervers</th><td class="none">—</td><td class="">40 h</td><td class="none">—</td><td class="none">—</td><td class="none">—</td><td class="none">—</td><td class="none">—</td><td class="">11,0 j</td><td class="none">—</td></tr><tr class="main"><th scope="row">Strate 4 : Absolu</th><td class="none">—</td><td class="none">—</td><td class="none">—</td><td class="none">—</td><td class="none">—</td><td class="none">—</td><td class="none">—</td><td class="none">—</td><td class="none">—</td></tr></tbody></table></div>
+    <p class="note">Pour les profils Idle, le temps compte aussi les heures hors-ligne (le jeu tourne avec ses automates pendant l'absence). Aucun bot n'a terminé le défi « Sans étoiles » (Supernova interdite) : il reste facultatif, 4 défis sur 6 suffisent pour briser l'Infini. Les décalages de pastilles sur la frise signalent des étapes atteintes presque en même temps.</p>
+  </section>
+
+  <section aria-labelledby="f">
+    <h2 id="f">Frise des parcours</h2>
+    <p>Chaque pastille marque la première fois qu'un profil atteint une étape. L'échelle du temps est logarithmique pour que les premières minutes restent lisibles ; des pastilles collées les unes aux autres ont été atteintes presque en même temps.</p>
+    <div class="scroll chart"><svg viewBox="0 0 760 366" role="img" aria-label="Frise des étapes atteintes par profil, temps en échelle logarithmique"><line x1="175.2" x2="175.2" y1="24" y2="342" class="grid"/><text x="175.2" y="358" class="axis" text-anchor="middle">6 min</text><line x1="237.5" x2="237.5" y1="24" y2="342" class="grid"/><text x="237.5" y="358" class="axis" text-anchor="middle">15 min</text><line x1="284.7" x2="284.7" y1="24" y2="342" class="grid"/><text x="284.7" y="358" class="axis" text-anchor="middle">30 min</text><line x1="331.9" x2="331.9" y1="24" y2="342" class="grid"/><text x="331.9" y="358" class="axis" text-anchor="middle">1 h</text><line x1="379.0" x2="379.0" y1="24" y2="342" class="grid"/><text x="379.0" y="358" class="axis" text-anchor="middle">2 h</text><line x1="441.4" x2="441.4" y1="24" y2="342" class="grid"/><text x="441.4" y="358" class="axis" text-anchor="middle">5 h</text><line x1="488.5" x2="488.5" y1="24" y2="342" class="grid"/><text x="488.5" y="358" class="axis" text-anchor="middle">10 h</text><line x1="548.1" x2="548.1" y1="24" y2="342" class="grid"/><text x="548.1" y="358" class="axis" text-anchor="middle">24 h</text><line x1="595.3" x2="595.3" y1="24" y2="342" class="grid"/><text x="595.3" y="358" class="axis" text-anchor="middle">48 h</text><line x1="645.2" x2="645.2" y1="24" y2="342" class="grid"/><text x="645.2" y="358" class="axis" text-anchor="middle">100 h</text><line x1="692.4" x2="692.4" y1="24" y2="342" class="grid"/><text x="692.4" y="358" class="axis" text-anchor="middle">200 h</text><text x="118" y="51" class="lab" text-anchor="end">Actif</text><line x1="128" x2="720" y1="47" y2="47" class="track"/><circle cx="201.1" cy="47" r="9" class="dot s1"/><text x="201.1" y="50.5" class="dotn" text-anchor="middle">1</text><circle cx="399.7" cy="47" r="9" class="dot s2"/><text x="399.7" y="50.5" class="dotn" text-anchor="middle">2</text><circle cx="468.3" cy="47" r="9" class="dot s3"/><text x="468.3" y="50.5" class="dotn" text-anchor="middle">3</text><circle cx="486.8" cy="47" r="9" class="dot s4"/><text x="486.8" y="50.5" class="dotn" text-anchor="middle">4</text><circle cx="503.8" cy="47" r="9" class="dot s5"/><text x="503.8" y="50.5" class="dotn" text-anchor="middle">5</text><circle cx="520.8" cy="47" r="9" class="dot s6"/><text x="520.8" y="50.5" class="dotn" text-anchor="middle">6</text><text x="118" y="85" class="lab" text-anchor="end">Patient</text><line x1="128" x2="720" y1="81" y2="81" class="track"/><circle cx="201.1" cy="81" r="9" class="dot s1"/><text x="201.1" y="84.5" class="dotn" text-anchor="middle">1</text><circle cx="343.0" cy="81" r="9" class="dot s2"/><text x="343.0" y="84.5" class="dotn" text-anchor="middle">2</text><circle cx="411.3" cy="81" r="9" class="dot s3"/><text x="411.3" y="84.5" class="dotn" text-anchor="middle">3</text><circle cx="443.1" cy="81" r="9" class="dot s4"/><text x="443.1" y="84.5" class="dotn" text-anchor="middle">4</text><circle cx="460.1" cy="81" r="9" class="dot s5"/><text x="460.1" y="84.5" class="dotn" text-anchor="middle">5</text><circle cx="477.1" cy="81" r="9" class="dot s6"/><text x="477.1" y="84.5" class="dotn" text-anchor="middle">6</text><circle cx="494.1" cy="81" r="9" class="dot s7"/><text x="494.1" y="84.5" class="dotn" text-anchor="middle">7</text><circle cx="582.6" cy="81" r="9" class="dot s8"/><text x="582.6" y="84.5" class="dotn" text-anchor="middle">8</text><text x="118" y="119" class="lab" text-anchor="end">Économe</text><line x1="128" x2="720" y1="115" y2="115" class="track"/><circle cx="201.1" cy="115" r="9" class="dot s1"/><text x="201.1" y="118.5" class="dotn" text-anchor="middle">1</text><circle cx="392.5" cy="115" r="9" class="dot s2"/><text x="392.5" y="118.5" class="dotn" text-anchor="middle">2</text><circle cx="452.8" cy="115" r="9" class="dot s3"/><text x="452.8" y="118.5" class="dotn" text-anchor="middle">3</text><circle cx="475.9" cy="115" r="9" class="dot s4"/><text x="475.9" y="118.5" class="dotn" text-anchor="middle">4</text><circle cx="492.9" cy="115" r="9" class="dot s5"/><text x="492.9" y="118.5" class="dotn" text-anchor="middle">5</text><circle cx="509.9" cy="115" r="9" class="dot s6"/><text x="509.9" y="118.5" class="dotn" text-anchor="middle">6</text><text x="118" y="153" class="lab" text-anchor="end">Achats chers</text><line x1="128" x2="720" y1="149" y2="149" class="track"/><circle cx="201.1" cy="149" r="9" class="dot s1"/><text x="201.1" y="152.5" class="dotn" text-anchor="middle">1</text><circle cx="400.5" cy="149" r="9" class="dot s2"/><text x="400.5" y="152.5" class="dotn" text-anchor="middle">2</text><circle cx="472.7" cy="149" r="9" class="dot s3"/><text x="472.7" y="152.5" class="dotn" text-anchor="middle">3</text><circle cx="491.5" cy="149" r="9" class="dot s4"/><text x="491.5" y="152.5" class="dotn" text-anchor="middle">4</text><circle cx="508.5" cy="149" r="9" class="dot s5"/><text x="508.5" y="152.5" class="dotn" text-anchor="middle">5</text><circle cx="525.5" cy="149" r="9" class="dot s6"/><text x="525.5" y="152.5" class="dotn" text-anchor="middle">6</text><text x="118" y="187" class="lab" text-anchor="end">Spam de prestige</text><line x1="128" x2="720" y1="183" y2="183" class="track"/><circle cx="201.1" cy="183" r="9" class="dot s1"/><text x="201.1" y="186.5" class="dotn" text-anchor="middle">1</text><circle cx="602.9" cy="183" r="9" class="dot s2"/><text x="602.9" y="186.5" class="dotn" text-anchor="middle">2</text><circle cx="646.3" cy="183" r="9" class="dot s3"/><text x="646.3" y="186.5" class="dotn" text-anchor="middle">3</text><circle cx="663.3" cy="183" r="9" class="dot s4"/><text x="663.3" y="186.5" class="dotn" text-anchor="middle">4</text><circle cx="680.3" cy="183" r="9" class="dot s5"/><text x="680.3" y="186.5" class="dotn" text-anchor="middle">5</text><text x="118" y="221" class="lab" text-anchor="end">Défis tardifs</text><line x1="128" x2="720" y1="217" y2="217" class="track"/><circle cx="201.1" cy="217" r="9" class="dot s1"/><text x="201.1" y="220.5" class="dotn" text-anchor="middle">1</text><circle cx="399.7" cy="217" r="9" class="dot s2"/><text x="399.7" y="220.5" class="dotn" text-anchor="middle">2</text><circle cx="468.3" cy="217" r="9" class="dot s3"/><text x="468.3" y="220.5" class="dotn" text-anchor="middle">3</text><circle cx="487.3" cy="217" r="9" class="dot s4"/><text x="487.3" y="220.5" class="dotn" text-anchor="middle">4</text><circle cx="504.3" cy="217" r="9" class="dot s5"/><text x="504.3" y="220.5" class="dotn" text-anchor="middle">5</text><circle cx="521.3" cy="217" r="9" class="dot s6"/><text x="521.3" y="220.5" class="dotn" text-anchor="middle">6</text><text x="118" y="255" class="lab" text-anchor="end">Sans défis</text><line x1="128" x2="720" y1="251" y2="251" class="track"/><circle cx="201.1" cy="251" r="9" class="dot s1"/><text x="201.1" y="254.5" class="dotn" text-anchor="middle">1</text><circle cx="399.7" cy="251" r="9" class="dot s2"/><text x="399.7" y="254.5" class="dotn" text-anchor="middle">2</text><circle cx="468.3" cy="251" r="9" class="dot s3"/><text x="468.3" y="254.5" class="dotn" text-anchor="middle">3</text><text x="118" y="289" class="lab" text-anchor="end">Idle 3×/jour</text><line x1="128" x2="720" y1="285" y2="285" class="track"/><circle cx="201.1" cy="285" r="9" class="dot s1"/><text x="201.1" y="288.5" class="dotn" text-anchor="middle">1</text><circle cx="520.5" cy="285" r="9" class="dot s2"/><text x="520.5" y="288.5" class="dotn" text-anchor="middle">2</text><circle cx="595.4" cy="285" r="9" class="dot s3"/><text x="595.4" y="288.5" class="dotn" text-anchor="middle">3</text><circle cx="630.1" cy="285" r="9" class="dot s4"/><text x="630.1" y="288.5" class="dotn" text-anchor="middle">4</text><circle cx="647.1" cy="285" r="9" class="dot s5"/><text x="647.1" y="288.5" class="dotn" text-anchor="middle">5</text><circle cx="664.1" cy="285" r="9" class="dot s6"/><text x="664.1" y="288.5" class="dotn" text-anchor="middle">6</text><circle cx="681.1" cy="285" r="9" class="dot s7"/><text x="681.1" y="288.5" class="dotn" text-anchor="middle">7</text><circle cx="711.3" cy="285" r="9" class="dot s8"/><text x="711.3" y="288.5" class="dotn" text-anchor="middle">8</text><text x="118" y="323" class="lab" text-anchor="end">Idle 1×/jour</text><line x1="128" x2="720" y1="319" y2="319" class="track"/><circle cx="201.1" cy="319" r="9" class="dot s1"/><text x="201.1" y="322.5" class="dotn" text-anchor="middle">1</text><circle cx="622.9" cy="319" r="9" class="dot s2"/><text x="622.9" y="322.5" class="dotn" text-anchor="middle">2</text><circle cx="680.6" cy="319" r="9" class="dot s3"/><text x="680.6" y="322.5" class="dotn" text-anchor="middle">3</text><circle cx="711.3" cy="319" r="9" class="dot s4"/><text x="711.3" y="322.5" class="dotn" text-anchor="middle">4</text><circle cx="728.3" cy="319" r="9" class="dot s5"/><text x="728.3" y="322.5" class="dotn" text-anchor="middle">5</text><circle cx="745.3" cy="319" r="9" class="dot s6"/><text x="745.3" y="322.5" class="dotn" text-anchor="middle">6</text><text x="128" y="14" class="axis">temps de jeu (échelle logarithmique) →</text></svg></div>
+    <ul class="legend"><li><span class="dot-l s1">1</span>Supernova</li><li><span class="dot-l s2">2</span>Effondrement</li><li><span class="dot-l s3">3</span>Big Bang</li><li><span class="dot-l s4">4</span>Infini brisé</li><li><span class="dot-l s5">5</span>Éternité</li><li><span class="dot-l s6">6</span>Multivers</li><li><span class="dot-l s7">7</span>Omnivers</li><li><span class="dot-l s8">8</span>Hypervers</li><li><span class="dot-l s9">9</span>Absolu</li></ul>
+  </section>
+
+  <section aria-labelledby="p">
+    <h2 id="p">Les profils testés</h2>
+    <ul class="plain"><li><b>Actif</b> : Joue en continu, prestige dès que le gain double sa monnaie, achète les améliorations les moins chères.</li><li><b>Patient</b> : Joue en continu, prestige seulement quand le gain vaut 10× sa monnaie.</li><li><b>Économe</b> : N'achète une amélioration répétable que si elle coûte ≤ 10 % de la monnaie (garde les bonus de monnaie non dépensée).</li><li><b>Achats chers</b> : Achète d'abord l'amélioration la plus chère qu'il peut payer.</li><li><b>Spam de prestige</b> : Prestige dès que possible (aucun seuil), pour tester les abus de reset.</li><li><b>Défis tardifs</b> : Ne commence les défis qu'après 30 Big Bangs.</li><li><b>Sans défis</b> : Ne fait jamais de défi.</li><li><b>Idle 3×/jour</b> : 3 sessions de 15 min par jour (actif), le reste hors-ligne avec seulement les automates du jeu.</li><li><b>Idle 1×/jour</b> : 1 session de 10 min par jour, le reste hors-ligne.</li></ul>
+    <p class="note">Tous les profils actifs achètent les générateurs au maximum à chaque pas, tentent les défis tous les deux Big Bangs (abandon après 1 h) et refont un prestige même sans doublement si leur couche stagne depuis 10 min. Le bot réagit chaque seconde de jeu, ce qui correspond au rythme des automates du jeu (prestige au bout de 10 s minimum).</p>
+  </section>
+
+  <section aria-labelledby="pb">
+    <h2 id="pb">Failles trouvées et corrigées</h2>
+    <p>Classées par gravité. Chaque faille a été reproduite par un test ou un profil, puis vérifiée après correction.</p>
+    <div class="issues">
+      <article class="issue">
+        <h3><span class="sev crit">Critique</span> Emballement de la production</h3>
+        <p>Le logarithme de la production augmentait plus vite que celui de la Poussière dépensée (exposant critique <i>E</i> ≈ 1,26 avec les améliorations). La croissance explosait en temps fini : de 1e102 à 1e307 en 4 secondes. Pire, sa vitesse dépendait de la fréquence des ticks : à 6 h de jeu, 1e134 729 avec un pas de 0,25 s contre 1e194 avec un pas de 1 s. Un téléphone plus rapide progressait donc plus vite.</p>
+        <p class="fix">l'Accélérateur ne touche plus que la sortie de Poussière, la hausse des prix est plus forte, les bonus sont plafonnés. <i>E</i> vaut maintenant 0,39 au départ et 0,76 au maximum ; un test vérifie <i>E</i> &lt; 1 avec toutes les améliorations et dans chaque défi.</p>
+      </article>
+      <article class="issue">
+        <h3><span class="sev crit">Critique</span> Cascade des Strates</h3>
+        <p>Une fois le Multivers atteint, le bot créait une nouvelle couche toutes les 2 secondes : plus de 1 000 couches en 8 heures. Le bonus « Résonance » valait ×1e<i>k</i> par niveau (de plus en plus fort avec la profondeur) et le seuil fixe de 1e6 était bien plus bas que ce qu'une nouvelle couche apporte à la précédente.</p>
+        <p class="fix">seuil croissant (1e10, 1e15, 1e20…) et bonus de production constant (×1 000 par niveau). Chaque Strate prend désormais plus de temps que la précédente.</p>
+      </article>
+      <article class="issue">
+        <h3><span class="sev crit">Critique</span> Supernova en boucle sans attendre</h3>
+        <p>L'amélioration « Reste stellaire » au maximum faisait commencer chaque partie à 1e16 Poussière, au-dessus du seuil de Supernova (1e15). On pouvait donc relancer une Supernova immédiatement, à l'infini : en milieu de partie, chaque appui rapportait 1,9e18 Éclats sans aucune attente.</p>
+        <p class="fix">départ plafonné à 3,2e13. Un test vérifie, à trois moments de la partie, qu'aucune couche n'est disponible juste après son propre reset.</p>
+      </article>
+      <article class="issue">
+        <h3><span class="sev maj">Majeur</span> Améliorations répétables à coût géométrique</h3>
+        <p>Dans la première version, « Fusion » (×2 par niveau, coût ×3) montait au niveau 14 542 en fin de partie, soit ×1e4 378. Chaque monnaie se transformait en multiplicateur presque sans perte.</p>
+        <p class="fix">coût qui accélère (terme quadratique) sur toutes les améliorations sans maximum.</p>
+      </article>
+      <article class="issue">
+        <h3><span class="sev maj">Majeur</span> Boucle prestige → production → prestige</h3>
+        <p>Les bonus de monnaie (Éclats, Singularités, Points d'Infini…) peuvent s'alimenter d'un reset à l'autre : plus de production, donc plus de monnaie, donc plus de production. Au-delà d'un certain seuil, c'est une boucle infinie exploitable en spammant le prestige.</p>
+        <p class="fix">plafond progressif sur chaque effet de monnaie (au-delà de ×1e60 l'effet ne croît plus qu'à la puissance 0,7). Mathématiquement, la boucle converge toujours. Le profil « Spam de prestige » le confirme : il ne dépasse pas le profil Actif.</p>
+      </article>
+      <article class="issue">
+        <h3><span class="sev maj">Majeur</span> Tapoter vite battait les automates</h3>
+        <p>En fin de partie, une partie de chaque couche ne dure que quelques secondes. Un joueur qui relance ses prestiges toutes les secondes progressait jusqu'à 3,5 fois plus vite qu'un autre qui réagit toutes les 4 s (Multivers à 20 h contre 68 h), et bien plus vite que les automates. Sur mobile, ça récompense le tapotage frénétique.</p>
+        <p class="fix">chaque prestige, manuel ou automatique, demande au moins 10 s depuis le précédent de la même couche. Le bouton affiche le compte à rebours.</p>
+      </article>
+      <article class="issue">
+        <h3><span class="sev maj">Majeur</span> Hors-ligne plus rentable qu'en ligne</h3>
+        <p>En fin de partie, 8 h hors-ligne rapportaient 1e3 996 Éclats contre 1e1 915 en ligne avec les mêmes automates. Les prestiges automatiques se déclenchaient à chaque tick en ligne, alors que les pas grossiers du calcul hors-ligne laissaient accumuler plus.</p>
+        <p class="fix">durée minimale de 10 s par partie et calcul hors-ligne en 6 000 pas. Comparé au vrai rythme du jeu (un tick toutes les 50 ms), 8 h hors-ligne donnent maintenant le même résultat à 0,1 % près.</p>
+      </article>
+      <article class="issue">
+        <h3><span class="sev maj">Majeur</span> Plateau vers 1e4 100 : progression infinie bloquée</h3>
+        <p>Après les premières corrections, le jeu stagnait vers 1e4 100 Poussière : les Strates (prestige infini) n'étaient jamais atteintes, même en 240 h.</p>
+        <p class="fix">plafond adouci (puissance 0,7 au lieu de 0,5), nouvelle formule d'Éternité et seuils des Strates abaissés.</p>
+      </article>
+      <article class="issue">
+        <h3><span class="sev min">Mineur</span> Défis infaisables et sauvegardes trafiquées</h3>
+        <p>Trois défis (« Sans étoiles », « Inflation », « Racine ») n'étaient jamais terminés : l'Infini ne pouvait pas être brisé. Par ailleurs, une sauvegarde importée pouvait contenir une Poussière négative.</p>
+        <p class="fix">défis adoucis (puissance 0,75, prix +50 %) et débloqués progressivement ; toute valeur négative ou invalide d'une sauvegarde est remise à zéro.</p>
+      </article>
+    </div>
+  </section>
+
+  <section aria-labelledby="ts">
+    <h2 id="ts">Tests de robustesse</h2>
+    <p>Exécutés par <code>node idle/tools/tests.js</code>. Ils tentent de casser le jeu : resets instantanés, pas de temps extrêmes, hors-ligne, nombres gigantesques, sauvegardes corrompues, horloge reculée, contournement des défis, automates réglés à zéro.</p>
+    <div class="scroll"><table><thead><tr><th scope="col">Résultat</th><th scope="col">Test</th></tr></thead><tbody><tr><td><span class="pill ok">OK</span></td><td>Poussière de départ max &lt; seuil de Supernova<div class="detail">départ 3,16e13 vs seuil 1e15</div></td></tr><tr><td><span class="pill ok">OK</span></td><td>[début] couche 1 : seuil non atteint juste après son reset</td></tr><tr><td><span class="pill ok">OK</span></td><td>[milieu] couche 1 : seuil non atteint juste après son reset</td></tr><tr><td><span class="pill ok">OK</span></td><td>[avancée] couche 1 : seuil non atteint juste après son reset</td></tr><tr><td><span class="pill ok">OK</span></td><td>[avancée] couche 2 : seuil non atteint juste après son reset</td></tr><tr><td><span class="pill ok">OK</span></td><td>[avancée] couche 3 : seuil non atteint juste après son reset</td></tr><tr><td><span class="pill ok">OK</span></td><td>[avancée] couche 4 : seuil non atteint juste après son reset</td></tr><tr><td><span class="pill ok">OK</span></td><td>Pas de temps 0,25 s → 16 s : écart de progression &lt; 25 %<div class="detail">somme des log10 des totaux : 9.5 / 9.6 / 9.6 / 10.2 ; 1re Supernova : 9 min / 9 min / 9 min / 9 min</div></td></tr><tr><td><span class="pill ok">OK</span></td><td>[début] 8 h hors-ligne ne rapporte pas plus que 8 h en ligne à 50 ms/tick (+5 %)<div class="detail">log10 des totaux par couche — en ligne 2.0/–/–/–/–, hors-ligne 2.0/–/–/–/– (calcul 19 ms)</div></td></tr><tr><td><span class="pill ok">OK</span></td><td>[milieu] 8 h hors-ligne ne rapporte pas plus que 8 h en ligne à 50 ms/tick (+5 %)<div class="detail">log10 des totaux par couche — en ligne 109.4/17.3/0.0/–/–, hors-ligne 109.4/17.3/0.0/–/– (calcul 35 ms)</div></td></tr><tr><td><span class="pill ok">OK</span></td><td>[avancée] 8 h hors-ligne ne rapporte pas plus que 8 h en ligne à 50 ms/tick (+5 %)<div class="detail">log10 des totaux par couche — en ligne 4562.5/762.7/373.1/34.1/0.0, hors-ligne 4558.6/762.0/372.9/33.9/0.0 (calcul 211 ms)</div></td></tr><tr><td><span class="pill ok">OK</span></td><td>Nombres gigantesques (1e1e300) : pas de plantage ni de NaN<div class="detail">e1,00e300</div></td></tr><tr><td><span class="pill ok">OK</span></td><td>Achat max avec 1e1e300 Poussière reste rapide<div class="detail">8 ms</div></td></tr><tr><td><span class="pill ok">OK</span></td><td>Achat max des améliorations avec monnaie gigantesque reste rapide<div class="detail">5 ms</div></td></tr><tr><td><span class="pill ok">OK</span></td><td>Format des nombres extrêmes<div class="detail">e1,00e300</div></td></tr><tr><td><span class="pill ok">OK</span></td><td>Sauvegarde « JSON vide » : le jeu repart sans planter<div class="detail">Poussière 9,90</div></td></tr><tr><td><span class="pill ok">OK</span></td><td>Sauvegarde « gens manquants » : le jeu repart sans planter<div class="detail">Poussière 2,34e8</div></td></tr><tr><td><span class="pill ok">OK</span></td><td>Sauvegarde « nombres invalides » : le jeu repart sans planter<div class="detail">Poussière 0</div></td></tr><tr><td><span class="pill ok">OK</span></td><td>Sauvegarde « valeur négative » : le jeu repart sans planter<div class="detail">Poussière 0</div></td></tr><tr><td><span class="pill ok">OK</span></td><td>Sauvegarde « infini » : le jeu repart sans planter<div class="detail">Poussière 1,85e307</div></td></tr><tr><td><span class="pill ok">OK</span></td><td>Temps négatif (horloge reculée) ignoré</td></tr><tr><td><span class="pill ok">OK</span></td><td>Rattrapage 7 jours hors-ligne en moins de 5 s (PC)<div class="detail">66 ms</div></td></tr><tr><td><span class="pill ok">OK</span></td><td>Défi « Sans étoiles » : aucun Éclat gagné (même en passif)<div class="detail">Éclats 0</div></td></tr><tr><td><span class="pill ok">OK</span></td><td>Défi « Quatuor » : générateurs 5-8 non achetables</td></tr><tr><td><span class="pill ok">OK</span></td><td>Défi « Vide quantique » : Effondrement bloqué</td></tr><tr><td><span class="pill ok">OK</span></td><td>Éternité impossible pendant un défi</td></tr><tr><td><span class="pill ok">OK</span></td><td>Un défi ne se valide pas sans atteindre l'Infini</td></tr><tr><td><span class="pill ok">OK</span></td><td>Automates à 0 s : pas de plantage, tick &lt; 5 ms<div class="detail">0.09 ms/tick</div></td></tr><tr><td><span class="pill ok">OK</span></td><td>Tick en partie avancée &lt; 2 ms (PC)<div class="detail">0.080 ms</div></td></tr><tr><td><span class="pill ok">OK</span></td><td>Exposant critique &lt; 1 même avec toutes les améliorations (pas d'emballement)<div class="detail">E départ 0.393, E max 0.756</div></td></tr><tr><td><span class="pill ok">OK</span></td><td>x − x = 0</td></tr><tr><td><span class="pill ok">OK</span></td><td>1e308 × 10 ne déborde pas</td></tr><tr><td><span class="pill ok">OK</span></td><td>pow / log cohérents</td></tr><tr><td><span class="pill ok">OK</span></td><td>Big.parse aller-retour</td></tr></tbody></table></div>
+  </section>
+
+  <section aria-labelledby="strat">
+    <h2 id="strat">Doubler ou attendre : la stratégie compte</h2>
+    <p>Chaque gain de prestige suit une loi de puissance de la monnaie d'en dessous : par exemple, les Points d'Éternité valent environ (Points d'Infini)^0,1. Pour doubler son gain, il faut donc 1 000 fois plus de Points d'Infini. Prestiger dès que le gain double revient à repartir de zéro trop souvent.</p><div class="scroll"><table class="times"><thead><tr><th scope="col">Au bout de 300 h</th><th scope="col">Actif (×2)</th><th scope="col">Patient (×10)</th></tr></thead><tbody><tr><th scope="row">Points d'Éternité</th><td>1e29</td><td>1e221</td></tr><tr><th scope="row">Essence de Multivers</th><td>1e8</td><td>1e157</td></tr><tr><th scope="row">Couche la plus haute</th><td>Multivers</td><td>Hypervers</td></tr></tbody></table></div><p>Le jeu a donc deux régimes : le joueur patient « décolle » vers 5 h (la Poussière passe de 1e79 à 1e18 679 en quelques heures), tandis que le joueur pressé progresse très lentement. Ce n'est pas une faille, mais un nouveau joueur ne le devinera pas.</p><h3>Déjà fait</h3><ul class="plain"><li>Le bouton de prestige affiche le multiplicateur par rapport au total actuel (par exemple « ×336 »).</li><li>Les prestiges automatiques sont réglés sur ×10 par défaut, avec un conseil affiché.</li></ul><h3>Recommandé ensuite (à valider en jouant)</h3><ul class="plain"><li>Ajouter une étape entre l'Éternité et le Multivers (par exemple des défis d'Éternité) pour remplir le creux qui suit l'embouteillage.</li><li>Placer les seuils des Strates juste au-dessus du plateau de la couche précédente plutôt qu'à intervalle fixe, pour remplacer les murs par une montée régulière.</li><li>Rendre le gain d'Éternité moins sensible à l'attente (exposant plus proche de 1) si l'écart entre les deux régimes reste trop grand après des parties réelles.</li></ul>
+  </section>
+
+  <section aria-labelledby="dt">
+    <h2 id="dt">Pas de temps et cadence</h2>
+    <p>Début de partie, profil Actif, 6 h de jeu avec quatre pas de simulation. Avant correction, l'écart allait de 1e194 à 1e134 729 ; il n'y a plus d'emballement. Le score est la somme des log10 des monnaies totales gagnées.</p>
+    <table class="small"><thead><tr><th scope="col">Pas</th><th scope="col">1re Supernova</th><th scope="col">1er Effondrement</th><th scope="col">Score</th></tr></thead><tbody><tr><td>0,25 s</td><td>9 min</td><td>2,5 h</td><td>9,5</td></tr><tr><td>1 s</td><td>9 min</td><td>2,7 h</td><td>9,6</td></tr><tr><td>4 s</td><td>9 min</td><td>2,6 h</td><td>9,6</td></tr><tr><td>16 s</td><td>9 min</td><td>2,4 h</td><td>10,2</td></tr></tbody></table>
+    <p>En fin de partie, en revanche, la vitesse de réaction du joueur compte : chaque couche demande plusieurs parties de la couche en dessous, d'au moins 10 s chacune. Réagir toutes les 4 s au lieu de chaque seconde allonge chaque partie d'environ 20 %, et l'effet se cumule couche après couche.</p>
+    <div class="scroll"><table class="times"><thead><tr><th scope="col">Étape</th><th scope="col">Actif, réagit chaque 1 s</th><th scope="col">Actif, chaque 4 s</th><th scope="col">Patient, chaque 1 s</th><th scope="col">Patient, chaque 4 s</th></tr></thead><tbody><tr><th scope="row">Première Supernova</th><td>9 min</td><td>9 min</td><td>9 min</td><td>9 min</td></tr><tr><th scope="row">Premier Effondrement</th><td>2,7 h</td><td>2,6 h</td><td>1,2 h</td><td>60 min</td></tr><tr><th scope="row">Premier Big Bang (Infini)</th><td>7,4 h</td><td>7,7 h</td><td>3,2 h</td><td>3,0 h</td></tr><tr><th scope="row">Briser l'Infini</th><td>9,7 h</td><td>15 h</td><td>5,1 h</td><td>6,3 h</td></tr><tr><th scope="row">Première Éternité</th><td>9,8 h</td><td>15 h</td><td>5,1 h</td><td>6,5 h</td></tr><tr><th scope="row">Strate 1 : Multivers</th><td>10 h</td><td>2,8 j</td><td>5,2 h</td><td>6,7 h</td></tr><tr><th scope="row">Strate 2 : Omnivers</th><td>—</td><td>3,2 j</td><td>5,3 h</td><td>7,2 h</td></tr><tr><th scope="row">Strate 3 : Hypervers</th><td>—</td><td>8,8 j</td><td>40 h</td><td>5,5 j</td></tr></tbody></table></div>
+  </section>
+
+  <section aria-labelledby="fin">
+    <h2 id="fin">État en fin de simulation</h2>
+    <div class="scroll"><table><thead><tr><th scope="col">Profil</th><th scope="col">Couche la plus haute</th><th scope="col">Prestiges au total</th><th scope="col">Défis</th><th scope="col">Valeur invalide</th><th scope="col">Tick max / rattrapage max</th></tr></thead><tbody><tr><th scope="row">Actif</th><td>Multivers</td><td>391 313</td><td>5/6</td><td>non</td><td>42 ms</td></tr><tr><th scope="row">Patient</th><td>Hypervers</td><td>6 393</td><td>5/6</td><td>non</td><td>45 ms</td></tr><tr><th scope="row">Économe</th><td>Multivers</td><td>383 361</td><td>5/6</td><td>non</td><td>54 ms</td></tr><tr><th scope="row">Achats chers</th><td>Multivers</td><td>390 222</td><td>5/6</td><td>non</td><td>37 ms</td></tr><tr><th scope="row">Spam de prestige</th><td>Éternité</td><td>220 355</td><td>5/6</td><td>non</td><td>21 ms</td></tr><tr><th scope="row">Défis tardifs</th><td>Multivers</td><td>391 252</td><td>5/6</td><td>non</td><td>10 ms</td></tr><tr><th scope="row">Sans défis</th><td>Big Bang</td><td>105 551</td><td>0/6</td><td>non</td><td>23 ms</td></tr><tr><th scope="row">Idle 3×/jour</th><td>Hypervers</td><td>3 563</td><td>5/6</td><td>non</td><td>6 ms / 174 ms</td></tr><tr><th scope="row">Idle 1×/jour</th><td>Multivers</td><td>570</td><td>5/6</td><td>non</td><td>6 ms / 91 ms</td></tr></tbody></table></div>
+  </section>
+
+  <section aria-labelledby="lim">
+    <h2 id="lim">Ce que ces tests ne garantissent pas</h2>
+    <ul class="plain">
+      <li>Les bots ne jouent pas comme des humains. Un humain prend des pauses, oublie les défis, ou optimise mieux. Les temps sont des ordres de grandeur, à confirmer en jouant.</li>
+      <li>Les temps dépendent de la cadence de jeu. Le bot réagit chaque seconde, comme les automates ; un joueur qui ne regarde que toutes les 4 s va nettement moins vite en fin de partie (voir le tableau de cadence), parce que les couches sont imbriquées et que chaque partie dure un peu plus.</li>
+      <li>Au-delà d'environ 16 h d'absence, le calcul hors-ligne utilise des pas de plus de 10 s : il reste légèrement favorable sur les très longues absences. La limite est fixée à 7 jours.</li>
+      <li>Avancer l'horloge du téléphone donne jusqu'à 7 jours de progression hors-ligne, comme dans tous les jeux idle. Et l'import de sauvegarde permet de tricher volontairement : c'est un jeu solo, ce n'est pas bloqué.</li>
+      <li>Les performances sont mesurées sur PC. Sur un téléphone d'entrée de gamme, compter 3 à 5 fois plus.</li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="rep">
+    <h2 id="rep">Refaire les mesures</h2>
+    <div class="formula">node idle/tools/campaign.js 300 4 resultats/<br>node idle/tools/tests.js resultats/tests.json<br>node idle/tools/rapport.js resultats/campagne.json resultats/tests.json rapport.html</div>
+  </section>
+</div>

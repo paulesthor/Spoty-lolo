@@ -1,0 +1,309 @@
+{
+ "sensitivity": [
+  {
+   "dt": 0.25,
+   "score": 9.53996037456374,
+   "dust": 14.691764257563895,
+   "L1": 529.5,
+   "L2": 9055.5,
+   "resets": {
+    "1": 293,
+    "2": 3,
+    "3": 0,
+    "4": 0
+   }
+  },
+  {
+   "dt": 1,
+   "score": 9.621358975136031,
+   "dust": 13.809606190110651,
+   "L1": 527,
+   "L2": 9755,
+   "resets": {
+    "1": 285,
+    "2": 3,
+    "3": 0,
+    "4": 0
+   }
+  },
+  {
+   "dt": 4,
+   "score": 9.614431799927116,
+   "dust": 9.689068072349007,
+   "L1": 524,
+   "L2": 9336,
+   "resets": {
+    "1": 248,
+    "2": 3,
+    "3": 0,
+    "4": 0
+   }
+  },
+  {
+   "dt": 16,
+   "score": 10.152523186694351,
+   "dust": 10.940717652475865,
+   "L1": 528,
+   "L2": 8752,
+   "resets": {
+    "1": 157,
+    "2": 3,
+    "3": 0,
+    "4": 0
+   }
+  }
+ ],
+ "offline": {
+  "début": {
+   "on": {
+    "dust": 34.65746384131821,
+    "score": 20.492180226701816,
+    "L": [
+     2.0492180226701815,
+     null,
+     null,
+     null,
+     null
+    ]
+   },
+   "off": {
+    "dust": 34.65855068648315,
+    "score": 20.492180226701816,
+    "L": [
+     2.0492180226701815,
+     null,
+     null,
+     null,
+     null
+    ]
+   },
+   "ms": 19
+  },
+  "milieu": {
+   "on": {
+    "dust": 92.28939868410946,
+    "score": 2818.8560448387725,
+    "L": [
+     109.35174804607668,
+     17.253385643780057,
+     0,
+     null,
+     null
+    ]
+   },
+   "off": {
+    "dust": 100.96251227738959,
+    "score": 2818.8560448387725,
+    "L": [
+     109.35174804607668,
+     17.253385643780057,
+     0,
+     null,
+     null
+    ]
+   },
+   "ms": 35
+  },
+  "avancée": {
+   "on": {
+    "dust": 12352.506743534284,
+    "score": 835896.2786145577,
+    "L": [
+     4562.520749683068,
+     762.7431162380877,
+     373.1078364046595,
+     34.08889230892587,
+     0
+    ]
+   },
+   "off": {
+    "dust": 12761.489092899745,
+    "score": 833658.7342636156,
+    "L": [
+     4558.628078814815,
+     761.9873989312761,
+     372.87151476176456,
+     33.90021988205753,
+     0
+    ]
+   },
+   "ms": 211
+  }
+ },
+ "offline7dMs": 66,
+ "tickMs": 0.0795,
+ "Ebase": 0.3930851272325909,
+ "Emax": 0.7557553042272634,
+ "results": [
+  {
+   "name": "Poussière de départ max < seuil de Supernova",
+   "ok": true,
+   "detail": "départ 3,16e13 vs seuil 1e15"
+  },
+  {
+   "name": "[début] couche 1 : seuil non atteint juste après son reset",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "[milieu] couche 1 : seuil non atteint juste après son reset",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "[avancée] couche 1 : seuil non atteint juste après son reset",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "[avancée] couche 2 : seuil non atteint juste après son reset",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "[avancée] couche 3 : seuil non atteint juste après son reset",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "[avancée] couche 4 : seuil non atteint juste après son reset",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "Pas de temps 0,25 s → 16 s : écart de progression < 25 %",
+   "ok": true,
+   "detail": "somme des log10 des totaux : 9.5 / 9.6 / 9.6 / 10.2 ; 1re Supernova : 9 min / 9 min / 9 min / 9 min"
+  },
+  {
+   "name": "[début] 8 h hors-ligne ne rapporte pas plus que 8 h en ligne à 50 ms/tick (+5 %)",
+   "ok": true,
+   "detail": "log10 des totaux par couche — en ligne 2.0/–/–/–/–, hors-ligne 2.0/–/–/–/– (calcul 19 ms)"
+  },
+  {
+   "name": "[milieu] 8 h hors-ligne ne rapporte pas plus que 8 h en ligne à 50 ms/tick (+5 %)",
+   "ok": true,
+   "detail": "log10 des totaux par couche — en ligne 109.4/17.3/0.0/–/–, hors-ligne 109.4/17.3/0.0/–/– (calcul 35 ms)"
+  },
+  {
+   "name": "[avancée] 8 h hors-ligne ne rapporte pas plus que 8 h en ligne à 50 ms/tick (+5 %)",
+   "ok": true,
+   "detail": "log10 des totaux par couche — en ligne 4562.5/762.7/373.1/34.1/0.0, hors-ligne 4558.6/762.0/372.9/33.9/0.0 (calcul 211 ms)"
+  },
+  {
+   "name": "Nombres gigantesques (1e1e300) : pas de plantage ni de NaN",
+   "ok": true,
+   "detail": "e1,00e300"
+  },
+  {
+   "name": "Achat max avec 1e1e300 Poussière reste rapide",
+   "ok": true,
+   "detail": "8 ms"
+  },
+  {
+   "name": "Achat max des améliorations avec monnaie gigantesque reste rapide",
+   "ok": true,
+   "detail": "5 ms"
+  },
+  {
+   "name": "Format des nombres extrêmes",
+   "ok": true,
+   "detail": "e1,00e300"
+  },
+  {
+   "name": "Sauvegarde « JSON vide » : le jeu repart sans planter",
+   "ok": true,
+   "detail": "Poussière 9,90"
+  },
+  {
+   "name": "Sauvegarde « gens manquants » : le jeu repart sans planter",
+   "ok": true,
+   "detail": "Poussière 2,34e8"
+  },
+  {
+   "name": "Sauvegarde « nombres invalides » : le jeu repart sans planter",
+   "ok": true,
+   "detail": "Poussière 0"
+  },
+  {
+   "name": "Sauvegarde « valeur négative » : le jeu repart sans planter",
+   "ok": true,
+   "detail": "Poussière 0"
+  },
+  {
+   "name": "Sauvegarde « infini » : le jeu repart sans planter",
+   "ok": true,
+   "detail": "Poussière 1,85e307"
+  },
+  {
+   "name": "Temps négatif (horloge reculée) ignoré",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "Rattrapage 7 jours hors-ligne en moins de 5 s (PC)",
+   "ok": true,
+   "detail": "66 ms"
+  },
+  {
+   "name": "Défi « Sans étoiles » : aucun Éclat gagné (même en passif)",
+   "ok": true,
+   "detail": "Éclats 0"
+  },
+  {
+   "name": "Défi « Quatuor » : générateurs 5-8 non achetables",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "Défi « Vide quantique » : Effondrement bloqué",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "Éternité impossible pendant un défi",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "Un défi ne se valide pas sans atteindre l'Infini",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "Automates à 0 s : pas de plantage, tick < 5 ms",
+   "ok": true,
+   "detail": "0.09 ms/tick"
+  },
+  {
+   "name": "Tick en partie avancée < 2 ms (PC)",
+   "ok": true,
+   "detail": "0.080 ms"
+  },
+  {
+   "name": "Exposant critique < 1 même avec toutes les améliorations (pas d'emballement)",
+   "ok": true,
+   "detail": "E départ 0.393, E max 0.756"
+  },
+  {
+   "name": "x − x = 0",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "1e308 × 10 ne déborde pas",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "pow / log cohérents",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "Big.parse aller-retour",
+   "ok": true,
+   "detail": ""
+  }
+ ]
+}

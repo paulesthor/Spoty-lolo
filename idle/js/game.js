@@ -24,28 +24,31 @@
   // Données
   // ------------------------------------------------------------------
   const GENS = [
-    { name: 'Particules', base: 1, step: 3 },
-    { name: 'Atomes', base: 2, step: 4 },
-    { name: 'Molécules', base: 4, step: 5 },
-    { name: 'Astéroïdes', base: 6, step: 6 },
-    { name: 'Planètes', base: 9, step: 8 },
-    { name: 'Étoiles', base: 13, step: 10 },
-    { name: 'Nébuleuses', base: 18, step: 12 },
-    { name: 'Galaxies', base: 24, step: 15 },
+    { name: 'Particules', base: 1, step: 3.6 },
+    { name: 'Atomes', base: 2, step: 4.8 },
+    { name: 'Molécules', base: 4, step: 6 },
+    { name: 'Astéroïdes', base: 6, step: 7.2 },
+    { name: 'Planètes', base: 9, step: 9.6 },
+    { name: 'Étoiles', base: 13, step: 12 },
+    { name: 'Nébuleuses', base: 18, step: 14.4 },
+    { name: 'Galaxies', base: 24, step: 18 },
   ];
   const ACCEL = { base: 3, step: 1 };
 
-  // Dans tous les défis, la production de Poussière est en plus mise à la puissance 0,9.
   // Le défi n°i se débloque après 2×i Big Bangs.
   const CHALLENGES = [
     { id: 'c1', name: 'Nuit noire', desc: "L'Accélérateur n'a aucun effet.", reward: 'Accélérateur +0,02 par achat.' },
-    { id: 'c2', name: 'Sans étoiles', desc: 'Supernova impossible.', reward: "Effet des Éclats : exposant +0,1." },
+    { id: 'c2', name: 'Sans étoiles', desc: 'Supernova impossible.', reward: "Effet des Éclats : exposant +0,2." },
     { id: 'c3', name: 'Quatuor', desc: 'Seuls les générateurs 1 à 4 produisent.', reward: 'Générateurs 1 à 4 ×(1 + Points d\'Infini).' },
-    { id: 'c4', name: 'Inflation', desc: 'La hausse des prix est doublée.', reward: 'Hausse des prix des générateurs −10 %.' },
+    { id: 'c4', name: 'Inflation', desc: 'La hausse des prix est augmentée de 50 %.', reward: 'Hausse des prix des générateurs −5 %.' },
     { id: 'c5', name: 'Vide quantique', desc: 'Effondrement impossible.', reward: 'Gain de Singularités ×5.' },
-    { id: 'c6', name: 'Racine', desc: 'La production de Poussière est mise à la racine carrée.', reward: 'Exposant de production +0,03.' },
+    { id: 'c6', name: 'Racine', desc: 'La production de Poussière est mise à la puissance 0,75.', reward: 'Exposant de production +0,03.' },
   ];
   const BREAK_CHALLENGES = 4;
+  const ETER_REQ = 40;
+  // Durée minimale d'une partie avant de pouvoir refaire le même prestige (manuel ou
+  // automatique). Sans elle, tapoter le bouton le plus vite possible bat les automates.
+  const MIN_RUN = 10;
 
   // ------------------------------------------------------------------
   // État
@@ -55,7 +58,7 @@
   const listeners = [];
 
   function newLayerState() {
-    return { cur: Big.ZERO, total: Big.ZERO, best: Big.ZERO, resets: 0, time: 0, upg: {}, auto: { on: false, mode: 'mult', value: 2 } };
+    return { cur: Big.ZERO, total: Big.ZERO, best: Big.ZERO, resets: 0, time: 0, upg: {}, auto: { on: false, mode: 'mult', value: 10 } };
   }
 
   function newState() {
@@ -103,16 +106,16 @@
       rawLog() {
         const l = S.dust.log10();
         if (l < 15) return -Infinity;
-        return ((l - 15) / 6) * (1 + 0.1 * lvl(4, 'et_shard'));
+        return ((l - 15) / 4) * (1 + 0.05 * lvl(4, 'et_shard'));
       },
       blocked: () => inChal('c2') ? 'Bloqué par le défi « Sans étoiles »' : null,
-      effectText: () => 'Production ×' + fmt(shardEffect()),
+      effectText: () => 'Production ×' + fmt(shardEffect()) + capNote(1, shardExp()),
       upgrades: [
         { id: 'sn_fusion', name: 'Fusion', desc: () => 'Production ×2 par niveau', eff: (l) => '×' + fmt(P(l * Math.log10(2))), cost: R(0, Math.log10(3)), max: Infinity },
         { id: 'sn_pulsar', name: 'Pulsar', desc: () => 'Accélérateur +0,01 par achat', eff: (l) => '+' + (0.01 * l).toFixed(2), cost: R(0.5, 0.6), max: 10 },
         { id: 'sn_remnant', name: 'Reste stellaire', desc: () => 'Commence avec plus de Poussière après chaque prestige', eff: (l) => fmt(startDust()), cost: R(0.7, 0.9), max: 5 },
         { id: 'sn_gravity', name: 'Gravité', desc: () => 'Particules ×(1 + log(Poussière))^1,5', eff: () => '×' + fmt(gravityEffect()), cost: R(1.4, 0), max: 1 },
-        { id: 'sn_mass', name: 'Masse critique', desc: () => 'Bonus par 10 achats +0,1', eff: (l) => '×' + (M ? M.perTen : 2).toFixed(2), cost: R(2, 1), max: 5 },
+        { id: 'sn_mass', name: 'Masse critique', desc: () => 'Bonus par 10 achats +0,05', eff: (l) => '×' + (M ? M.perTen : 2).toFixed(2), cost: R(2, 1), max: 5 },
         { id: 'sn_echo', name: 'Écho', desc: () => "Gain d'Éclats ×2 par niveau", eff: (l) => '×' + fmt(P(l * Math.log10(2))), cost: R(3, 0.7), max: Infinity },
         { id: 'sn_nova', name: 'Hypernova', desc: () => 'Effet des Éclats : exposant +0,05', eff: (l) => '^' + shardExp().toFixed(2), cost: R(4, 2), max: 5 },
       ],
@@ -120,22 +123,22 @@
     },
     2: {
       name: 'Effondrement', verb: 'Effondrement', cur: 'Singularités', sym: '●',
-      reqLog: 12,
-      reqText: () => 'Atteins 1e12 Éclats',
+      reqLog: 8,
+      reqText: () => 'Atteins 1e8 Éclats',
       sourceLog: () => cur(1).log10(),
       rawLog() {
         const l = cur(1).log10();
-        if (l < 12) return -Infinity;
-        return (l - 12) / 8;
+        if (l < 8) return -Infinity;
+        return (l - 8) / 6;
       },
       blocked: () => inChal('c5') ? 'Bloqué par le défi « Vide quantique »' : null,
-      effectText: () => "Production et gain d'Éclats ×" + fmt(cur(2).add(1)),
+      effectText: () => 'Production ×' + fmt(P(curEffLog(2, 3))) + capNote(2, 3) + ", gain d'Éclats ×" + fmt(P(curEffLog(2))),
       upgrades: [
         { id: 'co_horizon', name: 'Horizon', desc: () => 'Production ×5 par niveau', eff: (l) => '×' + fmt(P(l * Math.log10(5))), cost: R(0, 0.5), max: Infinity },
         { id: 'co_spaghetti', name: 'Spaghettification', desc: () => "Gain d'Éclats ×3 par niveau", eff: (l) => '×' + fmt(P(l * Math.log10(3))), cost: R(0.3, 0.6), max: Infinity },
         { id: 'co_hawking', name: 'Rayonnement de Hawking', desc: () => "Gagne passivement 1 % par seconde du gain de Supernova", eff: (l) => l + ' %/s', cost: R(0.7, 1), max: 10 },
         { id: 'co_density', name: 'Densité', desc: () => 'Exposant de production +0,01', eff: (l) => '^' + (M ? M.prodExp : 1).toFixed(2), cost: R(1, 1.4), max: 5 },
-        { id: 'co_bulk', name: 'Compression', desc: () => 'Hausse des prix des générateurs −2 %', eff: (l) => '−' + 2 * l + ' %', cost: R(1.4, 1), max: 5 },
+        { id: 'co_bulk', name: 'Compression', desc: () => 'Hausse des prix des générateurs −1 %', eff: (l) => '−' + l + ' %', cost: R(1.4, 1), max: 5 },
       ],
       milestones: [
         { n: 1, text: 'Achat automatique des générateurs' },
@@ -152,16 +155,16 @@
       rawLog() {
         const l = S.dust.log10();
         if (l < INF_LOG - 1e-9) return -Infinity;
-        if (isBroken()) return Math.max(0, l / 308 - 0.75);
+        if (isBroken()) return Math.max(0, (l - INF_LOG) / 40);
         return 0;
       },
       blocked: () => null,
-      effectText: () => 'Production ×' + fmt(cur(3).add(1)),
+      effectText: () => 'Production ×' + fmt(P(curEffLog(3, 2))) + capNote(3, 2),
       upgrades: [
         { id: 'in_time', name: 'Temps cosmique', desc: () => 'Production ×(1 + minutes dans ce Big Bang)^1,5', eff: () => '×' + fmt(timeEffect()), cost: R(0, 0), max: 1 },
         { id: 'in_count', name: 'Mémoire', desc: () => 'Production ×(1 + nombre de Big Bangs)²', eff: () => '×' + fmt(B(resets(3) + 1).pow(2)), cost: R(0, 0), max: 1 },
-        { id: 'in_sn', name: 'Éclats éternels', desc: () => "Gain d'Éclats ×(1 + Points d'Infini)^0,5", eff: () => '×' + fmt(cur(3).add(1).pow(0.5)), cost: R(0.3, 0), max: 1 },
-        { id: 'in_gen', name: 'Fusion stellaire', desc: () => 'Bonus par 10 achats +0,5', eff: () => '+0,5', cost: R(0.7, 0), max: 1 },
+        { id: 'in_sn', name: 'Éclats éternels', desc: () => "Gain d'Éclats ×(1 + Points d'Infini)^0,5", eff: () => '×' + fmt(P(curEffLog(3, 0.5))), cost: R(0.3, 0), max: 1 },
+        { id: 'in_gen', name: 'Fusion stellaire', desc: () => 'Bonus par 10 achats +0,25', eff: () => '+0,25', cost: R(0.7, 0), max: 1 },
         { id: 'in_auto', name: 'Big Bang automatique', desc: () => 'Débloque le Big Bang automatique', eff: () => 'Débloqué', cost: R(1, 0), max: 1 },
         { id: 'in_ipmult', name: 'Résonance', desc: () => "Points d'Infini ×2 par niveau", eff: (l) => '×' + fmt(P(l * Math.log10(2))), cost: R(1, 0.5), max: Infinity },
         { id: 'in_hawk', name: 'Évaporation', desc: () => "Gagne passivement 1 % par seconde du gain d'Effondrement", eff: (l) => l + ' %/s', cost: R(1.5, 0.5), max: 10 },
@@ -170,8 +173,8 @@
           cost: R(2, 0), max: 1,
           req: () => chalCount() >= BREAK_CHALLENGES, reqText: () => 'Termine ' + BREAK_CHALLENGES + ' défis (' + chalCount() + '/' + BREAK_CHALLENGES + ')',
         },
-        { id: 'in_postcost', name: 'Courbure', desc: () => "Hausse des prix au-delà de l'Infini −10 %", eff: (l) => '−' + 10 * l + ' %', cost: R(3, 1), max: 5, req: () => lvl(3, 'in_break') > 0, reqText: () => "Brise l'Infini" },
-        { id: 'in_prodpow', name: 'Expansion', desc: () => 'Exposant de production +0,02', eff: (l) => '^' + (M ? M.prodExp : 1).toFixed(2), cost: R(4, 3), max: 5, req: () => lvl(3, 'in_break') > 0, reqText: () => "Brise l'Infini" },
+        { id: 'in_postcost', name: 'Courbure', desc: () => "Hausse des prix au-delà de l'Infini −10 %", eff: (l) => '−' + 10 * l + ' %', cost: R(3, 1), max: 3, req: () => lvl(3, 'in_break') > 0, reqText: () => "Brise l'Infini" },
+        { id: 'in_prodpow', name: 'Expansion', desc: () => 'Exposant de production +0,01', eff: (l) => '^' + (M ? M.prodExp : 1).toFixed(2), cost: R(4, 3), max: 5, req: () => lvl(3, 'in_break') > 0, reqText: () => "Brise l'Infini" },
       ],
       milestones: [
         { n: 1, text: 'Production ×10 par défi terminé' },
@@ -183,23 +186,23 @@
     },
     4: {
       name: 'Éternité', verb: 'Éternité', cur: "Points d'Éternité", sym: 'Ⓔ',
-      reqLog: INF_LOG,
-      reqText: () => "Atteins 1,8e308 Points d'Infini",
+      reqLog: ETER_REQ,
+      reqText: () => "Atteins 1e" + ETER_REQ + " Points d'Infini",
       sourceLog: () => cur(3).log10(),
       rawLog() {
         const l = cur(3).log10();
-        if (l < INF_LOG - 1e-9) return -Infinity;
-        return (l - INF_LOG) / 100;
+        if (l < ETER_REQ) return -Infinity;
+        return (l - ETER_REQ) / 10;
       },
       blocked: () => S.chal.active ? 'Quitte le défi en cours' : null,
-      effectText: () => "Points d'Infini ×" + fmt(cur(4).add(1)) + ', production ×' + fmt(cur(4).add(1).pow(3)),
+      effectText: () => "Points d'Infini ×" + fmt(P(curEffLog(4))) + ', production ×' + fmt(P(curEffLog(4, 3))) + capNote(4),
       upgrades: [
         { id: 'et_ip', name: 'Mémoire éternelle', desc: () => "Points d'Infini ×5 par niveau", eff: (l) => '×' + fmt(P(l * Math.log10(5))), cost: R(0, 0.5), max: Infinity },
-        { id: 'et_prod', name: 'Inflation cosmique', desc: () => 'Exposant de production +0,01', eff: (l) => '+' + (0.01 * l).toFixed(2), cost: R(0.3, 0.7), max: 10 },
+        { id: 'et_prod', name: 'Inflation cosmique', desc: () => 'Exposant de production +0,005', eff: (l) => '+' + (0.005 * l).toFixed(3).replace('.', ','), cost: R(0.3, 0.7), max: 5 },
         { id: 'et_time', name: 'Dilatation', desc: () => 'Vitesse du jeu +25 %', eff: (l) => '×' + (1 + 0.25 * l).toFixed(2), cost: R(0.7, 1), max: 8 },
         { id: 'et_passive', name: 'Rémanence', desc: () => "Gagne passivement 1 % par seconde du gain de Big Bang", eff: (l) => l + ' %/s', cost: R(1, 1), max: 10 },
-        { id: 'et_shard', name: 'Cristallisation', desc: () => "Gain d'Éclats : exposant +10 %", eff: (l) => '+' + 10 * l + ' %', cost: R(0.5, 0.8), max: 5 },
-        { id: 'et_gens', name: 'Harmonie', desc: () => 'Bonus par 10 achats +0,25', eff: (l) => '+' + (0.25 * l).toFixed(2), cost: R(0.6, 0.6), max: 4 },
+        { id: 'et_shard', name: 'Cristallisation', desc: () => "Gain d'Éclats : exposant +5 %", eff: (l) => '+' + 5 * l + ' %', cost: R(0.5, 0.8), max: 5 },
+        { id: 'et_gens', name: 'Harmonie', desc: () => 'Bonus par 10 achats +0,0625', eff: (l) => '+' + (0.0625 * l).toFixed(3).replace('.', ','), cost: R(0.6, 0.6), max: 4 },
       ],
       milestones: [
         { n: 1, text: "Garde les améliorations d'Infini" },
@@ -212,7 +215,8 @@
 
   const META_NAMES = ['Multivers', 'Omnivers', 'Hypervers', 'Absolu', 'Paradoxe', 'Néant', 'Origine', 'Archétype', 'Primordial', 'Ultime'];
   const META_SYMS = ['Ⓜ', 'Ⓞ', 'Ⓗ', 'Ⓐ', 'Ⓟ', 'Ⓝ', 'Ⓡ', 'Ⓚ', 'Ⓘ', 'Ⓤ'];
-  const META_REQ = 30;
+  // seuil d'une strate : croît avec la profondeur (sinon les strates s'enchaînent en cascade)
+  const metaReq = (k) => 10 + 5 * (k - 5);
 
   function roman(n) {
     const t = [[1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'], [100, 'C'], [90, 'XC'], [50, 'L'], [40, 'XL'], [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']];
@@ -230,19 +234,19 @@
     const d = {
       name, verb: name, cur: 'Essence ' + (/^[AEIOUÉÈÊHaeiouéè]/.test(name) ? "d'" : 'de ') + name, sym: i < META_SYMS.length ? META_SYMS[i] : '◈',
       meta: true,
-      reqLog: META_REQ,
-      reqText: () => 'Atteins 1e' + META_REQ + ' ' + prev.cur,
+      reqLog: metaReq(k),
+      reqText: () => 'Atteins 1e' + metaReq(k) + ' ' + prev.cur,
       sourceLog: () => cur(k - 1).log10(),
       rawLog() {
         const l = cur(k - 1).log10();
-        if (l < META_REQ) return -Infinity;
-        return (l - META_REQ) / 6;
+        if (l < metaReq(k)) return -Infinity;
+        return (l - metaReq(k)) / 4;
       },
       blocked: () => S.chal.active ? 'Quitte le défi en cours' : null,
-      effectText: () => prev.cur + ' ×' + fmt(cur(k).add(1)) + ', production ×' + fmt(cur(k).add(1).pow(2)),
+      effectText: () => prev.cur + ' ×' + fmt(P(curEffLog(k))) + ', production ×' + fmt(P(curEffLog(k, 2))) + capNote(k),
       upgrades: [
         { id: 'g_gain', name: 'Amplification', desc: () => 'Gain de ' + prev.cur + ' ×3 par niveau', eff: (l) => '×' + fmt(P(l * Math.log10(3))), cost: R(0, 0.5), max: Infinity },
-        { id: 'g_prod', name: 'Résonance ' + (k - 4), desc: () => 'Production ×1e' + k + ' par niveau', eff: (l) => '×' + fmt(P(l * k)), cost: R(0, 0.3), max: Infinity },
+        { id: 'g_prod', name: 'Résonance ' + (k - 4), desc: () => 'Production ×1000 par niveau', eff: (l) => '×' + fmt(P(l * 3)), cost: R(0, 0.3), max: Infinity },
         { id: 'g_self', name: 'Récursion', desc: () => 'Gain de ' + name + ' ×2 par niveau', eff: (l) => '×' + fmt(P(l * Math.log10(2))), cost: R(1, 1), max: Infinity },
         { id: 'g_speed', name: 'Chronos', desc: () => 'Vitesse du jeu +10 %', eff: (l) => '×' + (1 + 0.1 * l).toFixed(1), cost: R(0.7, 0.7), max: 10 },
         { id: 'g_passive', name: 'Écoulement', desc: () => 'Gagne passivement 1 % par seconde du gain de ' + prev.name, eff: (l) => l + ' %/s', cost: R(0.5, 0.8), max: 10 },
@@ -268,13 +272,25 @@
   // Effets
   // ------------------------------------------------------------------
   function shardExp() {
-    return 0.5 + 0.05 * lvl(1, 'sn_nova') + (chalDone('c2') ? 0.1 : 0);
+    return 1.5 + 0.05 * lvl(1, 'sn_nova') + (chalDone('c2') ? 0.2 : 0);
   }
-  function shardEffect() { return cur(1).add(1).pow(shardExp()); }
+  // Plafond progressif : au-delà de « cap » (en log10), un effet ne croît plus
+  // qu'à la puissance 0,7. Garantit qu'aucune boucle prestige → production → prestige
+  // ne peut s'emballer, quel que soit le nombre de resets.
+  const CAPS = { 1: 60, 2: 60, 3: 60, 4: 60, meta: 60 };
+  function capLog(L, cap) { return L <= cap ? L : cap * Math.pow(L / cap, 0.7); }
+  function curEffLog(k, mult) {
+    const L = cur(k).add(1).log10() * (mult || 1);
+    return capLog(L, k <= 4 ? CAPS[k] : CAPS.meta);
+  }
+  function capped(k, mult) { return cur(k).add(1).log10() * (mult || 1) > (k <= 4 ? CAPS[k] : CAPS.meta); }
+  function capNote(k, mult) { return capped(k, mult) ? ' (plafonné)' : ''; }
+  function shardEffect() { return P(curEffLog(1, shardExp())); }
   function gravityEffect() { return B(1 + Math.max(0, S.dust.log10())).pow(1.5); }
   function timeEffect() { return B(1 + lay(3).time / 60).pow(1.5); }
+  // toujours sous le seuil de Supernova (1e15), sinon Supernova en boucle sans attendre
   function startDust() {
-    return P(1 + 3 * lvl(1, 'sn_remnant'));
+    return P(1 + 2.5 * lvl(1, 'sn_remnant'));
   }
 
   // à quel niveau de prestige les améliorations de la couche j survivent
@@ -306,13 +322,12 @@
     m.speed = 1 + 0.25 * lvl(4, 'et_time');
     for (let k = 5; k <= n; k++) m.speed *= 1 + 0.1 * lvl(k, 'g_speed');
 
-    m.perTen = 2 + 0.1 * lvl(1, 'sn_mass') + (lvl(3, 'in_gen') ? 0.5 : 0) + 0.25 * lvl(4, 'et_gens');
-    m.accelBase = 1.125 + 0.01 * lvl(1, 'sn_pulsar') + (chalDone('c1') ? 0.02 : 0);
+    m.perTen = 2 + 0.05 * lvl(1, 'sn_mass') + (lvl(3, 'in_gen') ? 0.25 : 0) + 0.0625 * lvl(4, 'et_gens');
+    m.accelBase = 1.15 + 0.01 * lvl(1, 'sn_pulsar') + (chalDone('c1') ? 0.02 : 0);
     m.accelOn = !inChal('c1');
-    m.prodExp = 1 + 0.01 * lvl(2, 'co_density') + 0.02 * lvl(3, 'in_prodpow') + 0.01 * lvl(4, 'et_prod') + (chalDone('c6') ? 0.03 : 0);
-    // dans un défi la production est aussi affaiblie (^0,9)
-    m.dustExp = m.prodExp * (inChal('c6') ? 0.5 : 1) * (S.chal.active ? 0.9 : 1);
-    m.costPow = (1 - 0.02 * lvl(2, 'co_bulk') - (chalDone('c4') ? 0.1 : 0)) * (inChal('c4') ? 2 : 1);
+    m.prodExp = 1 + 0.01 * lvl(2, 'co_density') + 0.01 * lvl(3, 'in_prodpow') + 0.005 * lvl(4, 'et_prod') + (chalDone('c6') ? 0.03 : 0);
+    m.dustExp = m.prodExp * (inChal('c6') ? 0.75 : 1);
+    m.costPow = (1 - 0.01 * lvl(2, 'co_bulk') - (chalDone('c4') ? 0.05 : 0)) * (inChal('c4') ? 1.5 : 1);
     m.postScale = 1.5 - 0.1 * lvl(3, 'in_postcost');
 
     // multiplicateur global (en log10 pour rester rapide)
@@ -320,34 +335,34 @@
     lp += lvl(1, 'sn_fusion') * Math.log10(2);
     lp += shardEffect().log10();
     lp += lvl(2, 'co_horizon') * Math.log10(5);
-    lp += cur(2).add(1).log10();
-    lp += cur(3).add(1).log10();
+    lp += curEffLog(2, 3);
+    lp += curEffLog(3, 2);
     if (lvl(3, 'in_time')) lp += timeEffect().log10();
     if (lvl(3, 'in_count')) lp += 2 * Math.log10(resets(3) + 1);
     if (resets(3) >= 1) lp += chalCount();
-    lp += 3 * cur(4).add(1).log10();
+    lp += curEffLog(4, 3);
     for (let k = 5; k <= n; k++) {
-      lp += 2 * cur(k).add(1).log10();
-      lp += k * lvl(k, 'g_prod');
+      lp += curEffLog(k, 2);
+      lp += 3 * lvl(k, 'g_prod');
     }
     m.prodLog = lp;
 
     m.genLog = GENS.map(() => 0);
     if (lvl(1, 'sn_gravity')) m.genLog[0] += gravityEffect().log10();
-    if (chalDone('c3')) for (let i = 0; i < 4; i++) m.genLog[i] += cur(3).add(1).log10();
+    if (chalDone('c3')) for (let i = 0; i < 4; i++) m.genLog[i] += curEffLog(3);
     m.genOn = GENS.map((_, i) => !(inChal('c3') && i >= 4));
 
     // multiplicateurs de gain par couche (log10)
     m.gainLog = {};
     for (let k = 1; k <= n; k++) m.gainLog[k] = 0;
-    m.gainLog[1] += lvl(1, 'sn_echo') * Math.log10(2) + lvl(2, 'co_spaghetti') * Math.log10(3) + cur(2).add(1).log10();
-    if (lvl(3, 'in_sn')) m.gainLog[1] += 0.5 * cur(3).add(1).log10();
+    m.gainLog[1] += lvl(1, 'sn_echo') * Math.log10(2) + lvl(2, 'co_spaghetti') * Math.log10(3) + curEffLog(2);
+    if (lvl(3, 'in_sn')) m.gainLog[1] += curEffLog(3, 0.5);
     if (chalDone('c5')) m.gainLog[2] += Math.log10(5);
-    m.gainLog[3] += lvl(3, 'in_ipmult') * Math.log10(2) + lvl(4, 'et_ip') * Math.log10(5) + cur(4).add(1).log10();
+    m.gainLog[3] += lvl(3, 'in_ipmult') * Math.log10(2) + lvl(4, 'et_ip') * Math.log10(5) + curEffLog(4);
     if (resets(4) >= 3) m.gainLog[3] += Math.log10(resets(4) + 1);
     for (let k = 5; k <= n + 1; k++) {
       if (m.gainLog[k - 1] === undefined) continue;
-      m.gainLog[k - 1] += cur(k).add(1).log10() + lvl(k, 'g_gain') * Math.log10(3);
+      m.gainLog[k - 1] += curEffLog(k) + lvl(k, 'g_gain') * Math.log10(3);
       if (m.gainLog[k] !== undefined) m.gainLog[k] += lvl(k, 'g_self') * Math.log10(2);
     }
 
@@ -376,10 +391,21 @@
   function genMultLog(i) {
     let l = M.genLog[i] + Math.floor(S.gens[i].bought / 10) * Math.log10(M.perTen);
     if (i === 0) l += M.prodLog; // le multiplicateur global ne s'applique qu'à la Poussière
-    if (M.accelOn) l += S.accel * Math.log10(M.accelBase);
+    if (i === 0 && M.accelOn) l += S.accel * Math.log10(M.accelBase); // l'Accélérateur ne touche que la Poussière
     return l;
   }
   function genMult(i) { return P(genMultLog(i)); }
+
+  // « Exposant critique » E : de combien le log de la production augmente quand le
+  // log de la Poussière augmente de 1 (si on dépense tout en achats). Si E ≥ 1 la
+  // production s'emballe (croissance explosive qui dépend de la vitesse des ticks).
+  function criticalExponent(mods) {
+    const m = mods || M;
+    let e = 0;
+    for (const g of GENS) e += Math.log10(m.perTen) / (g.step * m.costPow);
+    e += Math.log10(m.accelBase) / (ACCEL.step * m.costPow);
+    return e * m.prodExp;
+  }
   function genUnlocked(i) {
     if (!M.genOn[i]) return false;
     return i === 0 || S.gens[i - 1].bought > 0 || S.gens[i].bought > 0;
@@ -437,11 +463,14 @@
   // ------------------------------------------------------------------
   // Prestige
   // ------------------------------------------------------------------
-  function canReset(k) {
+  // seuil atteint (sans tenir compte de la durée minimale)
+  function reached(k) {
     const d = layerDef(k);
     if (d.blocked()) return false;
     return d.rawLog() > -Infinity;
   }
+  function waitLeft(k) { return Math.max(0, MIN_RUN - lay(k).time); }
+  function canReset(k) { return reached(k) && waitLeft(k) <= 0; }
   function gain(k) {
     const d = layerDef(k);
     const r = d.rawLog();
@@ -535,10 +564,10 @@
     if (S.dust.log10() >= 10) S.seen[1] = true;
     if (cur(1).log10() >= 6 || resets(1) >= 3) S.seen[2] = true;
     if (S.dust.log10() >= 150 || resets(3) > 0) S.seen[3] = true;
-    if (cur(3).log10() >= 100 || resets(4) > 0) S.seen[4] = true;
+    if (cur(3).log10() >= ETER_REQ / 2 || resets(4) > 0) S.seen[4] = true;
     const n = layerCount();
     for (let k = 5; k <= n + 1; k++) {
-      if (cur(k - 1).log10() >= META_REQ / 2 || resets(k) > 0) S.seen[k] = true;
+      if (cur(k - 1).log10() >= metaReq(k) / 2 || resets(k) > 0) S.seen[k] = true;
     }
   }
 
@@ -579,7 +608,7 @@
     // gains passifs
     for (let k = 1; k <= n; k++) {
       const p = M.passive[k];
-      if (p > 0 && canReset(k)) {
+      if (p > 0 && reached(k)) {
         const g = gain(k).mul(p * t);
         lay(k).cur = lay(k).cur.add(g);
         lay(k).total = lay(k).total.add(g);
@@ -602,7 +631,7 @@
 
   // simulation hors-ligne / rattrapage
   function simulate(seconds, maxSteps) {
-    maxSteps = maxSteps || 2000;
+    maxSteps = maxSteps || 6000;
     if (seconds <= 0) return;
     const steps = Math.min(maxSteps, Math.max(1, Math.ceil(seconds / 0.05)));
     const dt = seconds / steps;
@@ -620,7 +649,13 @@
     if (Array.isArray(o)) return o.map(revive);
     if (o && typeof o === 'object') {
       const r = {};
-      for (const key in o) r[key] = BIG_KEYS.has(key) ? Big.parse(o[key]) : revive(o[key]);
+      for (const key in o) {
+        if (BIG_KEYS.has(key)) {
+          const b = Big.parse(o[key]);
+          // une sauvegarde modifiée ne doit pas pouvoir injecter de valeur négative ou invalide
+          r[key] = b.m > 0 && isFinite(b.m) && isFinite(b.e) ? b : Big.ZERO;
+        } else r[key] = revive(o[key]);
+      }
       return r;
     }
     return o;
@@ -638,6 +673,15 @@
       s.layers[k].auto = Object.assign(newLayerState().auto, s.layers[k].auto || {});
     }
     if (!Array.isArray(s.gens) || s.gens.length !== GENS.length) s.gens = newState().gens;
+    const int = (x) => (Number.isFinite(x) && x > 0 ? Math.floor(x) : 0);
+    s.gens = s.gens.map((g) => ({ amount: g && g.amount instanceof Big ? g.amount : Big.ZERO, bought: int(g && g.bought) }));
+    s.accel = int(s.accel);
+    for (const k in s.layers) {
+      const l = s.layers[k];
+      l.resets = int(l.resets);
+      l.time = Number.isFinite(l.time) && l.time > 0 ? l.time : 0;
+      for (const id in l.upg) l.upg[id] = int(l.upg[id]);
+    }
     return s;
   }
 
@@ -652,12 +696,12 @@
   function fmt(x, d) { return Big.format(x, S ? S.options.notation : 'scientifique', d); }
 
   root.Game = {
-    GENS, CHALLENGES, BREAK_CHALLENGES, INF,
+    GENS, CHALLENGES, BREAK_CHALLENGES, INF, MIN_RUN,
     get S() { return S; }, get M() { return M; },
     init, newState, serialize, deserialize, tick, simulate, on: (f) => listeners.push(f),
     lay, lvl, cur, resets, layerDef, layerCount, keepLevel, autoUnlocked, autoGensUnlocked, autoAccelUnlocked,
-    genCost, genMult, genUnlocked, buyGen, accelCost, buyAccel, buyAllMax, dustRate,
-    canReset, gain, doReset, startChallenge, chalUnlocked, chalUnlockAt, exitChallenge, chalDone, chalCount, isBroken,
+    genCost, genMult, genUnlocked, criticalExponent, computeMods: () => computeMods(), buyGen, accelCost, buyAccel, buyAllMax, dustRate,
+    canReset, reached, waitLeft, gain, doReset, startChallenge, chalUnlocked, chalUnlockAt, exitChallenge, chalDone, chalCount, isBroken,
     upgDef, upgCost, upgAvailable, buyUpg, startDust, fmt,
     refresh: () => { M = computeMods(); },
   };

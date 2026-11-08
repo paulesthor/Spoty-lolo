@@ -1,0 +1,232 @@
+<title>Équilibrage de Cosmos Infini</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Mise en page : une colonne de lecture, tableaux et frise débordent dans leur propre zone défilante. */
+:root {
+  --bg: #f4f5fa;
+  --surface: #ffffff;
+  --ink: #161a33;
+  --muted: #5b6080;
+  --line: #dadced;
+  --accent: #4b3fd1;
+  --accent-soft: #e7e5fb;
+  --ok: #157a52;
+  --ok-bg: #ddf3e8;
+  --ko: #b42340;
+  --ko-bg: #fbe1e6;
+  --warn: #8a5a00;
+  --s1: #8f8aa8; --s2: #6a63b8; --s3: #4b3fd1; --s4: #2f7fbf; --s5: #158a8a; --s6: #2f9a52; --s7: #8a9a1a; --s8: #c07a10; --s9: #c0412a;
+  --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-data: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1022; --surface: #161933; --ink: #e6e8f5; --muted: #a1a6c8; --line: #2b2f52;
+    --accent: #9a93ff; --accent-soft: #242650; --ok: #5fd39f; --ok-bg: #12352a; --ko: #ff8095; --ko-bg: #3d1622; --warn: #ffc56b;
+    --s1: #8f8aa8; --s2: #8a83d8; --s3: #9a93ff; --s4: #5aa8e6; --s5: #3cc0c0; --s6: #5fc77f; --s7: #b9c94a; --s8: #e9a33d; --s9: #f06a52;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1022; --surface: #161933; --ink: #e6e8f5; --muted: #a1a6c8; --line: #2b2f52;
+  --accent: #9a93ff; --accent-soft: #242650; --ok: #5fd39f; --ok-bg: #12352a; --ko: #ff8095; --ko-bg: #3d1622; --warn: #ffc56b;
+  --s1: #8f8aa8; --s2: #8a83d8; --s3: #9a93ff; --s4: #5aa8e6; --s5: #3cc0c0; --s6: #5fc77f; --s7: #b9c94a; --s8: #e9a33d; --s9: #f06a52;
+  color-scheme: dark;
+}
+body { background: var(--bg); color: var(--ink); font: 16px/1.6 var(--font-body); }
+.wrap { max-width: 860px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 32px 64px; display: grid; gap: 40px; }
+header { display: grid; gap: 10px; }
+.eyebrow { font: 600 12px/1 var(--font-data); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+h1 { font: 800 clamp(30px, 6vw, 44px)/1.08 var(--font-display); margin: 0; text-wrap: balance; letter-spacing: -.01em; }
+h2 { font: 700 24px/1.2 var(--font-display); margin: 0 0 12px; text-wrap: balance; }
+h3 { font: 700 17px/1.3 var(--font-display); margin: 18px 0 6px; }
+p { margin: 0 0 12px; max-width: 68ch; }
+.lead { font-size: 18px; color: var(--muted); max-width: 62ch; }
+section { display: grid; gap: 6px; min-width: 0; }
+.verdict { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; display: grid; gap: 10px; }
+.verdict ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.kpi { border-left: 3px solid var(--accent); padding: 4px 0 4px 12px; }
+.kpi b { display: block; font: 600 22px/1.2 var(--font-data); font-variant-numeric: tabular-nums; }
+.kpi span { color: var(--muted); font-size: 14px; }
+.scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+thead th { font: 600 12px/1.3 var(--font-data); text-transform: uppercase; letter-spacing: .04em; color: var(--muted); white-space: nowrap; }
+table.times td { font-family: var(--font-data); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
+table.times th[scope=row] { white-space: nowrap; font-weight: 400; }
+table.times tr.main th[scope=row] { font-weight: 700; }
+table.times td.none { color: var(--muted); }
+table.times td.faster { color: var(--ok); font-weight: 600; }
+table.times td.slower { color: var(--warn); }
+tbody tr:last-child > * { border-bottom: 0; }
+table.small { max-width: 520px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+table.small td { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+.note { color: var(--muted); font-size: 14px; }
+.chart { padding: 10px 8px 4px; }
+.chart svg { display: block; width: 100%; min-width: 620px; height: auto; }
+.chart .grid { stroke: var(--line); stroke-width: 1; }
+.chart .track { stroke: var(--line); stroke-width: 2; }
+.chart .axis { fill: var(--muted); font: 11px var(--font-data); }
+.chart .lab { fill: var(--ink); font: 13px var(--font-body); }
+.chart .dot { stroke: var(--surface); stroke-width: 2; }
+.chart .dotn { fill: #fff; font: 600 10px var(--font-data); pointer-events: none; }
+.s1 { fill: var(--s1); background: var(--s1); } .s2 { fill: var(--s2); background: var(--s2); } .s3 { fill: var(--s3); background: var(--s3); }
+.s4 { fill: var(--s4); background: var(--s4); } .s5 { fill: var(--s5); background: var(--s5); } .s6 { fill: var(--s6); background: var(--s6); }
+.s7 { fill: var(--s7); background: var(--s7); } .s8 { fill: var(--s8); background: var(--s8); } .s9 { fill: var(--s9); background: var(--s9); }
+.legend { list-style: none; padding: 0; margin: 8px 0 0; display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 14px; }
+.legend li { display: flex; align-items: center; gap: 6px; }
+.dot-l { width: 18px; height: 18px; border-radius: 50%; color: #fff; font: 600 10px/18px var(--font-data); text-align: center; display: inline-block; }
+.issues { display: grid; gap: 12px; }
+.issue { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: grid; gap: 6px; min-width: 0; }
+.issue h3 { margin: 0; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.sev { font: 600 11px/1 var(--font-data); text-transform: uppercase; letter-spacing: .06em; padding: 4px 7px; border-radius: 6px; }
+.sev.crit { background: var(--ko-bg); color: var(--ko); }
+.sev.maj { background: var(--accent-soft); color: var(--accent); }
+.sev.min { background: var(--line); color: var(--muted); }
+.issue p { margin: 0; font-size: 15px; }
+.issue .fix { color: var(--ok); }
+.issue .fix::before { content: "Correctif : "; font-weight: 700; }
+.pill { font: 600 11px/1 var(--font-data); padding: 4px 7px; border-radius: 6px; display: inline-block; white-space: nowrap; }
+.pill.ok { background: var(--ok-bg); color: var(--ok); }
+.pill.ko { background: var(--ko-bg); color: var(--ko); }
+.detail { color: var(--muted); font-size: 13px; font-family: var(--font-data); word-break: break-word; }
+ul.plain { margin: 0; padding-left: 20px; display: grid; gap: 6px; max-width: 70ch; }
+code { font-family: var(--font-data); font-size: .92em; background: var(--accent-soft); padding: 1px 5px; border-radius: 4px; }
+.formula { font-family: var(--font-data); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; overflow-x: auto; font-size: 14px; }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Rapport d'équilibrage · {{HOURS}} h de jeu simulées par profil</div>
+    <h1>Équilibrage de Cosmos Infini</h1>
+    <p class="lead">Neuf profils de joueurs simulés, une batterie de {{TESTN}} tests de robustesse, neuf problèmes corrigés. Combien de temps prend chaque étape, et peut-on casser le jeu ?</p>
+  </header>
+
+  <section class="verdict" aria-labelledby="v">
+    <h2 id="v">En bref</h2>
+    {{VERDICT}}
+    <div class="kpis">
+      <div class="kpi"><b>{{OKN}}/{{TESTN}}</b><span>tests de robustesse réussis</span></div>
+      <div class="kpi"><b>{{EMAX}}</b><span>exposant critique max (doit rester &lt; 1)</span></div>
+      <div class="kpi"><b>{{TICK}} ms</b><span>par tick en fin de partie (PC)</span></div>
+      <div class="kpi"><b>{{OFF7}} ms</b><span>pour rattraper 7 jours hors-ligne</span></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="t">
+    <h2 id="t">Temps pour atteindre chaque étape</h2>
+    <p>Temps de jeu écoulé depuis le début de la partie. En vert : plus de 20 % plus rapide que le profil Actif ; en orange : plus de 25 % plus lent ; « — » : pas atteint en {{HOURS}} h.</p>
+    {{TABLE}}
+    <p class="note">Pour les profils Idle, le temps compte aussi les heures hors-ligne (le jeu tourne avec ses automates pendant l'absence). Aucun bot n'a terminé le défi « Sans étoiles » (Supernova interdite) : il reste facultatif, 4 défis sur 6 suffisent pour briser l'Infini. Les décalages de pastilles sur la frise signalent des étapes atteintes presque en même temps.</p>
+  </section>
+
+  <section aria-labelledby="f">
+    <h2 id="f">Frise des parcours</h2>
+    <p>Chaque pastille marque la première fois qu'un profil atteint une étape. L'échelle du temps est logarithmique pour que les premières minutes restent lisibles ; des pastilles collées les unes aux autres ont été atteintes presque en même temps.</p>
+    <div class="scroll chart">{{TIMELINE}}</div>
+    <ul class="legend">{{LEGEND}}</ul>
+  </section>
+
+  <section aria-labelledby="p">
+    <h2 id="p">Les profils testés</h2>
+    <ul class="plain">{{DESCS}}</ul>
+    <p class="note">Tous les profils actifs achètent les générateurs au maximum à chaque pas, tentent les défis tous les deux Big Bangs (abandon après 1 h) et refont un prestige même sans doublement si leur couche stagne depuis 10 min. Le bot réagit chaque seconde de jeu, ce qui correspond au rythme des automates du jeu (prestige au bout de 10 s minimum).</p>
+  </section>
+
+  <section aria-labelledby="pb">
+    <h2 id="pb">Failles trouvées et corrigées</h2>
+    <p>Classées par gravité. Chaque faille a été reproduite par un test ou un profil, puis vérifiée après correction.</p>
+    <div class="issues">
+      <article class="issue">
+        <h3><span class="sev crit">Critique</span> Emballement de la production</h3>
+        <p>Le logarithme de la production augmentait plus vite que celui de la Poussière dépensée (exposant critique <i>E</i> ≈ 1,26 avec les améliorations). La croissance explosait en temps fini : de 1e102 à 1e307 en 4 secondes. Pire, sa vitesse dépendait de la fréquence des ticks : à 6 h de jeu, 1e134 729 avec un pas de 0,25 s contre 1e194 avec un pas de 1 s. Un téléphone plus rapide progressait donc plus vite.</p>
+        <p class="fix">l'Accélérateur ne touche plus que la sortie de Poussière, la hausse des prix est plus forte, les bonus sont plafonnés. <i>E</i> vaut maintenant {{EBASE}} au départ et {{EMAX}} au maximum ; un test vérifie <i>E</i> &lt; 1 avec toutes les améliorations et dans chaque défi.</p>
+      </article>
+      <article class="issue">
+        <h3><span class="sev crit">Critique</span> Cascade des Strates</h3>
+        <p>Une fois le Multivers atteint, le bot créait une nouvelle couche toutes les 2 secondes : plus de 1 000 couches en 8 heures. Le bonus « Résonance » valait ×1e<i>k</i> par niveau (de plus en plus fort avec la profondeur) et le seuil fixe de 1e6 était bien plus bas que ce qu'une nouvelle couche apporte à la précédente.</p>
+        <p class="fix">seuil croissant (1e10, 1e15, 1e20…) et bonus de production constant (×1 000 par niveau). Chaque Strate prend désormais plus de temps que la précédente.</p>
+      </article>
+      <article class="issue">
+        <h3><span class="sev crit">Critique</span> Supernova en boucle sans attendre</h3>
+        <p>L'amélioration « Reste stellaire » au maximum faisait commencer chaque partie à 1e16 Poussière, au-dessus du seuil de Supernova (1e15). On pouvait donc relancer une Supernova immédiatement, à l'infini : en milieu de partie, chaque appui rapportait 1,9e18 Éclats sans aucune attente.</p>
+        <p class="fix">départ plafonné à 3,2e13. Un test vérifie, à trois moments de la partie, qu'aucune couche n'est disponible juste après son propre reset.</p>
+      </article>
+      <article class="issue">
+        <h3><span class="sev maj">Majeur</span> Améliorations répétables à coût géométrique</h3>
+        <p>Dans la première version, « Fusion » (×2 par niveau, coût ×3) montait au niveau 14 542 en fin de partie, soit ×1e4 378. Chaque monnaie se transformait en multiplicateur presque sans perte.</p>
+        <p class="fix">coût qui accélère (terme quadratique) sur toutes les améliorations sans maximum.</p>
+      </article>
+      <article class="issue">
+        <h3><span class="sev maj">Majeur</span> Boucle prestige → production → prestige</h3>
+        <p>Les bonus de monnaie (Éclats, Singularités, Points d'Infini…) peuvent s'alimenter d'un reset à l'autre : plus de production, donc plus de monnaie, donc plus de production. Au-delà d'un certain seuil, c'est une boucle infinie exploitable en spammant le prestige.</p>
+        <p class="fix">plafond progressif sur chaque effet de monnaie (au-delà de ×1e60 l'effet ne croît plus qu'à la puissance 0,7). Mathématiquement, la boucle converge toujours. Le profil « Spam de prestige » le confirme : il ne dépasse pas le profil Actif.</p>
+      </article>
+      <article class="issue">
+        <h3><span class="sev maj">Majeur</span> Tapoter vite battait les automates</h3>
+        <p>En fin de partie, une partie de chaque couche ne dure que quelques secondes. Un joueur qui relance ses prestiges toutes les secondes progressait jusqu'à 3,5 fois plus vite qu'un autre qui réagit toutes les 4 s (Multivers à 20 h contre 68 h), et bien plus vite que les automates. Sur mobile, ça récompense le tapotage frénétique.</p>
+        <p class="fix">chaque prestige, manuel ou automatique, demande au moins 10 s depuis le précédent de la même couche. Le bouton affiche le compte à rebours.</p>
+      </article>
+      <article class="issue">
+        <h3><span class="sev maj">Majeur</span> Hors-ligne plus rentable qu'en ligne</h3>
+        <p>En fin de partie, 8 h hors-ligne rapportaient 1e3 996 Éclats contre 1e1 915 en ligne avec les mêmes automates. Les prestiges automatiques se déclenchaient à chaque tick en ligne, alors que les pas grossiers du calcul hors-ligne laissaient accumuler plus.</p>
+        <p class="fix">durée minimale de 10 s par partie et calcul hors-ligne en 6 000 pas. Comparé au vrai rythme du jeu (un tick toutes les 50 ms), 8 h hors-ligne donnent maintenant le même résultat à 0,1 % près.</p>
+      </article>
+      <article class="issue">
+        <h3><span class="sev maj">Majeur</span> Plateau vers 1e4 100 : progression infinie bloquée</h3>
+        <p>Après les premières corrections, le jeu stagnait vers 1e4 100 Poussière : les Strates (prestige infini) n'étaient jamais atteintes, même en 240 h.</p>
+        <p class="fix">plafond adouci (puissance 0,7 au lieu de 0,5), nouvelle formule d'Éternité et seuils des Strates abaissés.</p>
+      </article>
+      <article class="issue">
+        <h3><span class="sev min">Mineur</span> Défis infaisables et sauvegardes trafiquées</h3>
+        <p>Trois défis (« Sans étoiles », « Inflation », « Racine ») n'étaient jamais terminés : l'Infini ne pouvait pas être brisé. Par ailleurs, une sauvegarde importée pouvait contenir une Poussière négative.</p>
+        <p class="fix">défis adoucis (puissance 0,75, prix +50 %) et débloqués progressivement ; toute valeur négative ou invalide d'une sauvegarde est remise à zéro.</p>
+      </article>
+    </div>
+  </section>
+
+  <section aria-labelledby="ts">
+    <h2 id="ts">Tests de robustesse</h2>
+    <p>Exécutés par <code>node idle/tools/tests.js</code>. Ils tentent de casser le jeu : resets instantanés, pas de temps extrêmes, hors-ligne, nombres gigantesques, sauvegardes corrompues, horloge reculée, contournement des défis, automates réglés à zéro.</p>
+    <div class="scroll"><table><thead><tr><th scope="col">Résultat</th><th scope="col">Test</th></tr></thead><tbody>{{TESTS}}</tbody></table></div>
+  </section>
+
+  <section aria-labelledby="strat">
+    <h2 id="strat">Doubler ou attendre : la stratégie compte</h2>
+    {{STRAT}}
+  </section>
+
+  <section aria-labelledby="dt">
+    <h2 id="dt">Pas de temps et cadence</h2>
+    <p>Début de partie, profil Actif, 6 h de jeu avec quatre pas de simulation. Avant correction, l'écart allait de 1e194 à 1e134 729 ; il n'y a plus d'emballement. Le score est la somme des log10 des monnaies totales gagnées.</p>
+    <table class="small"><thead><tr><th scope="col">Pas</th><th scope="col">1re Supernova</th><th scope="col">1er Effondrement</th><th scope="col">Score</th></tr></thead><tbody>{{SENS}}</tbody></table>
+    <p>En fin de partie, en revanche, la vitesse de réaction du joueur compte : chaque couche demande plusieurs parties de la couche en dessous, d'au moins 10 s chacune. Réagir toutes les 4 s au lieu de chaque seconde allonge chaque partie d'environ 20 %, et l'effet se cumule couche après couche.</p>
+    {{FINE}}
+  </section>
+
+  <section aria-labelledby="fin">
+    <h2 id="fin">État en fin de simulation</h2>
+    <div class="scroll"><table><thead><tr><th scope="col">Profil</th><th scope="col">Couche la plus haute</th><th scope="col">Prestiges au total</th><th scope="col">Défis</th><th scope="col">Valeur invalide</th><th scope="col">Tick max / rattrapage max</th></tr></thead><tbody>{{FINALS}}</tbody></table></div>
+  </section>
+
+  <section aria-labelledby="lim">
+    <h2 id="lim">Ce que ces tests ne garantissent pas</h2>
+    <ul class="plain">
+      <li>Les bots ne jouent pas comme des humains. Un humain prend des pauses, oublie les défis, ou optimise mieux. Les temps sont des ordres de grandeur, à confirmer en jouant.</li>
+      <li>Les temps dépendent de la cadence de jeu. Le bot réagit chaque seconde, comme les automates ; un joueur qui ne regarde que toutes les 4 s va nettement moins vite en fin de partie (voir le tableau de cadence), parce que les couches sont imbriquées et que chaque partie dure un peu plus.</li>
+      <li>Au-delà d'environ 16 h d'absence, le calcul hors-ligne utilise des pas de plus de 10 s : il reste légèrement favorable sur les très longues absences. La limite est fixée à 7 jours.</li>
+      <li>Avancer l'horloge du téléphone donne jusqu'à 7 jours de progression hors-ligne, comme dans tous les jeux idle. Et l'import de sauvegarde permet de tricher volontairement : c'est un jeu solo, ce n'est pas bloqué.</li>
+      <li>Les performances sont mesurées sur PC. Sur un téléphone d'entrée de gamme, compter 3 à 5 fois plus.</li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="rep">
+    <h2 id="rep">Refaire les mesures</h2>
+    <div class="formula">node idle/tools/campaign.js {{HOURS}} 4 resultats/<br>node idle/tools/tests.js resultats/tests.json<br>node idle/tools/rapport.js resultats/campagne.json resultats/tests.json rapport.html</div>
+  </section>
+</div>
