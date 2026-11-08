@@ -61,7 +61,7 @@ input, select, textarea { -webkit-user-select: text; user-select: text; font: in
 
 /* le data scientist et ses effluves */
 .stinker { position: relative; width: 58px; height: 64px; flex: none; }
-.stinker .avatar { position: absolute; bottom: 0; left: 6px; font-size: 40px; line-height: 1; filter: saturate(.8); }
+.stinker .avatar { position: absolute; bottom: 0; left: 5px; line-height: 0; }
 .stinker .waves { position: absolute; top: -6px; left: 6px; width: 48px; height: 36px; }
 .stinker .waves i {
   position: absolute; bottom: 0; width: 10px; height: 30px;
@@ -79,7 +79,7 @@ input, select, textarea { -webkit-user-select: text; user-select: text; font: in
 
 /* mouches (leur nombre suit ton odeur) */
 #flies { position: absolute; inset: 0; pointer-events: none; }
-.fly { position: absolute; font-size: 12px; animation: buzz var(--d, 6s) ease-in-out infinite; animation-delay: var(--delay, 0s); opacity: .55; }
+.fly { position: absolute; width: 18px; height: 18px; animation: buzz var(--d, 6s) ease-in-out infinite; animation-delay: var(--delay, 0s); opacity: .55; }
 @keyframes buzz {
   0% { transform: translate(0, 0) rotate(0deg); }
   20% { transform: translate(var(--x1, 40px), var(--y1, 10px)) rotate(20deg); }
@@ -162,7 +162,11 @@ button.small { min-height: 36px; font-size: 13px; padding: 4px 10px; }
 
 /* ---------- générateurs ---------- */
 .gen .name { font-weight: 650; display: flex; align-items: center; gap: 6px; }
-.gen-ic { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; background: var(--panel2); border: 1px solid var(--line); font-size: 17px; flex: none; margin-right: 6px; }
+.gen-ic { display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 6px; background: #10130b; border: 1px solid var(--line); flex: none; margin-right: 6px; }
+.px { image-rendering: pixelated; image-rendering: crisp-edges; display: inline-block; }
+.px.inline { vertical-align: -3px; margin-right: 6px; }
+.cur-ic { vertical-align: -5px; margin-right: 8px; }
+.insult { font-size: 12px; color: var(--bad); margin-top: 3px; min-height: 1.3em; font-style: italic; transition: opacity .4s; }
 .gen .amt { font-size: 12.5px; color: var(--muted); font-family: var(--font-data); }
 
 /* ---------- jalons ---------- */
@@ -170,7 +174,7 @@ button.small { min-height: 36px; font-size: 13px; padding: 4px 10px; }
 .milestone:last-child { border-bottom: 0; }
 .milestone .n { min-width: 42px; color: var(--muted); font-family: var(--font-data); font-variant-numeric: tabular-nums; }
 .milestone.ok .n { color: var(--ok); }
-.milestone.ok .n::after { content: " ✓"; }
+.milestone.ok .n::after { content: " OK"; font-size: 11px; }
 
 .chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; }
 .chips button { white-space: nowrap; min-height: 38px; }
@@ -192,8 +196,9 @@ button.small { min-height: 36px; font-size: 13px; padding: 4px 10px; }
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
   font-size: 11px; color: var(--muted); padding: 4px 6px; position: relative;
 }
-#tabs button .ic { font-size: 20px; line-height: 1; }
-#tabs button.on { color: var(--text); box-shadow: inset 0 3px 0 var(--accent); background: linear-gradient(180deg, #1c2212, transparent); }
+#tabs button .ic { width: 24px; height: 24px; }
+#tabs button:not(.on) .ic { filter: saturate(.55) brightness(.85); }
+#tabs button.on { color: var(--accent); background: #1c2212; }
 #tabs button .dot { position: absolute; top: 8px; right: 14px; width: 8px; height: 8px; border-radius: 50%; background: var(--sweat); box-shadow: 0 0 6px var(--sweat); }
 
 /* ---------- toasts & modale ---------- */

@@ -24,25 +24,25 @@
   // Données
   // ------------------------------------------------------------------
   const GENS = [
-    { name: 'Aisselles de stagiaire', icon: '💦', base: 1, step: 3.6, flavor: 'Il a mis du déo. En 2021.' },
-    { name: 'Chaussettes de data analyst', icon: '🧦', base: 2, step: 4.8, flavor: 'Portées depuis la dernière mise à jour de pandas.' },
-    { name: 'Mugs de café fermenté', icon: '☕', base: 4, step: 6, flavor: 'Un écosystème plus riche que ton dataset.' },
-    { name: 'Cartons de pizza du hackathon', icon: '🍕', base: 6, step: 7.2, flavor: 'Hackathon 2019. La pizza a depuis été promue manager.' },
-    { name: 'Hoodies « I ♥ Python »', icon: '🧥', base: 9, step: 9.6, flavor: 'Jamais lavés : le lavage introduit du bruit dans les données.' },
-    { name: 'Claviers mécaniques gras', icon: '⌨️', base: 13, step: 12, flavor: '40 % plastique, 60 % miettes de chips.' },
-    { name: 'Open spaces sans clim', icon: '🏢', base: 18, step: 14.4, flavor: 'Les plantes vertes ont posé leur démission.' },
-    { name: 'Datacenters sans ventilation', icon: '🗄️', base: 24, step: 18, flavor: 'Même les serveurs transpirent. Surtout les serveurs.' },
+    { name: 'Aisselles de stagiaire', icon: 'sweat', base: 1, step: 3.6, flavor: "Il a cru que le déo était une dépendance optionnelle du package.json. Personne ne lui a dit. Personne ne lui parle." },
+    { name: 'Chaussettes de sysadmin', icon: 'sock', base: 2, step: 4.8, flavor: 'Portées depuis le dernier reboot du serveur. Uptime : 847 jours.' },
+    { name: 'Mugs de café fermenté', icon: 'mug', base: 4, step: 6, flavor: 'Le fond a développé une conscience et réclame des congés payés.' },
+    { name: 'Cartons de pizza de la mise en prod', icon: 'pizza', base: 6, step: 7.2, flavor: "Datés de 2019. Un dev a goûté. On a gardé son badge en souvenir." },
+    { name: 'Hoodies de conférence tech', icon: 'hoodie', base: 9, step: 9.6, flavor: "Pas lavé depuis la DevFest. Il tient debout tout seul et vote aux élections du CSE." },
+    { name: 'Claviers mécaniques gras', icon: 'keyboard', base: 13, step: 12, flavor: "40 % plastique, 60 % croûtes. Le support refuse d'y toucher sans combinaison." },
+    { name: 'Open spaces sans clim', icon: 'office', base: 18, step: 14.4, flavor: "Les plantes sont mortes en premier. Puis Kevin, de la compta." },
+    { name: 'Datacenters sans ventilation', icon: 'rack', base: 24, step: 18, flavor: "Même les serveurs transpirent. Le technicien de maintenance n'est jamais remonté." },
   ];
   const ACCEL = { base: 3, step: 1 };
 
   // Le défi n°i se débloque après 4 + 3×i Big Bangs (7, 10, 13, 16, 19, 22).
   const CHALLENGES = [
-    { id: 'c1', name: 'Ventilo HS', desc: "Ton laptop ne chauffe plus : le Laptop qui chauffe n'a aucun effet.", reward: 'Laptop qui chauffe +0,02 par achat.' },
-    { id: 'c2', name: 'Gel des mises en prod', desc: 'Mise en prod du vendredi interdite. Même le vendredi.', reward: 'Effet des Bugs en prod : exposant +0,2.' },
-    { id: 'c3', name: 'Télétravail imposé', desc: 'Seules tes affaires perso (générateurs 1 à 4) puent. Le bureau est vide.', reward: "Générateurs 1 à 4 ×(1 + Plaintes RH)." },
-    { id: 'c4', name: 'Budget gelé par la DAF', desc: 'La hausse des prix est augmentée de 50 %.', reward: 'Hausse des prix des générateurs −5 %.' },
-    { id: 'c5', name: 'Semaine du bien-être', desc: 'Burn-out interdit. Yoga obligatoire à 8 h.', reward: 'Gain de Points de cynisme ×5.' },
-    { id: 'c6', name: 'Déodorant offert par l\'équipe', desc: 'Avec un petit mot. Les Relents sont mis à la puissance 0,75.', reward: 'Exposant de production +0,03.' },
+    { id: 'c1', name: 'Ventilo HS', desc: "Ton laptop est mort, lui aussi. Le Laptop qui chauffe n'a aucun effet.", reward: 'Laptop qui chauffe +0,02 par achat.' },
+    { id: 'c2', name: 'Gel des mises en prod', desc: 'Le DSI a gelé les mises en prod. Même le vendredi. Ce connard.', reward: 'Effet des Bugs en prod : exposant +0,2.' },
+    { id: 'c3', name: 'Télétravail imposé', desc: "On t'a viré de l'open space. Seules tes affaires perso (générateurs 1 à 4) puent encore.", reward: "Générateurs 1 à 4 ×(1 + Plaintes RH)." },
+    { id: 'c4', name: 'Budget gelé par la DAF', desc: 'La DAF a coupé les budgets. Tout coûte 50 % plus cher, même ta dignité.', reward: 'Hausse des prix des générateurs −5 %.' },
+    { id: 'c5', name: 'Semaine du bien-être', desc: 'Burn-out interdit. Yoga à 8 h, méditation à 9 h, licenciements à 10 h.', reward: 'Gain de Points de cynisme ×5.' },
+    { id: 'c6', name: 'Déodorant offert par l\'équipe', desc: "Avec un petit mot : « Pour toi, gros dégueulasse. » Les Relents sont mis à la puissance 0,75.", reward: 'Exposant de production +0,03.' },
   ];
   const BREAK_CHALLENGES = 4;
   const ETER_REQ = +(globalThis.__ETER_REQ || 116); // calé pour une 1re Éternité vers 1,5 jour (bon joueur)
@@ -99,8 +99,8 @@
 
   const FIXED = {
     1: {
-      name: 'Mise en prod du vendredi', verb: 'Mise en prod', cur: 'Bugs en prod', sym: '🐛',
-      flavor: "17 h 58, vendredi. Tu push en prod et tu rentres chez toi. Les bugs, eux, restent.",
+      name: 'Mise en prod du vendredi', verb: 'Mise en prod', cur: 'Bugs en prod', sym: 'bug',
+      flavor: "17 h 58. Tu push en prod sans tests et tu te casses. L'astreinte, c'est le collègue resté au bureau. Il ne respire déjà plus très bien.",
       reqLog: 15,
       reqText: () => 'Atteins 1e15 Relents',
       sourceLog: () => S.dust.log10(),
@@ -112,19 +112,19 @@
       blocked: () => inChal('c2') ? 'Bloqué par le défi « Sans étoiles »' : null,
       effectText: () => 'Production ×' + fmt(shardEffect()) + capNote(1, shardExp()),
       upgrades: [
-        { id: 'sn_fusion', name: 'Code spaghetti', flavor: 'Personne ne sait pourquoi ça marche. Toi non plus.', desc: () => 'Production ×2 par niveau', eff: (l) => '×' + fmt(P(l * Math.log10(2))), cost: R(0, Math.log10(3)), max: Infinity },
-        { id: 'sn_pulsar', name: 'Ventilo overclocké', flavor: 'Il souffle ton odeur jusqu\'au 3e étage.', desc: () => 'Laptop qui chauffe +0,01 par achat', eff: (l) => '+' + (0.01 * l).toFixed(2), cost: R(0.5, 0.6), max: 10 },
-        { id: 'sn_remnant', name: 'Odeur résiduelle', flavor: 'Même après ton départ, la salle se souvient.', desc: () => 'Commence avec plus de Relents après chaque prestige', eff: (l) => fmt(startDust()), cost: R(0.7, 0.9), max: 5 },
-        { id: 'sn_gravity', name: 'Attraction des mouches', flavor: 'Elles ont formé un syndicat.', desc: () => 'Aisselles ×(1 + log(Relents))^1,5', eff: () => '×' + fmt(gravityEffect()), cost: R(1.4, 0), max: 1 },
-        { id: 'sn_mass', name: 'Masse critique de linge sale', flavor: 'Le panier a acquis une conscience.', desc: () => 'Bonus par 10 achats +0,05', eff: (l) => '×' + (M ? M.perTen : 2).toFixed(2), cost: R(2, 1), max: 5 },
-        { id: 'sn_echo', name: 'Hotfix du hotfix', flavor: 'Chaque correctif crée deux bugs. C\'est de la croissance.', desc: () => 'Gain de Bugs en prod ×2 par niveau', eff: (l) => '×' + fmt(P(l * Math.log10(2))), cost: R(3, 0.7), max: Infinity },
-        { id: 'sn_nova', name: 'Dette technique', flavor: 'Les intérêts sont composés. Ton odeur aussi.', desc: () => 'Effet des Bugs en prod : exposant +0,05', eff: (l) => '^' + shardExp().toFixed(2), cost: R(4, 2), max: 5 },
+        { id: 'sn_fusion', name: 'Code spaghetti', flavor: "Personne ne sait pourquoi ça marche. Le mec qui l'a écrit est mort. Ne touche à rien.", desc: () => 'Production ×2 par niveau', eff: (l) => '×' + fmt(P(l * Math.log10(2))), cost: R(0, Math.log10(3)), max: Infinity },
+        { id: 'sn_pulsar', name: 'Ventilo overclocké', flavor: "Il souffle ta crasse jusqu'au 3e étage. Le 3e étage a porté plainte.", desc: () => 'Laptop qui chauffe +0,01 par achat', eff: (l) => '+' + (0.01 * l).toFixed(2), cost: R(0.5, 0.6), max: 10 },
+        { id: 'sn_remnant', name: 'Odeur résiduelle', flavor: "Même après ta mort, la salle de réunion se souviendra de toi.", desc: () => 'Commence avec plus de Relents après chaque prestige', eff: (l) => fmt(startDust()), cost: R(0.7, 0.9), max: 5 },
+        { id: 'sn_gravity', name: 'Attraction des mouches', flavor: "Elles ont monté un syndicat. Il a plus de membres que celui des devs.", desc: () => 'Aisselles ×(1 + log(Relents))^1,5', eff: () => '×' + fmt(gravityEffect()), cost: R(1.4, 0), max: 1 },
+        { id: 'sn_mass', name: 'Masse critique de linge sale', flavor: "Le panier a pris conscience. Il réclame un exorcisme.", desc: () => 'Bonus par 10 achats +0,05', eff: (l) => '×' + (M ? M.perTen : 2).toFixed(2), cost: R(2, 1), max: 5 },
+        { id: 'sn_echo', name: 'Hotfix du hotfix', flavor: "Chaque correctif crée deux bugs. Ton manager appelle ça « la croissance ».", desc: () => 'Gain de Bugs en prod ×2 par niveau', eff: (l) => '×' + fmt(P(l * Math.log10(2))), cost: R(3, 0.7), max: Infinity },
+        { id: 'sn_nova', name: 'Dette technique', flavor: "Les intérêts sont composés. Ton odeur aussi. Les deux finiront par tuer quelqu'un.", desc: () => 'Effet des Bugs en prod : exposant +0,05', eff: (l) => '^' + shardExp().toFixed(2), cost: R(4, 2), max: 5 },
       ],
       milestones: [],
     },
     2: {
-      name: 'Burn-out', verb: 'Burn-out', cur: 'Points de cynisme', sym: '💀',
-      flavor: "Tu craques, tu reviens, tu sens encore plus fort. On appelle ça la résilience.",
+      name: 'Burn-out', verb: 'Burn-out', cur: 'Points de cynisme', sym: 'skull',
+      flavor: "Tu craques, tu chiales dans les chiottes, tu reviens et tu pues encore plus. Les RH appellent ça « résilience ».",
       reqLog: 9,
       reqText: () => 'Atteins 1e9 Bugs en prod',
       sourceLog: () => cur(1).log10(),
@@ -136,22 +136,22 @@
       blocked: () => inChal('c5') ? 'Bloqué par le défi « Vide quantique »' : null,
       effectText: () => 'Production ×' + fmt(P(curEffLog(2, 3))) + capNote(2, 3) + ', gain de Bugs ×' + fmt(P(curEffLog(2))),
       upgrades: [
-        { id: 'co_horizon', name: 'Café à 4 h du matin', flavor: 'Ton haleine est désormais classée Seveso.', desc: () => 'Production ×5 par niveau', eff: (l) => '×' + fmt(P(l * Math.log10(5))), cost: R(0, 0.5), max: Infinity },
-        { id: 'co_spaghetti', name: 'Réunion qui aurait pu être un mail', flavor: '1 h 30, 14 personnes, 0 fenêtre ouverte.', desc: () => 'Gain de Bugs en prod ×3 par niveau', eff: (l) => '×' + fmt(P(l * Math.log10(3))), cost: R(0.3, 0.6), max: Infinity },
-        { id: 'co_hawking', name: 'Fuite de mémoire', flavor: 'La RAM fuit. Toi aussi, par tous les pores.', desc: () => 'Gagne passivement 1 % par seconde du gain de Mise en prod', eff: (l) => l + ' %/s', cost: R(0.7, 1), max: 10 },
-        { id: 'co_density', name: 'Sueur concentrée', flavor: 'Réduite à feu doux pendant un sprint de 3 semaines.', desc: () => 'Exposant de production +0,01', eff: (l) => '^' + (M ? M.prodExp : 1).toFixed(2), cost: R(1, 1.4), max: 5 },
-        { id: 'co_bulk', name: 'Compression (des données et du linge)', flavor: 'Ça tient dans un seul sac. Le sac a pleuré.', desc: () => 'Hausse des prix des générateurs −1 %', eff: (l) => '−' + l + ' %', cost: R(1.4, 1), max: 5 },
+        { id: 'co_horizon', name: 'Café à 4 h du matin', flavor: "Ton haleine est classée Seveso seuil haut.", desc: () => 'Production ×5 par niveau', eff: (l) => '×' + fmt(P(l * Math.log10(5))), cost: R(0, 0.5), max: Infinity },
+        { id: 'co_spaghetti', name: 'Réunion qui aurait pu être un mail', flavor: "1 h 30, 14 personnes, 0 fenêtre. Deux malaises, un procès-verbal.", desc: () => 'Gain de Bugs en prod ×3 par niveau', eff: (l) => '×' + fmt(P(l * Math.log10(3))), cost: R(0.3, 0.6), max: Infinity },
+        { id: 'co_hawking', name: 'Fuite de mémoire', flavor: "La RAM fuit, toi aussi, par tous les pores. Aucun des deux n'a été patché.", desc: () => 'Gagne passivement 1 % par seconde du gain de Mise en prod', eff: (l) => l + ' %/s', cost: R(0.7, 1), max: 10 },
+        { id: 'co_density', name: 'Sueur concentrée', flavor: "Réduite à feu doux pendant un sprint de 3 semaines. Interdite dans 12 pays.", desc: () => 'Exposant de production +0,01', eff: (l) => '^' + (M ? M.prodExp : 1).toFixed(2), cost: R(1, 1.4), max: 5 },
+        { id: 'co_bulk', name: 'Compression (des données et du linge)', flavor: "Tout tient dans un seul sac. Le sac a demandé à être incinéré.", desc: () => 'Hausse des prix des générateurs −1 %', eff: (l) => '−' + l + ' %', cost: R(1.4, 1), max: 5 },
       ],
       milestones: [
-        { n: 1, text: 'Un stagiaire achète les générateurs à ta place (achat automatique)' },
+        { n: 1, text: 'Un stagiaire achète les générateurs à ta place (il n\'a pas le choix)' },
         { n: 3, text: 'Achat automatique du Laptop qui chauffe' },
         { n: 5, text: 'Garde les améliorations de Mise en prod lors d\'un Burn-out' },
         { n: 8, text: 'Mise en prod automatique (le vendredi, évidemment)' },
       ],
     },
     3: {
-      name: "Évacuation de l'open space", verb: 'Évacuation', cur: 'Plaintes RH', sym: '📋',
-      flavor: "Le seuil de la Convention de Genève est atteint. Les pompiers évacuent l'étage. Tes collègues portent plainte.",
+      name: "Évacuation de l'open space", verb: 'Évacuation', cur: 'Plaintes RH', sym: 'alarm',
+      flavor: "L'air de l'étage est officiellement une arme chimique. Les pompiers évacuent tout le monde sauf toi : personne n'a voulu te toucher.",
       reqLog: INF_LOG,
       reqText: () => 'Atteins le seuil de la Convention de Genève (1,8e308 Relents)',
       sourceLog: () => S.dust.log10(),
@@ -164,20 +164,20 @@
       blocked: () => null,
       effectText: () => 'Production ×' + fmt(P(curEffLog(3, 2))) + capNote(3, 2),
       upgrades: [
-        { id: 'in_time', name: 'Laisser mariner', flavor: 'Comme un bon fromage. En pire.', desc: () => 'Production ×(1 + minutes depuis la dernière Évacuation)^1,5', eff: () => '×' + fmt(timeEffect()), cost: R(0, 0), max: 1 },
-        { id: 'in_count', name: 'Réputation', flavor: 'Ton nom est cité dans le règlement intérieur.', desc: () => 'Production ×(1 + nombre d\'Évacuations)²', eff: () => '×' + fmt(B(resets(3) + 1).pow(2)), cost: R(0, 0), max: 1 },
-        { id: 'in_sn', name: 'Bugs légendaires', flavor: 'Tes bugs ont leur propre page Wikipédia.', desc: () => 'Gain de Bugs en prod ×(1 + Plaintes RH)^0,5', eff: () => '×' + fmt(P(curEffLog(3, 0.5))), cost: R(0.3, 0), max: 1 },
-        { id: 'in_gen', name: 'Effet de groupe', flavor: 'Toute l\'équipe data s\'est alignée sur ton hygiène.', desc: () => 'Bonus par 10 achats +0,25', eff: () => '+0,25', cost: R(0.7, 0), max: 1 },
-        { id: 'in_auto', name: 'Alarme incendie connectée', flavor: 'Elle se déclenche toute seule dès que tu arrives.', desc: () => 'Débloque l\'Évacuation automatique', eff: () => 'Débloqué', cost: R(1, 0), max: 1 },
-        { id: 'in_ipmult', name: 'Délation anonyme', flavor: 'Le formulaire RH a un champ « odeur ». Il est obligatoire.', desc: () => 'Plaintes RH ×2 par niveau', eff: (l) => '×' + fmt(P(l * Math.log10(2))), cost: R(1, 0.5), max: Infinity },
-        { id: 'in_hawk', name: 'Burn-out chronique', flavor: 'Tu ne craques plus, tu fuis en continu.', desc: () => 'Gagne passivement 1 % par seconde du gain de Burn-out', eff: (l) => l + ' %/s', cost: R(1.5, 0.5), max: 10 },
+        { id: 'in_time', name: 'Laisser mariner', flavor: "Comme un camembert. Mais en sueur et en Java.", desc: () => 'Production ×(1 + minutes depuis la dernière Évacuation)^1,5', eff: () => '×' + fmt(timeEffect()), cost: R(0, 0), max: 1 },
+        { id: 'in_count', name: 'Réputation', flavor: "Ton nom est dans le règlement intérieur, article 12 : « Ne pas faire comme lui. »", desc: () => 'Production ×(1 + nombre d\'Évacuations)²', eff: () => '×' + fmt(B(resets(3) + 1).pow(2)), cost: R(0, 0), max: 1 },
+        { id: 'in_sn', name: 'Bugs légendaires', flavor: "Tes bugs ont leur page Wikipédia et un fan-club sur Stack Overflow.", desc: () => 'Gain de Bugs en prod ×(1 + Plaintes RH)^0,5', eff: () => '×' + fmt(P(curEffLog(3, 0.5))), cost: R(0.3, 0), max: 1 },
+        { id: 'in_gen', name: 'Effet de groupe', flavor: "Toute l'équipe s'est alignée sur ton hygiène. Le bailleur a résilié le bail.", desc: () => 'Bonus par 10 achats +0,25', eff: () => '+0,25', cost: R(0.7, 0), max: 1 },
+        { id: 'in_auto', name: 'Alarme incendie connectée', flavor: "Elle se déclenche quand tu badges. Le seul objet connecté de la boîte qui marche.", desc: () => 'Débloque l\'Évacuation automatique', eff: () => 'Débloqué', cost: R(1, 0), max: 1 },
+        { id: 'in_ipmult', name: 'Délation anonyme', flavor: "Le formulaire RH a un champ « odeur ». Il est obligatoire et pré-rempli avec ton nom.", desc: () => 'Plaintes RH ×2 par niveau', eff: (l) => '×' + fmt(P(l * Math.log10(2))), cost: R(1, 0.5), max: Infinity },
+        { id: 'in_hawk', name: 'Burn-out chronique', flavor: "Tu ne craques plus, tu fuis en continu, comme un vieux serveur Windows.", desc: () => 'Gagne passivement 1 % par seconde du gain de Burn-out', eff: (l) => l + ' %/s', cost: R(1.5, 0.5), max: 10 },
         {
-          id: 'in_break', name: 'Violer la Convention de Genève', flavor: 'Ton odeur est désormais une arme non conventionnelle.', desc: () => 'Les Relents dépassent le seuil légal et l\'Évacuation rapporte plus', eff: () => 'Brisé',
+          id: 'in_break', name: 'Violer la Convention de Genève', flavor: "Ton odeur est une arme non conventionnelle. La Haye a ouvert un dossier.", desc: () => 'Les Relents dépassent le seuil légal et l\'Évacuation rapporte plus', eff: () => 'Brisé',
           cost: R(4, 0), max: 1,
           req: () => chalCount() >= BREAK_CHALLENGES, reqText: () => 'Survis à ' + BREAK_CHALLENGES + ' plans RH (' + chalCount() + '/' + BREAK_CHALLENGES + ')',
         },
-        { id: 'in_postcost', name: 'Lobbying', flavor: 'Un sénateur a reniflé ton hoodie. Il a signé.', desc: () => 'Hausse des prix au-delà du seuil légal −10 %', eff: (l) => '−' + 10 * l + ' %', cost: R(3, 1), max: 3, req: () => lvl(3, 'in_break') > 0, reqText: () => "Brise l'Infini" },
-        { id: 'in_prodpow', name: 'Pipeline MLOps', flavor: 'Ton odeur est désormais déployée en continu.', desc: () => 'Exposant de production +0,01', eff: (l) => '^' + (M ? M.prodExp : 1).toFixed(2), cost: R(4, 3), max: 5, req: () => lvl(3, 'in_break') > 0, reqText: () => "Brise l'Infini" },
+        { id: 'in_postcost', name: 'Lobbying', flavor: "Un sénateur a reniflé ton hoodie. Il a signé, puis il a vomi sur le texte.", desc: () => 'Hausse des prix au-delà du seuil légal −10 %', eff: (l) => '−' + 10 * l + ' %', cost: R(3, 1), max: 3, req: () => lvl(3, 'in_break') > 0, reqText: () => "Brise l'Infini" },
+        { id: 'in_prodpow', name: 'Pipeline MLOps', flavor: "Ta puanteur est déployée en continu, avec monitoring et alerting. Surtout l'alerting.", desc: () => 'Exposant de production +0,01', eff: (l) => '^' + (M ? M.prodExp : 1).toFixed(2), cost: R(4, 3), max: 5, req: () => lvl(3, 'in_break') > 0, reqText: () => "Brise l'Infini" },
       ],
       milestones: [
         { n: 1, text: 'Production ×10 par plan RH survécu' },
@@ -189,8 +189,8 @@
       ],
     },
     4: {
-      name: 'Licenciement', verb: 'Licenciement', cur: 'Lettres de licenciement', sym: '💸',
-      flavor: "Motif : « faute olfactive grave ». Tu repars avec un carton et toute ton odeur.",
+      name: 'Licenciement', verb: 'Licenciement', cur: 'Lettres de licenciement', sym: 'carton',
+      flavor: "Motif : « faute olfactive grave ». Le vigile t'a sorti avec une perche de 3 mètres. Ton carton a été brûlé sur le parking.",
       reqLog: ETER_REQ,
       reqText: () => 'Accumule ' + fmt(P(ETER_REQ)) + ' Plaintes RH',
       sourceLog: () => cur(3).log10(),
@@ -202,12 +202,12 @@
       blocked: () => S.chal.active ? 'Quitte le défi en cours' : null,
       effectText: () => 'Plaintes RH ×' + fmt(P(curEffLog(4))) + ', production ×' + fmt(P(curEffLog(4, 3))) + capNote(4),
       upgrades: [
-        { id: 'et_ip', name: 'Avocat aux prud\'hommes', flavor: 'Il porte un masque à gaz pendant les audiences.', desc: () => 'Plaintes RH ×5 par niveau', eff: (l) => '×' + fmt(P(l * Math.log10(5))), cost: R(0, 0.5), max: Infinity },
-        { id: 'et_prod', name: 'Fermentation lente', flavor: 'Le temps travaille pour toi. Contre tout le monde.', desc: () => 'Exposant de production +0,005', eff: (l) => '+' + (0.005 * l).toFixed(3).replace('.', ','), cost: R(0.3, 0.7), max: 5 },
-        { id: 'et_time', name: 'Jet lag Paris–San Francisco', flavor: '11 h d\'avion dans le même t-shirt. Record de la compagnie.', desc: () => 'Vitesse du jeu +25 %', eff: (l) => '×' + (1 + 0.25 * l).toFixed(2), cost: R(0.7, 1), max: 8 },
-        { id: 'et_passive', name: 'Rumeurs de couloir', flavor: 'Les plaintes arrivent avant toi.', desc: () => 'Gagne passivement 1 % par seconde du gain d\'Évacuation', eff: (l) => l + ' %/s', cost: R(1, 1), max: 10 },
-        { id: 'et_shard', name: 'Bugs fossilisés', flavor: 'Découverts par des archéologues dans du COBOL.', desc: () => 'Gain de Bugs en prod : exposant +5 %', eff: (l) => '+' + 5 * l + ' %', cost: R(0.5, 0.8), max: 5 },
-        { id: 'et_gens', name: 'Harmonie olfactive', flavor: 'Tes chaussettes et ton café sonnent juste ensemble.', desc: () => 'Bonus par 10 achats +0,0625', eff: (l) => '+' + (0.0625 * l).toFixed(3).replace('.', ','), cost: R(0.6, 0.6), max: 4 },
+        { id: 'et_ip', name: 'Avocat aux prud\'hommes', flavor: "Il plaide avec un masque à gaz. Il a quand même perdu l'odorat.", desc: () => 'Plaintes RH ×5 par niveau', eff: (l) => '×' + fmt(P(l * Math.log10(5))), cost: R(0, 0.5), max: Infinity },
+        { id: 'et_prod', name: 'Fermentation lente', flavor: "Le temps travaille pour toi. Contre tous les autres.", desc: () => 'Exposant de production +0,005', eff: (l) => '+' + (0.005 * l).toFixed(3).replace('.', ','), cost: R(0.3, 0.7), max: 5 },
+        { id: 'et_time', name: 'Jet lag Paris–San Francisco', flavor: "11 h d'avion dans le même t-shirt. L'équipage a demandé un atterrissage d'urgence.", desc: () => 'Vitesse du jeu +25 %', eff: (l) => '×' + (1 + 0.25 * l).toFixed(2), cost: R(0.7, 1), max: 8 },
+        { id: 'et_passive', name: 'Rumeurs de couloir', flavor: "Les plaintes arrivent avant toi. Les ambulances aussi.", desc: () => 'Gagne passivement 1 % par seconde du gain d\'Évacuation', eff: (l) => l + ' %/s', cost: R(1, 1), max: 10 },
+        { id: 'et_shard', name: 'Bugs fossilisés', flavor: "Retrouvés dans du COBOL de 1974. Ils puent presque autant que toi.", desc: () => 'Gain de Bugs en prod : exposant +5 %', eff: (l) => '+' + 5 * l + ' %', cost: R(0.5, 0.8), max: 5 },
+        { id: 'et_gens', name: 'Harmonie olfactive', flavor: "Tes chaussettes et ton café jouent enfin la même note : la mort.", desc: () => 'Bonus par 10 achats +0,0625', eff: (l) => '+' + (0.0625 * l).toFixed(3).replace('.', ','), cost: R(0.6, 0.6), max: 4 },
       ],
       milestones: [
         { n: 1, text: 'Garde les améliorations d\'Évacuation' },
@@ -219,8 +219,8 @@
   };
 
   const META_NAMES = ['Startup', 'Licorne', 'GAFAM', 'Ministère du Numérique', 'Commission européenne', 'ONU', 'Atmosphère', 'Système solaire', 'Galaxie', 'Multivers'];
-  const META_FLAVORS = ['Tu lèves 2 M€. Les investisseurs ont signé en apnée.', 'Valorisée 1 Md$. Personne n\'est jamais venu au bureau.', 'Ton odeur est rachetée. Elle tourne sur 40 000 serveurs.', 'Tu deviens « référent IA ». Le ministère déménage.', 'Une directive européenne porte ton nom. Elle interdit les fenêtres.', 'Résolution 2847 : ton odeur est un sujet de sécurité internationale.', 'Le GIEC ajoute une nouvelle courbe à ses rapports.', 'Les sondes Voyager font demi-tour.', 'La Voie lactée change de nom.', 'Il n\'y a plus de dehors. Il n\'y a que toi.'];
-  const META_SYMS = ['🚀', '🦄', '🏦', '🏛️', '🇪🇺', '🌐', '🌍', '☀️', '🌌', '♾️'];
+  const META_FLAVORS = ['Tu lèves 2 M€. Les investisseurs ont signé en apnée, deux sont restés au parking.', 'Valorisée 1 milliard. Personne n\'a jamais mis les pieds au bureau. Personne n\'est assez con.', 'On t\'a racheté pour t\'enterrer. Raté : ton odeur tourne maintenant sur 40 000 serveurs.', 'Nommé « référent IA ». Le ministre démissionne, déménage, puis porte plainte.', 'Une directive porte ton nom. Elle oblige à souder les fenêtres de tes bureaux.', 'Résolution 2847 : ta puanteur menace la paix mondiale. Les Casques bleus ont refusé la mission.', 'Le GIEC ajoute une courbe à ses rapports. Elle s\'appelle « toi ».', 'Les sondes Voyager ont fait demi-tour pour te fuir.', 'La Voie lactée a demandé à changer de nom.', 'Dans tous les univers parallèles, tu pues. C\'est la seule constante physique.'];
+  const META_SYMS = [];
   // seuil d'une strate : croît avec la profondeur (sinon les strates s'enchaînent en cascade)
   const META_REQS = { 5: 21.3, 6: 8, 7: 12.3 }; // Multivers ~3 j, Omnivers ~8-9 j, Hypervers ~3 semaines
   const metaReq = (k) => (globalThis.__META_REQ ? globalThis.__META_REQ(k) : META_REQS[k] !== undefined ? META_REQS[k] : 12.3 + 1.5 * (k - 7));
@@ -239,8 +239,8 @@
     const name = i < META_NAMES.length ? META_NAMES[i] : 'Strate ' + roman(k);
     const prev = layerDef(k - 1);
     const d = {
-      name, verb: name, cur: 'Essence ' + (/^[AEIOUÉÈÊHaeiouéè]/.test(name) ? "d'" : 'de ') + name, sym: i < META_SYMS.length ? META_SYMS[i] : '☣️',
-      flavor: i < META_FLAVORS.length ? META_FLAVORS[i] : 'Strate ' + roman(k) + ' : la science a abandonné. Les mouches, non.',
+      name, verb: name, cur: 'Essence ' + (/^[AEIOUÉÈÊHaeiouéè]/.test(name) ? "d'" : 'de ') + name, sym: 'cloud',
+      flavor: i < META_FLAVORS.length ? META_FLAVORS[i] : 'Strate ' + roman(k) + ' : la science a abandonné. Les mouches, jamais.',
       meta: true,
       reqLog: metaReq(k),
       reqText: () => 'Atteins ' + fmt(P(metaReq(k))) + ' ' + prev.cur,

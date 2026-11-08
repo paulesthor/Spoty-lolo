@@ -115,15 +115,15 @@
 
   function tabs() {
     const S = G.S;
-    const list = [{ id: 'gens', ic: '🧦', label: 'Puer' }];
-    if (S.seen[1] || G.resets(1)) list.push({ id: 'L1', ic: '🐛', label: 'Mise en prod', layer: 1 });
-    if (S.seen[2] || G.resets(2)) list.push({ id: 'L2', ic: '💀', label: 'Burn-out', layer: 2 });
-    if (S.seen[3] || G.resets(3)) list.push({ id: 'L3', ic: '📋', label: 'Évacuation', layer: 3 });
-    if (G.resets(3) >= 1) list.push({ id: 'chal', ic: '📝', label: 'Plans RH' });
-    if (S.seen[4] || G.resets(4)) list.push({ id: 'L4', ic: '💸', label: 'Licencié', layer: 4 });
-    if (S.seen[5] || G.resets(5)) list.push({ id: 'meta', ic: '☣️', label: 'Contagion' });
-    list.push({ id: 'stats', ic: '📊', label: 'Stats' });
-    list.push({ id: 'opts', ic: '⚙', label: 'Options' });
+    const list = [{ id: 'gens', ic: 'sock', label: 'Puer' }];
+    if (S.seen[1] || G.resets(1)) list.push({ id: 'L1', ic: 'bug', label: 'Mise en prod', layer: 1 });
+    if (S.seen[2] || G.resets(2)) list.push({ id: 'L2', ic: 'skull', label: 'Burn-out', layer: 2 });
+    if (S.seen[3] || G.resets(3)) list.push({ id: 'L3', ic: 'alarm', label: 'Évacuation', layer: 3 });
+    if (G.resets(3) >= 1) list.push({ id: 'chal', ic: 'form', label: 'Plans RH' });
+    if (S.seen[4] || G.resets(4)) list.push({ id: 'L4', ic: 'carton', label: 'Licencié', layer: 4 });
+    if (S.seen[5] || G.resets(5)) list.push({ id: 'meta', ic: 'cloud', label: 'Contagion' });
+    list.push({ id: 'stats', ic: 'chart', label: 'Stats' });
+    list.push({ id: 'opts', ic: 'gear', label: 'Options' });
     return list;
   }
 
@@ -147,7 +147,7 @@
     for (const t of list) {
       const dot = h('span', { class: 'dot hidden' });
       const b = h('button', { class: t.id === tab ? 'on' : '', onclick: () => { tab = t.id; viewKey = ''; navKey = ''; window.scrollTo(0, 0); } },
-        h('span', { class: 'ic', text: t.ic }), h('span', { text: t.label }), dot);
+        Sprites.el(t.ic, 24, 'ic'), h('span', { text: t.label }), dot);
       b._dot = dot;
       b._tab = t;
       nav.append(b);
@@ -242,7 +242,7 @@
     liveClass(accBtn, 'can', () => accelLabel().can);
     acc.append(h('div', { class: 'row' },
       h('div', { class: 'grow' },
-        h('div', { class: 'title' }, h('span', { class: 'gen-ic', text: '💻' }), 'Laptop qui chauffe ', live(() => '(' + S.accel + ')', 'span', 'muted')),
+        h('div', { class: 'title' }, h('span', { class: 'gen-ic' }, Sprites.el('laptop', 24)), 'Laptop qui chauffe ', live(() => '(' + S.accel + ')', 'span', 'muted')),
         h('div', { class: 'flavor', text: 'Posé sur les cuisses depuis 9 h. Le ventilo crache ton odeur dans tout l\'étage.' }),
         live(() => G.M.accelOn ? '×' + G.M.accelBase.toFixed(3).replace('.', ',') + ' par achat sur les Relents, total ×' + fmt(Big.pow10(S.accel * Math.log10(G.M.accelBase))) : 'Désactivé par le défi', 'div', 'sub')),
       accBtn));
@@ -255,7 +255,7 @@
       liveClass(btn, 'can', () => buyLabel(i).can);
       card.append(h('div', { class: 'row' },
         h('div', { class: 'grow' },
-          h('div', { class: 'name' }, h('span', { class: 'gen-ic', text: gd.icon || '•' }), gd.name),
+          h('div', { class: 'name' }, h('span', { class: 'gen-ic' }, Sprites.el(gd.icon, 24)), gd.name),
           h('div', { class: 'flavor', text: gd.flavor || '' }),
           live(() => fmt(S.gens[i].amount) + ' (' + S.gens[i].bought + ')', 'div', 'amt num'),
           live(() => '×' + fmt(G.genMult(i)) + (i === 0 ? '' : ' → ' + fmt(S.gens[i].amount.mul(G.genMult(i))) + '/s ' + G.GENS[i - 1].name), 'div', 'amt num')),
@@ -293,7 +293,7 @@
 
     root.append(h('div', { class: 'card big-cur' },
       h('div', { class: 'layer-name', text: d.name }),
-      h('div', { class: 'amount num' }, d.sym + ' ', live(() => fmt(L.cur))),
+      h('div', { class: 'amount num' }, Sprites.el(d.sym, 30, 'cur-ic'), live(() => fmt(L.cur))),
       h('div', { class: 'muted', text: d.cur }),
       live(() => d.effectText(), 'div', 'sub'),
       d.flavor ? h('div', { class: 'flavor', text: d.flavor }) : null));
@@ -331,13 +331,13 @@
     const card = h('div', { class: 'card' });
     if (!G.upgAvailable(k, u)) {
       card.classList.add('locked');
-      card.append(h('div', { class: 'title', text: '🔒 ' + u.name }), h('div', { class: 'sub', text: u.reqText ? u.reqText() : 'Verrouillé' }));
+      card.append(h('div', { class: 'title' }, Sprites.el('lock', 18, 'inline'), u.name), h('div', { class: 'sub', text: u.reqText ? u.reqText() : 'Verrouillé' }));
       return card;
     }
     const maxed = () => G.lvl(k, u.id) >= u.max;
     const btn = holdButton(h('button', { class: 'buy' },
       live(() => maxed() ? 'Max' : fmt(G.upgCost(k, u)), 'b'),
-      live(() => maxed() ? '' : G.layerDef(k).sym)), () => G.buyUpg(k, u.id));
+      live(() => maxed() ? '' : G.layerDef(k).cur)), () => G.buyUpg(k, u.id));
     liveClass(btn, 'can', () => !maxed() && G.cur(k).gte(G.upgCost(k, u)));
     liveClass(btn, 'off', () => maxed());
     liveClass(card, 'done', maxed);
@@ -394,10 +394,10 @@
           [{ label: 'Annuler' }, { label: 'Commencer', cls: 'can', fn: () => G.startChallenge(c.id) }]);
       } }, 'Commencer');
       liveClass(btn, 'hidden', () => !!S.chal.active || !G.chalUnlocked(c.id));
-      const lockTxt = live(() => G.chalUnlocked(c.id) ? '' : '🔒 ' + G.chalUnlockAt(c.id) + ' Évacuations', 'span', 'muted');
+      const lockTxt = live(() => G.chalUnlocked(c.id) ? '' : 'Verrouillé : ' + G.chalUnlockAt(c.id) + ' Évacuations', 'span', 'muted');
       card.append(h('div', { class: 'row' },
         h('div', { class: 'grow' },
-          h('div', { class: 'title' }, c.name, ' ', live(() => G.chalDone(c.id) ? '✓' : (S.chal.active === c.id ? '(en cours)' : ''), 'span', 'muted')),
+          h('div', { class: 'title' }, c.name, ' ', live(() => G.chalDone(c.id) ? '(survécu)' : (S.chal.active === c.id ? '(en cours)' : ''), 'span', 'muted')),
           h('div', { class: 'sub', text: c.desc }),
           h('div', { class: 'sub', text: 'Récompense : ' + c.reward })),
         btn, lockTxt));
@@ -416,7 +416,7 @@
     root.append(h('div', { class: 'card' }, h('div', { class: 'sub', text: "Ton odeur ne connaît plus de frontières. Chaque niveau de contagion se nourrit du précédent et le renforce. Il n'y a pas de dernier niveau. Il n'y a pas d'issue de secours." })));
     const chips = h('div', { class: 'chips' });
     for (const k of avail) {
-      chips.append(h('button', { class: k === metaSel ? 'on' : '', onclick: () => { metaSel = k; viewKey = ''; } }, G.layerDef(k).sym + ' ' + G.layerDef(k).name));
+      chips.append(h('button', { class: k === metaSel ? 'on' : '', onclick: () => { metaSel = k; viewKey = ''; } }, G.layerDef(k).name));
     }
     root.append(chips);
     buildLayer(root, metaSel);
@@ -465,7 +465,7 @@
       r2('Nombre de ' + d.verb, () => String(G.resets(k)));
       r2(d.cur + ' (total)', () => fmt(G.lay(k).total));
       r2('Meilleur gain', () => fmt(G.lay(k).best));
-      root.append(h('h3', { text: d.sym + ' ' + d.name }), h('div', { class: 'card' }, tt));
+      root.append(h('h3', { text: d.name }), h('div', { class: 'card' }, tt));
     }
   }
 
@@ -543,7 +543,7 @@
     for (let k = 1; k <= n; k++) {
       if (!G.resets(k) && !S.seen[k]) continue;
       const d = G.layerDef(k);
-      res.append(h('button', { class: 'small', onclick: () => { S.stats.admin = true; S.stats.adminRes = true; const l = G.lay(k); const add = l.cur.max(1).mul(999); l.cur = l.cur.add(add); l.total = l.total.add(add); } }, d.sym + ' ' + d.cur + ' ×1000'));
+      res.append(h('button', { class: 'small', onclick: () => { S.stats.admin = true; S.stats.adminRes = true; const l = G.lay(k); const add = l.cur.max(1).mul(999); l.cur = l.cur.add(add); l.total = l.total.add(add); } }, d.cur + ' ×1000'));
     }
     box.append(res);
     return box;
@@ -579,7 +579,7 @@
   }
 
   function hardReset() {
-    modal(h('div', null, h('h2', { text: 'Tout effacer ?' }), h('p', { text: 'Toute ta progression sera perdue définitivement.' })), [
+    modal(h('div', null, h('h2', { text: 'Tout effacer ?' }), h('p', { text: 'Toute ta progression sera perdue définitivement. Comme ta dignité, mais en plus rapide.' })), [
       { label: 'Annuler' },
       { label: 'Effacer', cls: 'danger', fn: () => {
         G.init(G.newState());
@@ -625,11 +625,11 @@
 
   // niveau olfactif affiché sous la production (selon l'ordre de grandeur des Relents)
   const SMELL = [
-    [0, 'Légère moiteur'], [3, 'Réunion de 9 h sans fenêtre'], [6, 'Vestiaire de foot en juin'],
-    [10, 'Open space en août'], [15, 'Salle serveur, clim en panne'], [25, 'Fromagerie industrielle'],
-    [50, 'Décharge à ciel ouvert'], [100, 'Station d\'épuration'], [200, 'Incident diplomatique'],
-    [308, 'Arme chimique (Convention de Genève)'], [1000, 'Trou noir olfactif'], [1e4, 'Fin du monde, version parfumée'],
-    [1e5, 'Les dieux se bouchent le nez'], [1e6, 'Au-delà de la biologie'],
+    [0, 'Moite (déjà, bravo)'], [3, 'Réunion de 9 h sans fenêtre'], [6, 'Vestiaire après le match'],
+    [10, 'Open space en août'], [15, 'Salle serveur, clim crevée'], [25, 'Benne à ordures au soleil'],
+    [50, 'Morgue en panne de frigo'], [100, 'Station d\'épuration en grève'], [200, 'Incident diplomatique'],
+    [308, 'Arme chimique (Convention de Genève)'], [1000, 'Trou noir olfactif'], [1e4, 'Extinction de masse'],
+    [1e5, 'Les dieux se bouchent le nez'], [1e6, 'Au-delà de la biologie, gros dégueulasse'],
   ];
   function smellLevel(l) { let t = SMELL[0][1]; for (const [n, txt] of SMELL) if (l >= n) t = txt; return t; }
   // mouches : une de plus tous les 40 ordres de grandeur, jusqu'à 8
@@ -642,15 +642,54 @@
     const box = $('flies');
     box.innerHTML = '';
     for (let i = 0; i < n; i++) {
-      const f = h('span', { class: 'fly', text: '🪰' });
+      const f = Sprites.el('fly', 20, 'fly');
       const r = (a, b) => (a + Math.random() * (b - a)).toFixed(0) + 'px';
       f.style.cssText = 'left:' + (10 + Math.random() * 75).toFixed(0) + '%;top:' + (6 + Math.random() * 40).toFixed(0) + 'px;--d:' + (4 + Math.random() * 5).toFixed(1) + 's;--delay:-' + (Math.random() * 5).toFixed(1) + 's;--x1:' + r(-60, 60) + ';--y1:' + r(-10, 30) + ';--x2:' + r(-60, 60) + ';--y2:' + r(-10, 30) + ';--x3:' + r(-60, 60) + ';--y3:' + r(-10, 30);
       box.append(f);
     }
   }
 
+  // insultes qui défilent dans l'en-tête (une nouvelle toutes les 25 s)
+  const INSULTS = [
+    'Même ChatGPT refuse de répondre à tes prompts.',
+    'Ta mère a bloqué ton numéro et ton adresse IP.',
+    'Ton code compile. Personne ne sait comment. Personne ne veut savoir.',
+    'Stack Overflow a marqué ton existence comme doublon.',
+    'Tu sens le serveur Windows 2003 qui a pris l\'eau.',
+    'Le stagiaire est mort en t\'apportant ton café. On a gardé son badge.',
+    'Tes collègues ont un canal Slack sans toi. Il s\'appelle #masque-a-gaz.',
+    'Tu pues tellement que ton antivirus t\'a mis en quarantaine.',
+    'Ton dernier commit s\'appelle « fix ». Le précédent aussi. Tous, en fait.',
+    'Même Linux ne veut pas de toi. Et pourtant il accepte n\'importe quel matériel pourri.',
+    'Ton manager te félicite par mail. Depuis l\'autre bâtiment. Avec un masque.',
+    'Les mouches ont plus d\'amis que toi sur LinkedIn.',
+    'Viré de Discord pour « odeur perceptible à travers le micro ».',
+    'Ton hoodie a son propre ticket Jira. Priorité : bloquante.',
+    'Le recruteur a raccroché en pleine visio. Ça passait à travers l\'écran.',
+    'Ta douche a déposé une main courante pour abandon.',
+    'Tu fais du Java. C\'est déjà une odeur en soi.',
+    'git blame te désigne pour tout. Surtout pour ce que tu n\'as pas fait.',
+    'L\'IA de recrutement t\'a classé « risque biologique ».',
+    'T\'es une erreur 500 sur pattes, putain.',
+    'Ton clavier a demandé une mutation. Refusée : personne ne veut de lui non plus.',
+    'Le médecin du travail a mis « inopérable » sur ton dossier. Il parlait de l\'odeur.',
+    'Ce jeu te méprise. Les mouches aussi, mais elles, elles restent.',
+    'Tu as fait pleurer le détecteur de fumée.',
+    'Kubernetes a refusé de te scheduler : « pod contaminé ».',
+    'Ton rubber duck a demandé à être noyé.',
+  ];
+  let insultAt = 0, insultIdx = Math.floor(Math.random() * INSULTS.length);
+  function renderInsult() {
+    const now = Date.now();
+    if (now - insultAt < 25000) return;
+    insultAt = now;
+    insultIdx = (insultIdx + 1 + Math.floor(Math.random() * (INSULTS.length - 1))) % INSULTS.length;
+    $('insult').textContent = INSULTS[insultIdx];
+  }
+
   function renderHeader() {
     const S = G.S;
+    renderInsult();
     const sm = 'Niveau olfactif : ' + smellLevel(S.dust.log10());
     if ($('smell')._v !== sm) { $('smell')._v = sm; $('smell').textContent = sm; }
     renderFlies();
@@ -752,7 +791,7 @@
       const b = G.cur(k);
       if (!a.eq(b)) lines.push(h('p', { text: G.layerDef(k).cur + ' : ' + fmt(a) + ' → ' + fmt(b) }));
     }
-    modal(h('div', null, h('h2', { text: title || 'Te revoilà. On t\'a senti arriver.' }), ...lines));
+    modal(h('div', null, h('h2', { text: title || 'Te revoilà, putain. On t\'a senti depuis le parking.' }), ...lines));
   }
 
   let last = Date.now();
@@ -845,17 +884,17 @@
   }
 
   const FIRST_TOASTS = {
-    1: 'Le canal #incidents ne s\'éteindra plus jamais.',
-    2: 'Ton médecin du travail a démissionné.',
-    3: 'Les pompiers ont classé l\'étage zone rouge.',
-    4: 'Le vigile t\'escorte jusqu\'à la sortie, en apnée.',
-    5: 'Les investisseurs ont signé sans retirer leur masque.',
+    1: 'Le canal #incidents ne s\'éteindra plus jamais. Bravo, déchet.',
+    2: 'Ton médecin du travail a démissionné. Puis il est mort. Coïncidence ?',
+    3: 'Les pompiers ont classé l\'étage en zone rouge. Le stagiaire n\'a pas été retrouvé.',
+    4: 'Le vigile t\'a sorti avec une perche de 3 mètres. Il est en arrêt maladie depuis.',
+    5: 'Les investisseurs ont signé sans retirer leur masque. Deux sont restés au parking.',
   };
   G.on((type, data) => {
     if (type === 'reset') pushParty(true);
     if (type === 'chal') {
       const c = G.CHALLENGES.find((x) => x.id === data);
-      toast('Plan RH survécu : ' + c.name + ' ! Les RH sont déçus.');
+      toast('Plan RH survécu : ' + c.name + '. Les RH sont dégoûtés, au sens propre.');
     }
     if (type === 'reset' && G.resets(data) === 1) toast(G.layerDef(data).verb + ' : première fois ! ' + (FIRST_TOASTS[data] || ''));
     if (type === 'reset' && data === 3 && G.resets(3) === G.SN_AUTO_AT) toast('Débloqué : achat automatique des améliorations de Mise en prod (onglet Mise en prod)');
@@ -872,6 +911,7 @@
     document.addEventListener('visibilitychange', () => { if (document.hidden) saveGame(); else { loop(); } });
     window.addEventListener('pagehide', saveGame);
     initSync();
+    $('avatar').append(Sprites.el('dev', 48));
     if ('serviceWorker' in navigator && location.protocol !== 'file:') {
       navigator.serviceWorker.register('sw.js').catch(() => {});
     }
