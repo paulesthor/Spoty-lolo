@@ -149,3 +149,8 @@ button.small { min-height: 36px; font-size: 13px; padding: 4px 10px; }
 table.stats { width: 100%; border-collapse: collapse; font-size: 14px; }
 table.stats td { padding: 6px 0; border-bottom: 1px solid var(--line); }
 table.stats td:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ---------- mode admin ---------- */
+.card.admin { border-color: var(--warn); display: grid; gap: 6px; }
+.card.admin h3 { margin: 8px 0 2px; }
+.row.wrap { flex-wrap: wrap; }

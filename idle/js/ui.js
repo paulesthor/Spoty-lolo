@@ -423,6 +423,7 @@
     row('Meilleure Poussière', () => fmt(S.stats.bestDust));
     row('Poussière produite', () => fmt(S.stats.totalDust));
     row('Vitesse du jeu', () => '×' + G.M.speed.toFixed(2));
+    row('Mode admin utilisé', () => S.stats.admin ? 'oui' : 'non');
     row('Exposant de production', () => '^' + G.M.dustExp.toFixed(3));
     row('Bonus par 10 achats', () => '×' + G.M.perTen.toFixed(2));
     root.append(h('div', { class: 'card' }, t));
@@ -453,7 +454,13 @@
     sel.addEventListener('change', () => { S.options.notation = sel.value; });
     box.append(h('div', { class: 'toggle' }, h('span', { text: 'Notation' }), sel));
     box.append(toggleRow('Progression hors-ligne', () => S.options.offline, (v) => { S.options.offline = v; }));
+    box.append(toggleRow('Mode admin (tests)', () => S.options.admin, (v) => {
+      S.options.admin = v;
+      if (!v) S.options.adminSpeed = 1;
+      viewKey = '';
+    }));
     root.append(box);
+    if (S.options.admin) root.append(adminBox());
 
     const save = h('div', { class: 'card' });
     save.append(h('div', { class: 'row', style: 'flex-wrap:wrap' },
@@ -465,6 +472,45 @@
 
     root.append(h('button', { class: 'primary danger', style: 'margin-top:16px', onclick: hardReset }, 'Tout effacer'));
     root.append(h('p', { class: 'muted', style: 'margin-top:16px' }, 'Astuce : ajoute le jeu à ton écran d\'accueil (menu du navigateur → « Ajouter à l\'écran d\'accueil ») pour y jouer comme une appli, même hors connexion. Garde le doigt appuyé sur un bouton d\'achat pour acheter en continu.'));
+  }
+
+  // ------------------------------------------------------------------
+  // Mode admin : accélérer le jeu et se donner des ressources pour tester
+  // ------------------------------------------------------------------
+  const ADMIN_SPEEDS = [1, 2, 5, 10, 100, 1000];
+  function adminBox() {
+    const S = G.S;
+    const box = h('div', { class: 'card admin' }, h('div', { class: 'title', text: 'Mode admin' }),
+      h('div', { class: 'sub', text: 'Pour tester : la partie avance plus vite tant que le jeu est ouvert. La sauvegarde garde une trace de son utilisation.' }));
+
+    box.append(h('h3', { text: 'Vitesse du jeu' }));
+    const seg = h('div', { class: 'seg' });
+    for (const v of ADMIN_SPEEDS) {
+      const b = h('button', { onclick: () => { S.options.adminSpeed = v; S.stats.admin = true; } }, '×' + v);
+      liveClass(b, 'on', () => S.options.adminSpeed === v);
+      seg.append(b);
+    }
+    box.append(seg);
+
+    box.append(h('h3', { text: 'Avancer le temps' }));
+    const skip = h('div', { class: 'row wrap' });
+    for (const [label, sec] of [['+1 min', 60], ['+1 h', 3600], ['+8 h', 8 * 3600], ['+24 h', 86400]]) {
+      skip.append(h('button', { class: 'small', onclick: () => { S.stats.admin = true; const was = S.options.offline; S.options.offline = true; catchUp(sec, sec >= 3600, 'Avance rapide'); S.options.offline = was; if (sec < 3600) toast(label + ' de jeu'); } }, label));
+    }
+    box.append(skip);
+    box.append(h('div', { class: 'sub', text: 'Calculé comme une absence : les automates activés tournent pendant ce temps.' }));
+
+    box.append(h('h3', { text: 'Ressources' }));
+    const res = h('div', { class: 'row wrap' });
+    res.append(h('button', { class: 'small', onclick: () => { S.stats.admin = true; S.dust = S.dust.max(10).mul(1000); } }, 'Poussière ×1000'));
+    const n = G.layerCount();
+    for (let k = 1; k <= n; k++) {
+      if (!G.resets(k) && !S.seen[k]) continue;
+      const d = G.layerDef(k);
+      res.append(h('button', { class: 'small', onclick: () => { S.stats.admin = true; const l = G.lay(k); const add = l.cur.max(1).mul(999); l.cur = l.cur.add(add); l.total = l.total.add(add); } }, d.sym + ' ' + d.cur + ' ×1000'));
+    }
+    box.append(res);
+    return box;
   }
 
   function exportSave() {
@@ -519,6 +565,7 @@
       case 'meta': return 'meta|' + G.layerCount() + '|' + metaSel + '|' + layerKey(metaSel);
       case 'chal': return 'chal';
       case 'stats': return 'stats|' + G.layerCount();
+      case 'opts': return 'opts|' + G.S.options.admin + '|' + G.layerCount();
       default: return tab;
     }
   }
@@ -544,7 +591,8 @@
     const S = G.S;
     const d = fmt(S.dust);
     if ($('dust')._v !== d) { $('dust')._v = d; $('dust').textContent = d; }
-    const r = G.isBroken() || S.dust.lt(G.INF) ? fmt(G.dustRate().mul(G.M.speed)) + '/s' : "Infini atteint ! Fais un Big Bang.";
+    let r = G.isBroken() || S.dust.lt(G.INF) ? fmt(G.dustRate().mul(G.M.speed)) + '/s' : "Infini atteint ! Fais un Big Bang.";
+    if (S.options.admin) r += ' · Admin ×' + (S.options.adminSpeed || 1);
     if ($('rate')._v !== r) { $('rate')._v = r; $('rate').textContent = r; }
     const ban = $('chal-banner');
     const c = S.chal.active && G.CHALLENGES.find((x) => x.id === S.chal.active);
@@ -587,7 +635,7 @@
     G.init(st);
   }
 
-  function catchUp(seconds, showSummary) {
+  function catchUp(seconds, showSummary, title) {
     const S = G.S;
     if (!S.options.offline) return;
     seconds = Math.min(seconds, OFFLINE_MAX);
@@ -596,14 +644,14 @@
     for (let k = 1; k <= G.layerCount(); k++) beforeRes[k] = G.cur(k);
     G.simulate(seconds, 6000);
     if (!showSummary) return;
-    const lines = [h('p', { text: 'Absent pendant ' + duration(seconds) + '.' })];
+    const lines = [h('p', { text: (title ? 'Temps avancé : ' : 'Absent pendant ') + duration(seconds) + '.' })];
     lines.push(h('p', { text: 'Poussière : ' + fmt(before) + ' → ' + fmt(S.dust) }));
     for (let k = 1; k <= G.layerCount(); k++) {
       const a = beforeRes[k] || Big.ZERO;
       const b = G.cur(k);
       if (!a.eq(b)) lines.push(h('p', { text: G.layerDef(k).cur + ' : ' + fmt(a) + ' → ' + fmt(b) }));
     }
-    modal(h('div', null, h('h2', { text: 'Bon retour !' }), ...lines));
+    modal(h('div', null, h('h2', { text: title || 'Bon retour !' }), ...lines));
   }
 
   let last = Date.now();
@@ -612,7 +660,12 @@
     const dt = (now - last) / 1000;
     last = now;
     if (dt > 2) catchUp(dt, dt > 60);
-    else if (dt > 0) G.tick(dt);
+    else if (dt > 0) {
+      const sp = G.S.options.admin ? (G.S.options.adminSpeed || 1) : 1;
+      const total = dt * sp;
+      const steps = Math.min(400, Math.max(1, Math.ceil(total / 0.25)));
+      for (let i = 0; i < steps; i++) G.tick(total / steps);
+    }
     G.S.lastTick = now;
   }
 

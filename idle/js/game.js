@@ -71,8 +71,8 @@
       chal: { active: null, done: {} },
       seen: {},
       auto: { gens: false, accel: false },
-      stats: { time: 0, bestDust: B(10), totalDust: Big.ZERO, created: Date.now() },
-      options: { notation: 'scientifique', buy: '1', offline: true },
+      stats: { time: 0, bestDust: B(10), totalDust: Big.ZERO, created: Date.now(), admin: false },
+      options: { notation: 'scientifique', buy: '1', offline: true, admin: false, adminSpeed: 1 },
       lastTick: Date.now(),
     };
   }
