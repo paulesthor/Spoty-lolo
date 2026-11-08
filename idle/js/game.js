@@ -443,11 +443,20 @@
     return mode === '1' ? 1 : mode === '10' ? 10 - (b % 10) : 1e9;
   }
   // prix affiché pour un mode (pour 'max' : le prochain achat)
-  function genPrice(i, mode) {
-    const f = (b) => genCostLog(i, b);
-    const b = S.gens[i].bought;
-    return P(mode === 'max' ? f(b) : sumLog(f, b, genTarget(i, mode)));
+  // ce qu'un appui achèterait : nombre d'unités, prix total, et si on peut payer.
+  // En mode Max : tout ce qui est payable (ou, si rien ne l'est, le prix de la prochaine unité).
+  function offer(costLog, from, target, max) {
+    if (max) {
+      const n = affordable(costLog, from, 1e9);
+      return n > 0 ? { n, cost: P(sumLog(costLog, from, n)), can: true } : { n: 1, cost: P(costLog(from)), can: false };
+    }
+    const cost = P(sumLog(costLog, from, target));
+    return { n: target, cost, can: S.dust.gte(cost) };
   }
+  function genOffer(i, mode) {
+    return offer((b) => genCostLog(i, b), S.gens[i].bought, genTarget(i, mode), mode === 'max');
+  }
+  function genPrice(i, mode) { return genOffer(i, mode).cost; }
 
   function buyGen(i, mode) {
     if (!genUnlocked(i)) return 0;
@@ -463,6 +472,7 @@
 
   function accelCostLog(n) { return scaleLog(ACCEL.base + ACCEL.step * n * M.costPow); }
   function accelCost() { return P(accelCostLog(S.accel)); }
+  function accelOffer(max) { return offer(accelCostLog, S.accel, 1, max); }
   function buyAccel(max) {
     const n = affordable(accelCostLog, S.accel, max ? 1e9 : 1);
     if (n <= 0) return 0;
@@ -744,7 +754,7 @@
     get S() { return S; }, get M() { return M; },
     init, newState, serialize, deserialize, tick, simulate, on: (f) => listeners.push(f),
     lay, lvl, cur, resets, layerDef, layerCount, keepLevel, autoUnlocked, autoGensUnlocked, autoAccelUnlocked,
-    genCost, genPrice, genMult, genUnlocked, criticalExponent, computeMods: () => computeMods(), buyGen, accelCost, buyAccel, buyAllMax, dustRate,
+    genCost, genPrice, genOffer, accelOffer, genMult, genUnlocked, criticalExponent, computeMods: () => computeMods(), buyGen, accelCost, buyAccel, buyAllMax, dustRate,
     canReset, reached, waitLeft, progress, nextGoal, gain, doReset, startChallenge, chalUnlocked, chalUnlockAt, exitChallenge, chalDone, chalCount, isBroken,
     upgDef, upgCost, upgAvailable, buyUpg, startDust, fmt,
     refresh: () => { M = computeMods(); },

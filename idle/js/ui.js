@@ -164,11 +164,15 @@
   // Vue : Générateurs
   // ------------------------------------------------------------------
   function buyLabel(i) {
-    const S = G.S;
-    const mode = S.options.buy;
-    const left = 10 - (S.gens[i].bought % 10);
-    const top = mode === '10' ? '×' + left : mode === 'max' ? 'Max' : '×1';
-    return { top, cost: G.genPrice(i, mode) };
+    const mode = G.S.options.buy;
+    const o = G.genOffer(i, mode);
+    const top = mode === 'max' ? (o.can ? 'Max : ×' + fmt(o.n) : 'Max') : '×' + o.n;
+    return { top, cost: o.cost, can: o.can };
+  }
+  function accelLabel() {
+    const max = G.S.options.buy === 'max';
+    const o = G.accelOffer(max);
+    return { top: max ? (o.can ? 'Max : ×' + fmt(o.n) : 'Max') : 'Acheter', cost: o.cost, can: o.can };
   }
 
   function prestigeButton(k, compact) {
@@ -234,8 +238,8 @@
 
     // accélérateur
     const acc = h('div', { class: 'card' });
-    const accBtn = holdButton(h('button', { class: 'buy' }, live(() => fmt(G.accelCost()), 'b'), 'Acheter'), () => G.buyAccel(S.options.buy === 'max'));
-    liveClass(accBtn, 'can', () => S.dust.gte(G.accelCost()));
+    const accBtn = holdButton(h('button', { class: 'buy' }, live(() => fmt(accelLabel().cost), 'b'), live(() => accelLabel().top)), () => G.buyAccel(S.options.buy === 'max'));
+    liveClass(accBtn, 'can', () => accelLabel().can);
     acc.append(h('div', { class: 'row' },
       h('div', { class: 'grow' },
         h('div', { class: 'title' }, 'Accélérateur ', live(() => '(' + S.accel + ')', 'span', 'muted')),
@@ -247,7 +251,7 @@
       if (!G.genUnlocked(i)) return;
       const card = h('div', { class: 'card gen' });
       const btn = holdButton(h('button', { class: 'buy' }, live(() => fmt(buyLabel(i).cost), 'b'), live(() => buyLabel(i).top)), () => G.buyGen(i, S.options.buy));
-      liveClass(btn, 'can', () => S.dust.gte(buyLabel(i).cost));
+      liveClass(btn, 'can', () => buyLabel(i).can);
       card.append(h('div', { class: 'row' },
         h('div', { class: 'grow' },
           h('div', { class: 'name' }, (i + 1) + '. ' + gd.name),
