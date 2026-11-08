@@ -2,52 +2,52 @@
  "sensitivity": [
   {
    "dt": 0.25,
-   "score": 10.073151046248418,
-   "dust": 18.176533504941126,
+   "score": 9.384901486738462,
+   "dust": 15.38378143851358,
    "L1": 593.75,
-   "L2": 11492.75,
+   "L2": 13241.75,
    "resets": {
-    "1": 223,
-    "2": 2,
+    "1": 177,
+    "2": 1,
     "3": 0,
     "4": 0
    }
   },
   {
    "dt": 1,
-   "score": 10.112787458166856,
-   "dust": 18.044422168199105,
+   "score": 9.616995053500942,
+   "dust": 26.048839248428315,
    "L1": 593,
-   "L2": 10923,
+   "L2": 13073,
    "resets": {
-    "1": 212,
-    "2": 2,
+    "1": 189,
+    "2": 1,
     "3": 0,
     "4": 0
    }
   },
   {
    "dt": 4,
-   "score": 10.082779600334954,
-   "dust": 12.424464218065195,
+   "score": 9.62126157153719,
+   "dust": 19.937075349444992,
    "L1": 580,
-   "L2": 12164,
+   "L2": 12636,
    "resets": {
-    "1": 189,
-    "2": 2,
+    "1": 165,
+    "2": 1,
     "3": 0,
     "4": 0
    }
   },
   {
    "dt": 16,
-   "score": 10.12228438860841,
-   "dust": 14.800681734034525,
+   "score": 9.379855526696373,
+   "dust": 12.389164707778654,
    "L1": 576,
-   "L2": 10544,
+   "L2": 13808,
    "resets": {
-    "1": 131,
-    "2": 2,
+    "1": 120,
+    "2": 1,
     "3": 0,
     "4": 0
    }
@@ -56,10 +56,10 @@
  "offline": {
   "début": {
    "on": {
-    "dust": 35.889044779761,
-    "score": 17.481880270062003,
+    "dust": 36.725011120023765,
+    "score": 16.720978579357176,
     "L": [
-     1.7481880270062005,
+     1.6720978579357175,
      null,
      null,
      null,
@@ -67,24 +67,24 @@
     ]
    },
    "off": {
-    "dust": 35.89054692746966,
-    "score": 17.481880270062003,
+    "dust": 36.726512073148136,
+    "score": 16.720978579357176,
     "L": [
-     1.7481880270062005,
+     1.6720978579357175,
      null,
      null,
      null,
      null
     ]
    },
-   "ms": 18
+   "ms": 19
   },
   "milieu": {
    "on": {
-    "dust": 73.9158513249916,
-    "score": 147.93660909779658,
+    "dust": 53.31212989631226,
+    "score": 148.19814772609448,
     "L": [
-     10.022448362583035,
+     10.048602225412825,
      0.47712125471966244,
      null,
      null,
@@ -92,46 +92,46 @@
     ]
    },
    "off": {
-    "dust": 74.0234612869075,
-    "score": 147.93660909779658,
+    "dust": 53.3444673324976,
+    "score": 148.19814772609448,
     "L": [
-     10.022448362583035,
+     10.048602225412825,
      0.47712125471966244,
      null,
      null,
      null
     ]
    },
-   "ms": 22
+   "ms": 23
   },
   "avancée": {
    "on": {
-    "dust": 9700.300380241662,
-    "score": 425296.98915107903,
+    "dust": 308.25471555991675,
+    "score": 7469.795156211141,
     "L": [
-     3501.227819522949,
-     585.72504064117,
-     264.0409489067294,
-     6.767125798500313,
+     120.106576297389,
+     22.148446028425575,
+     4.053884790394694,
+     null,
      null
     ]
    },
    "off": {
-    "dust": 9701.543818913891,
-    "score": 425328.0068928522,
+    "dust": 308.25471555991675,
+    "score": 7469.76979743517,
     "L": [
-     3501.5546244483553,
-     585.7703723147271,
-     264.0641654318928,
-     6.767125798500313,
+     120.10611025537294,
+     22.148239044867466,
+     4.053884790394694,
+     null,
      null
     ]
    },
-   "ms": 60
+   "ms": 42
   }
  },
- "offline7dMs": 35,
- "tickMs": 0.0055,
+ "offline7dMs": 32,
+ "tickMs": 0.0045,
  "Ebase": 0.3930851272325909,
  "Emax": 0.7557553042272634,
  "results": [
@@ -166,44 +166,39 @@
    "detail": ""
   },
   {
-   "name": "[avancée] couche 4 : seuil non atteint juste après son reset",
-   "ok": true,
-   "detail": ""
-  },
-  {
    "name": "Pas de temps 0,25 s → 16 s : écart de progression < 25 %",
    "ok": true,
-   "detail": "somme des log10 des totaux : 10.1 / 10.1 / 10.1 / 10.1 ; 1re Supernova : 10 min / 10 min / 10 min / 10 min"
+   "detail": "somme des log10 des totaux : 9.4 / 9.6 / 9.6 / 9.4 ; 1re Supernova : 10 min / 10 min / 10 min / 10 min"
   },
   {
    "name": "[début] 8 h hors-ligne ne rapporte pas plus que 8 h en ligne à 50 ms/tick (+5 %)",
    "ok": true,
-   "detail": "log10 des totaux par couche — en ligne 1.7/–/–/–/–, hors-ligne 1.7/–/–/–/– (calcul 18 ms)"
+   "detail": "log10 des totaux par couche — en ligne 1.7/–/–/–/–, hors-ligne 1.7/–/–/–/– (calcul 19 ms)"
   },
   {
    "name": "[milieu] 8 h hors-ligne ne rapporte pas plus que 8 h en ligne à 50 ms/tick (+5 %)",
    "ok": true,
-   "detail": "log10 des totaux par couche — en ligne 10.0/0.5/–/–/–, hors-ligne 10.0/0.5/–/–/– (calcul 22 ms)"
+   "detail": "log10 des totaux par couche — en ligne 10.0/0.5/–/–/–, hors-ligne 10.0/0.5/–/–/– (calcul 23 ms)"
   },
   {
    "name": "[avancée] 8 h hors-ligne ne rapporte pas plus que 8 h en ligne à 50 ms/tick (+5 %)",
    "ok": true,
-   "detail": "log10 des totaux par couche — en ligne 3501.2/585.7/264.0/6.8/–, hors-ligne 3501.6/585.8/264.1/6.8/– (calcul 60 ms)"
+   "detail": "log10 des totaux par couche — en ligne 120.1/22.1/4.1/–/–, hors-ligne 120.1/22.1/4.1/–/– (calcul 42 ms)"
   },
   {
    "name": "Nombres gigantesques (1e1e300) : pas de plantage ni de NaN",
    "ok": true,
-   "detail": "e1,00e300"
+   "detail": "1,80e308"
   },
   {
    "name": "Achat max avec 1e1e300 Poussière reste rapide",
    "ok": true,
-   "detail": "3 ms"
+   "detail": "0 ms"
   },
   {
    "name": "Achat max des améliorations avec monnaie gigantesque reste rapide",
    "ok": true,
-   "detail": "3 ms"
+   "detail": "2 ms"
   },
   {
    "name": "Format des nombres extrêmes",
@@ -243,7 +238,7 @@
   {
    "name": "Rattrapage 7 jours hors-ligne en moins de 5 s (PC)",
    "ok": true,
-   "detail": "35 ms"
+   "detail": "32 ms"
   },
   {
    "name": "Défi « Sans étoiles » : aucun Éclat gagné (même en passif)",
@@ -278,12 +273,12 @@
   {
    "name": "Rester 24 h à l'Infini : Big Bang toujours à 1 point avant d'avoir brisé l'Infini",
    "ok": true,
-   "detail": "gain 0 → 0, Éclats 5,79e45"
+   "detail": "gain 0 → 0, Éclats 2,35e26"
   },
   {
    "name": "Effet des Éclats accumulés plafonné (pas de croissance illimitée)",
    "ok": true,
-   "detail": "Production ×1,74e61 (plafonné)"
+   "detail": "Production ×2,12e30"
   },
   {
    "name": "Automates à 0 s : pas de plantage, tick < 5 ms",
@@ -293,7 +288,7 @@
   {
    "name": "Tick en partie avancée < 2 ms (PC)",
    "ok": true,
-   "detail": "0.005 ms"
+   "detail": "0.004 ms"
   },
   {
    "name": "Exposant critique < 1 même avec toutes les améliorations (pas d'emballement)",

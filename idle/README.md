@@ -33,16 +33,12 @@ Servir le dossier `idle/` en HTTP(S), par exemple `python3 -m http.server` puis 
 - **10 s minimum** entre deux prestiges d'une même couche (manuel ou automatique).
 - **Poussière de départ < seuil de Supernova**, seuils des Strates croissants (1e10, 1e15, 1e20…).
 
-## Rythme mesuré (bot réagissant chaque seconde, 300 h)
-| Étape | Patient (prestige à ×10) | Actif (prestige à ×2) | Idle 3×15 min/jour |
-|---|---|---|---|
-| Supernova | 9 min | 9 min | 9 min |
-| Effondrement | 1,2 h | 2,7 h | 16 h |
-| Big Bang | 3,2 h | 7,4 h | 2 j |
-| Infini brisé | 5,1 h | 9,7 h | 3,3 j |
-| Éternité | 5,1 h | 9,8 h | 3,3 j |
-| Multivers | 5,2 h | 10,5 h | 3,7 j |
-| Omnivers | 5,3 h | — | 4,7 j |
-| Hypervers | 40 h | — | 11 j |
+## Rythme visé (calé sur Revolution Idle)
+| Étape | Bon joueur (simulé) | Repère Revolution Idle |
+|---|---|---|
+| 1er Big Bang | 3-4,4 h | 1er Infini : 3 h 15 typique |
+| Infini brisé | 10-11 h | ~8 h + 2 h 30 de défis |
+| 1re Éternité | ~1,2 jour | 1 j 6 h à 3-7 jours |
+| Multivers / Omnivers / Hypervers | ~3 j / ~8-9 j / ~3 semaines | — |
 
 Détails et limites : `tools/resultats/rapport.html`.
