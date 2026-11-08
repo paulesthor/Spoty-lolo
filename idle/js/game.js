@@ -70,7 +70,7 @@
       layers: {},
       chal: { active: null, done: {} },
       seen: {},
-      auto: { gens: false, accel: false },
+      auto: { gens: false, accel: false, snUpg: true },
       stats: { time: 0, bestDust: B(10), totalDust: Big.ZERO, created: Date.now(), admin: false, firsts: {} },
       options: { notation: 'scientifique', buy: '1', offline: true, admin: false, adminSpeed: 1 },
       lastTick: Date.now(),
@@ -180,6 +180,7 @@
         { n: 1, text: 'Production ×10 par défi terminé' },
         { n: 2, text: "Garde les améliorations d'Éclats lors d'un Big Bang" },
         { n: 3, text: 'Effondrement automatique' },
+        { n: 4, text: "Achat automatique des améliorations de Supernova" },
         { n: 5, text: 'Garde les améliorations de Singularités lors d\'un Big Bang' },
         { n: 10, text: 'Gagne passivement 10 % par seconde du gain de Supernova' },
       ],
@@ -312,6 +313,22 @@
     if (k === 2) return resets(3) >= 3;
     if (k === 3) return lvl(3, 'in_auto') > 0 || resets(4) >= 2;
     return resets(k + 1) >= 1;
+  }
+  const SN_AUTO_AT = 4; // Big Bangs nécessaires pour l'achat automatique des améliorations de Supernova
+  function autoSnUpgUnlocked() { return resets(3) >= SN_AUTO_AT || resets(4) >= 1; }
+  // achète l'amélioration de Supernova la moins chère tant que c'est possible
+  function autoBuySnUpgrades() {
+    const d = layerDef(1);
+    for (let guard = 0; guard < 50; guard++) {
+      let best = null, bestC = null;
+      for (const u of d.upgrades) {
+        if (!upgAvailable(1, u) || lvl(1, u.id) >= u.max) continue;
+        const c = upgCost(1, u);
+        if (cur(1).gte(c) && (!bestC || c.lt(bestC))) { best = u; bestC = c; }
+      }
+      if (!best) break;
+      buyUpg(1, best.id);
+    }
   }
   function autoGensUnlocked() { return resets(2) >= 1 || resets(3) >= 1 || resets(4) >= 1; }
   function autoAccelUnlocked() { return resets(2) >= 3 || resets(3) >= 1 || resets(4) >= 1; }
@@ -694,6 +711,7 @@
     // automates
     if (S.auto.gens && autoGensUnlocked()) for (let i = GENS.length - 1; i >= 0; i--) buyGen(i, 'max');
     if (S.auto.accel && autoAccelUnlocked()) buyAccel(true);
+    if (S.auto.snUpg && autoSnUpgUnlocked()) autoBuySnUpgrades();
     for (let k = n; k >= 1; k--) if (autoReset(k)) break;
 
     seenCheck();
@@ -786,7 +804,7 @@
     GENS, CHALLENGES, BREAK_CHALLENGES, INF, MIN_RUN,
     get S() { return S; }, get M() { return M; },
     init, newState, serialize, deserialize, tick, simulate, on: (f) => listeners.push(f),
-    lay, lvl, cur, resets, layerDef, layerCount, keepLevel, autoUnlocked, autoGensUnlocked, autoAccelUnlocked,
+    lay, lvl, cur, resets, layerDef, layerCount, keepLevel, autoUnlocked, autoGensUnlocked, autoAccelUnlocked, autoSnUpgUnlocked, SN_AUTO_AT,
     genCost, genPrice, genOffer, accelOffer, genMult, genUnlocked, criticalExponent, computeMods: () => computeMods(), buyGen, accelCost, buyAccel, buyAllMax, dustRate,
     canReset, reached, waitLeft, progress, nextGoal, gain, doReset, startChallenge, chalUnlocked, chalUnlockAt, exitChallenge, chalDone, chalCount, isBroken,
     upgDef, upgCost, upgAvailable, buyUpg, startDust, fmt,

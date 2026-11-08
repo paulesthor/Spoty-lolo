@@ -302,6 +302,11 @@
       live(() => d.verb + ' : ' + G.resets(k) + ' fois — temps actuel ' + duration(L.time) + (G.M.passive[k] ? ' — passif ' + Math.round(G.M.passive[k] * 100) + ' %/s' : ''))));
 
     if (G.autoUnlocked(k)) root.append(autoBox(k));
+    if (k === 1 && G.autoSnUpgUnlocked()) {
+      root.append(h('div', { class: 'card auto-box', style: 'margin-top:8px' },
+        toggleRow('Achat automatique des améliorations', () => G.S.auto.snUpg, (v) => { G.S.auto.snUpg = v; }),
+        h('div', { class: 'muted', text: 'Achète la moins chère dès que possible. Désactive-le pour garder tes Éclats (leur bonus dépend de ce que tu gardes).' })));
+    }
 
     root.append(h('h3', { text: 'Améliorations' }));
     for (const u of d.upgrades) root.append(upgradeCard(k, u));
@@ -361,7 +366,7 @@
 
   function layerKey(k) {
     const d = G.layerDef(k);
-    return [k, d.upgrades.map((u) => G.upgAvailable(k, u) ? 1 : 0).join(''), G.autoUnlocked(k)].join('|');
+    return [k, d.upgrades.map((u) => G.upgAvailable(k, u) ? 1 : 0).join(''), G.autoUnlocked(k), k === 1 && G.autoSnUpgUnlocked()].join('|');
   }
 
   // ------------------------------------------------------------------
@@ -776,6 +781,7 @@
       toast('Défi terminé : ' + c.name + ' !');
     }
     if (type === 'reset' && G.resets(data) === 1) toast('Première ' + G.layerDef(data).verb + ' !');
+    if (type === 'reset' && data === 3 && G.resets(3) === G.SN_AUTO_AT) toast('Débloqué : achat automatique des améliorations de Supernova (onglet Supernova)');
   });
 
   function start() {
