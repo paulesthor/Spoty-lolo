@@ -593,7 +593,7 @@
         return { label: 'Achète « Violer la Convention de Genève » (' + fmt(upgCost(3, u)) + ' Plaintes RH)', pct: Math.max(0, Math.min(1, Math.max(0, cur(3).log10()) / c)), key: 'break', src: cur(3), req: upgCost(3, u) };
       }
       const d = layerDef(k);
-      return { label: 'Prochain objectif : ' + d.verb + ' — ' + d.reqText(), pct: progress(k), key: 'L' + k, src: P(d.sourceLog()), req: P(d.reqLog) };
+      return { label: d.verb + ' : ' + d.reqText(), pct: progress(k), key: 'L' + k, src: P(d.sourceLog()), req: P(d.reqLog) };
     }
     return null;
   }

@@ -23,22 +23,20 @@
     <div class="hero">
       <div class="stinker" aria-hidden="true"><span class="waves"><i></i><i></i><i></i></span><span class="avatar" id="avatar"></span></div>
       <div class="nums">
-        <div class="brand">Big Odeur</div>
-        <div class="dust-line"><span id="dust">10</span> <span class="unit">Relents</span></div>
-        <div class="rate-line"><span id="rate">0/s</span></div>
+        <div class="dust-line"><span id="dust">10</span><span class="unit">Relents</span><span id="rate" class="rate">0/s</span></div>
         <div id="smell" class="smell"></div>
         <div id="insult" class="insult"></div>
       </div>
     </div>
     <div id="chal-banner" class="banner hidden"></div>
     <div id="goal" class="goal hidden">
-      <div id="goal-label" class="goal-label"></div>
-      <div class="goal-row"><div class="bar"><div id="goal-fill" class="fill"></div></div><span id="goal-pct" class="pct">0 %</span></div>
+      <div class="goalbar"><div id="goal-fill" class="fill"></div><span id="goal-label" class="glabel"></span><span id="goal-pct" class="gpct">0 %</span></div>
     </div>
   </header>
 
   <main id="view"></main>
 
+  <div id="pbar" class="hidden"></div>
   <nav id="tabs"></nav>
 
   <div id="toasts"></div>

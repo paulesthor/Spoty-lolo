@@ -1,5 +1,5 @@
 // Service worker : le jeu fonctionne hors connexion.
-const CACHE = 'big-odeur-v2';
+const CACHE = 'big-odeur-v3';
 const FILES = ['./', 'index.html', 'style.css', 'js/big.js', 'js/sprites.js', 'js/game.js', 'js/ui.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', (e) => {

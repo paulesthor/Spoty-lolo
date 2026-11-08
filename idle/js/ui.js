@@ -111,28 +111,32 @@
   // Onglets
   // ------------------------------------------------------------------
   let tab = 'gens';
-  let metaSel = 5;
+  let layerSel = 1;      // couche affichée dans l'onglet Prestiges
+  let menuSel = 'stats'; // Stats ou Options dans l'onglet Menu
+
+  // couches visibles (déjà vues ou déjà faites)
+  function seenLayers() {
+    const out = [];
+    const n = G.layerCount();
+    for (let k = 1; k <= n; k++) if (G.S.seen[k] || G.resets(k)) out.push(k);
+    return out;
+  }
 
   function tabs() {
-    const S = G.S;
     const list = [{ id: 'gens', ic: 'sock', label: 'Puer' }];
-    if (S.seen[1] || G.resets(1)) list.push({ id: 'L1', ic: 'bug', label: 'Mise en prod', layer: 1 });
-    if (S.seen[2] || G.resets(2)) list.push({ id: 'L2', ic: 'skull', label: 'Burn-out', layer: 2 });
-    if (S.seen[3] || G.resets(3)) list.push({ id: 'L3', ic: 'alarm', label: 'Évacuation', layer: 3 });
+    if (seenLayers().length) list.push({ id: 'prest', ic: 'bug', label: 'Prestiges' });
     if (G.resets(3) >= 1) list.push({ id: 'chal', ic: 'form', label: 'Plans RH' });
-    if (S.seen[4] || G.resets(4)) list.push({ id: 'L4', ic: 'carton', label: 'Licencié', layer: 4 });
-    if (S.seen[5] || G.resets(5)) list.push({ id: 'meta', ic: 'cloud', label: 'Contagion' });
-    list.push({ id: 'stats', ic: 'chart', label: 'Stats' });
-    list.push({ id: 'opts', ic: 'gear', label: 'Options' });
+    list.push({ id: 'menu', ic: 'gear', label: 'Menu' });
     return list;
   }
 
-  // quelque chose à acheter / un prestige disponible dans cet onglet ?
-  function tabHasNews(t) {
-    if (!t.layer) return false;
-    const k = t.layer;
-    if (G.canReset(k) && !(G.lay(k).auto.on && G.autoUnlocked(k))) return true;
+  // une amélioration achetable dans une couche ?
+  function layerHasNews(k) {
     return G.layerDef(k).upgrades.some((u) => G.upgAvailable(k, u) && G.lvl(k, u.id) < u.max && G.cur(k).gte(G.upgCost(k, u)));
+  }
+  function tabHasNews(t) {
+    if (t.id === 'prest') return seenLayers().some(layerHasNews);
+    return false;
   }
 
   let navKey = '';
@@ -215,56 +219,51 @@
     G.doReset(k);
   }
 
+  // ligne compacte : sprite, nom, une ligne de chiffres, bouton ; un appui sur la ligne ouvre le détail
+  function compactRow(sprite, name, statsFn, detailNodes, btn) {
+    const detail = h('div', { class: 'detail' }, ...detailNodes);
+    const row = h('div', { class: 'line' },
+      h('div', { class: 'line-main', onclick: () => row.classList.toggle('open') },
+        h('span', { class: 'gen-ic' }, Sprites.el(sprite, 24)),
+        h('div', { class: 'grow' }, h('div', { class: 'name', text: name }), live(statsFn, 'div', 'amt num'))),
+      btn, detail);
+    return row;
+  }
+
   function buildGens(root) {
     const S = G.S;
-    const top = h('div', { class: 'card' });
     const seg = h('div', { class: 'seg' });
     for (const [m, label] of [['1', '×1'], ['10', '×10'], ['max', 'Max']]) {
       const b = h('button', { onclick: () => { S.options.buy = m; } }, label);
       liveClass(b, 'on', () => S.options.buy === m);
       seg.append(b);
     }
-    top.append(h('div', { class: 'row' }, h('div', { class: 'grow' }, seg),
+    root.append(h('div', { class: 'row toolbar' }, h('div', { class: 'grow' }, seg),
       h('button', { class: 'small', onclick: () => G.buyAllMax() }, 'Tout max')));
-    root.append(top);
 
-    // prestiges rapides
-    const quick = h('div');
-    quick.append(prestigeButton(1, true));
-    if (G.resets(2) || S.seen[2]) quick.append(prestigeButton(2, true));
-    quick.append(prestigeButton(3, true));
-    for (const b of quick.children) b.style.marginBottom = '8px';
-    root.append(quick);
-
-    // accélérateur
-    const acc = h('div', { class: 'card' });
+    const list = h('div', { class: 'list' });
+    // laptop (accélérateur)
     const accBtn = holdButton(h('button', { class: 'buy' }, live(() => fmt(accelLabel().cost), 'b'), live(() => accelLabel().top)), () => G.buyAccel(S.options.buy === 'max'));
     liveClass(accBtn, 'can', () => accelLabel().can);
-    acc.append(h('div', { class: 'row' },
-      h('div', { class: 'grow' },
-        h('div', { class: 'title' }, h('span', { class: 'gen-ic' }, Sprites.el('laptop', 24)), 'Laptop qui chauffe ', live(() => '(' + S.accel + ')', 'span', 'muted')),
-        h('div', { class: 'flavor', text: 'Posé sur les cuisses depuis 9 h. Le ventilo crache ton odeur dans tout l\'étage.' }),
-        live(() => G.M.accelOn ? '×' + G.M.accelBase.toFixed(3).replace('.', ',') + ' par achat sur les Relents, total ×' + fmt(Big.pow10(S.accel * Math.log10(G.M.accelBase))) : 'Désactivé par le défi', 'div', 'sub')),
+    list.append(compactRow('laptop', 'Laptop qui chauffe',
+      () => S.accel + ' · ' + (G.M.accelOn ? '×' + fmt(Big.pow10(S.accel * Math.log10(G.M.accelBase))) + ' sur les Relents' : 'mort (plan RH)'),
+      [h('div', { class: 'flavor', text: "Posé sur tes cuisses depuis 9 h. Le ventilo hurle et crache ta crasse dans tout l'étage." }),
+        live(() => '×' + G.M.accelBase.toFixed(3).replace('.', ',') + ' par achat', 'div', 'sub')],
       accBtn));
-    root.append(acc);
-
     G.GENS.forEach((gd, i) => {
       if (!G.genUnlocked(i)) return;
-      const card = h('div', { class: 'card gen' });
       const btn = holdButton(h('button', { class: 'buy' }, live(() => fmt(buyLabel(i).cost), 'b'), live(() => buyLabel(i).top)), () => G.buyGen(i, S.options.buy));
       liveClass(btn, 'can', () => buyLabel(i).can);
-      card.append(h('div', { class: 'row' },
-        h('div', { class: 'grow' },
-          h('div', { class: 'name' }, h('span', { class: 'gen-ic' }, Sprites.el(gd.icon, 24)), gd.name),
-          h('div', { class: 'flavor', text: gd.flavor || '' }),
-          live(() => fmt(S.gens[i].amount) + ' (' + S.gens[i].bought + ')', 'div', 'amt num'),
-          live(() => '×' + fmt(G.genMult(i)) + (i === 0 ? '' : ' → ' + fmt(S.gens[i].amount.mul(G.genMult(i))) + '/s ' + G.GENS[i - 1].name), 'div', 'amt num')),
+      list.append(compactRow(gd.icon, gd.name,
+        () => fmt(S.gens[i].amount) + ' · ×' + fmt(G.genMult(i)),
+        [h('div', { class: 'flavor', text: gd.flavor || '' }),
+          live(() => S.gens[i].bought + ' achetés' + (i === 0 ? ' · produisent les Relents' : ' · ' + fmt(S.gens[i].amount.mul(G.genMult(i))) + '/s de ' + G.GENS[i - 1].name), 'div', 'sub')],
         btn));
-      root.append(card);
     });
+    root.append(list);
 
     if (G.autoGensUnlocked() || G.autoAccelUnlocked()) {
-      const a = h('div', { class: 'card' }, h('div', { class: 'title' }, 'Automates'));
+      const a = h('div', { class: 'card compact' }, h('div', { class: 'title' }, 'Automates'));
       if (G.autoGensUnlocked()) a.append(toggleRow('Acheter les générateurs', () => S.auto.gens, (v) => { S.auto.gens = v; }));
       if (G.autoAccelUnlocked()) a.append(toggleRow('Acheter le Laptop qui chauffe', () => S.auto.accel, (v) => { S.auto.accel = v; }));
       root.append(a);
@@ -281,7 +280,7 @@
 
   function gensKey() {
     const S = G.S;
-    return [G.GENS.map((_, i) => G.genUnlocked(i) ? 1 : 0).join(''), G.autoGensUnlocked(), G.autoAccelUnlocked(), !!(G.resets(2) || S.seen[2]), S.chal.active].join('|');
+    return [G.GENS.map((_, i) => G.genUnlocked(i) ? 1 : 0).join(''), G.autoGensUnlocked(), G.autoAccelUnlocked(), S.chal.active].join('|');
   }
 
   // ------------------------------------------------------------------
@@ -291,12 +290,16 @@
     const d = G.layerDef(k);
     const L = G.lay(k);
 
-    root.append(h('div', { class: 'card big-cur' },
-      h('div', { class: 'layer-name', text: d.name }),
-      h('div', { class: 'amount num' }, Sprites.el(d.sym, 30, 'cur-ic'), live(() => fmt(L.cur))),
-      h('div', { class: 'muted', text: d.cur }),
-      live(() => d.effectText(), 'div', 'sub'),
-      d.flavor ? h('div', { class: 'flavor', text: d.flavor }) : null));
+    const head = h('div', { class: 'card big-cur' },
+      h('div', { class: 'cur-row' }, Sprites.el(d.sym, 36, 'cur-ic'),
+        h('div', { class: 'grow' }, h('div', { class: 'layer-name', text: d.name }),
+          h('div', { class: 'amount num' }, live(() => fmt(L.cur)), h('span', { class: 'cur-name', text: ' ' + d.cur })))),
+      live(() => d.effectText(), 'div', 'sub'));
+    if (d.flavor) {
+      const fl = h('div', { class: 'flavor clamp', text: d.flavor, onclick: () => fl.classList.toggle('clamp') });
+      head.append(fl);
+    }
+    root.append(head);
 
     root.append(prestigeButton(k));
     const bar = progressBar(() => G.progress(k), () => 'Seuil : ' + d.reqText());
@@ -313,7 +316,9 @@
     }
 
     root.append(h('h3', { text: 'Améliorations' }));
-    for (const u of d.upgrades) root.append(upgradeCard(k, u));
+    const ul = h('div', { class: 'list' });
+    for (const u of d.upgrades) ul.append(upgradeCard(k, u));
+    root.append(ul);
 
     if (d.milestones.length) {
       root.append(h('h3', { text: 'Jalons (nombre de ' + d.verb + ')' }));
@@ -328,11 +333,10 @@
   }
 
   function upgradeCard(k, u) {
-    const card = h('div', { class: 'card' });
     if (!G.upgAvailable(k, u)) {
-      card.classList.add('locked');
-      card.append(h('div', { class: 'title' }, Sprites.el('lock', 18, 'inline'), u.name), h('div', { class: 'sub', text: u.reqText ? u.reqText() : 'Verrouillé' }));
-      return card;
+      return h('div', { class: 'line locked' }, h('div', { class: 'line-main' },
+        h('span', { class: 'gen-ic' }, Sprites.el('lock', 20)),
+        h('div', { class: 'grow' }, h('div', { class: 'name', text: u.name }), h('div', { class: 'amt', text: u.reqText ? u.reqText() : 'Verrouillé' }))));
     }
     const maxed = () => G.lvl(k, u.id) >= u.max;
     const btn = holdButton(h('button', { class: 'buy' },
@@ -340,15 +344,16 @@
       live(() => maxed() ? '' : G.layerDef(k).cur)), () => G.buyUpg(k, u.id));
     liveClass(btn, 'can', () => !maxed() && G.cur(k).gte(G.upgCost(k, u)));
     liveClass(btn, 'off', () => maxed());
-    liveClass(card, 'done', maxed);
-    card.append(h('div', { class: 'row' },
-      h('div', { class: 'grow' },
-        h('div', { class: 'title' }, u.name, ' ', live(() => u.max === 1 ? '' : (u.max === Infinity ? 'niv. ' + G.lvl(k, u.id) : G.lvl(k, u.id) + '/' + u.max), 'span', 'muted')),
-        h('div', { class: 'sub', text: u.desc() }),
-        u.flavor ? h('div', { class: 'flavor', text: u.flavor }) : null,
-        live(() => G.lvl(k, u.id) > 0 ? 'Actuel : ' + u.eff(G.lvl(k, u.id)) : '', 'div', 'sub')),
-      btn));
-    return card;
+    const detail = h('div', { class: 'detail' },
+      u.flavor ? h('div', { class: 'flavor', text: u.flavor }) : null,
+      live(() => G.lvl(k, u.id) > 0 ? 'Actuel : ' + u.eff(G.lvl(k, u.id)) : 'Pas encore acheté', 'div', 'sub'));
+    const lvlTxt = () => u.max === 1 ? '' : (u.max === Infinity ? ' · niv. ' + G.lvl(k, u.id) : ' · ' + G.lvl(k, u.id) + '/' + u.max);
+    const row = h('div', { class: 'line' },
+      h('div', { class: 'line-main', onclick: () => row.classList.toggle('open') },
+        h('div', { class: 'grow' }, h('div', { class: 'name' }, u.name, live(lvlTxt, 'span', 'muted')), h('div', { class: 'amt', text: u.desc() }))),
+      btn, detail);
+    liveClass(row, 'done', maxed);
+    return row;
   }
 
   function autoBox(k) {
@@ -406,20 +411,36 @@
   }
 
   // ------------------------------------------------------------------
-  // Vue : Strates (couches infinies)
+  // Vue : Prestiges (toutes les couches, avec un sélecteur)
   // ------------------------------------------------------------------
-  function buildMeta(root) {
-    const n = G.layerCount();
-    const avail = [];
-    for (let k = 5; k <= n; k++) if (G.S.seen[k] || G.resets(k)) avail.push(k);
-    if (!avail.includes(metaSel)) metaSel = avail[avail.length - 1] || 5;
-    root.append(h('div', { class: 'card' }, h('div', { class: 'sub', text: "Ton odeur ne connaît plus de frontières. Chaque niveau de contagion se nourrit du précédent et le renforce. Il n'y a pas de dernier niveau. Il n'y a pas d'issue de secours." })));
+  function buildPrest(root) {
+    const avail = seenLayers();
+    if (!avail.includes(layerSel)) layerSel = avail[avail.length - 1] || 1;
     const chips = h('div', { class: 'chips' });
     for (const k of avail) {
-      chips.append(h('button', { class: k === metaSel ? 'on' : '', onclick: () => { metaSel = k; viewKey = ''; } }, G.layerDef(k).name));
+      const d = G.layerDef(k);
+      const b = h('button', { class: k === layerSel ? 'on' : '', onclick: () => { layerSel = k; viewKey = ''; window.scrollTo(0, 0); } },
+        Sprites.el(d.sym, 18, 'inline'), k <= 4 ? d.verb : d.name);
+      const dot = h('span', { class: 'chip-dot hidden' });
+      liveClass(dot, 'hidden', () => !layerHasNews(k));
+      b.append(dot);
+      chips.append(b);
     }
     root.append(chips);
-    buildLayer(root, metaSel);
+    if (layerSel >= 5) root.append(h('p', { class: 'muted intro', text: "Contagion : ton odeur ne connaît plus de frontières. Chaque niveau se nourrit du précédent et le renforce. Il n'y a pas de dernier niveau. Il n'y a pas d'issue de secours." }));
+    buildLayer(root, layerSel);
+  }
+
+  // ------------------------------------------------------------------
+  // Vue : Menu (Stats et Options)
+  // ------------------------------------------------------------------
+  function buildMenu(root) {
+    const seg = h('div', { class: 'seg', style: 'margin-bottom:10px' });
+    for (const [id, label] of [['stats', 'Stats'], ['opts', 'Options']]) {
+      seg.append(h('button', { class: menuSel === id ? 'on' : '', onclick: () => { menuSel = id; viewKey = ''; } }, label));
+    }
+    root.append(seg);
+    if (menuSel === 'stats') buildStats(root); else buildOpts(root);
   }
 
   // ------------------------------------------------------------------
@@ -597,11 +618,9 @@
   function currentKey() {
     switch (tab) {
       case 'gens': return 'gens|' + gensKey();
-      case 'L1': case 'L2': case 'L3': case 'L4': return 'L|' + layerKey(+tab.slice(1));
-      case 'meta': return 'meta|' + G.layerCount() + '|' + metaSel + '|' + layerKey(metaSel);
+      case 'prest': return 'prest|' + seenLayers().join(',') + '|' + layerSel + '|' + layerKey(layerSel);
       case 'chal': return 'chal';
-      case 'stats': return 'stats|' + G.layerCount();
-      case 'opts': return 'opts|' + G.S.options.admin + '|' + G.layerCount();
+      case 'menu': return 'menu|' + menuSel + '|' + G.S.options.admin + '|' + G.layerCount();
       default: return tab;
     }
   }
@@ -615,11 +634,9 @@
     root.innerHTML = '';
     switch (tab) {
       case 'gens': buildGens(root); break;
-      case 'L1': case 'L2': case 'L3': case 'L4': buildLayer(root, +tab.slice(1)); break;
+      case 'prest': buildPrest(root); break;
       case 'chal': buildChal(root); break;
-      case 'meta': buildMeta(root); break;
-      case 'stats': buildStats(root); break;
-      case 'opts': buildOpts(root); break;
+      case 'menu': buildMenu(root); break;
     }
   }
 
@@ -695,10 +712,10 @@
     renderFlies();
     const d = fmt(S.dust);
     if ($('dust')._v !== d) { $('dust')._v = d; $('dust').textContent = d; }
-    let r = G.isBroken() || S.dust.lt(G.INF) ? fmt(G.dustRate().mul(G.M.speed)) + '/s' : 'Seuil de Genève atteint ! Évacue l\'open space.';
-    if (S.options.admin) r += ' · Admin ×' + (S.options.adminSpeed || 1);
+    let r = G.isBroken() || S.dust.lt(G.INF) ? fmt(G.dustRate().mul(G.M.speed)) + '/s' : 'Seuil de Genève : évacue !';
+    if (S.options.admin) r += ' · admin ×' + (S.options.adminSpeed || 1);
     const alert = !(G.isBroken() || S.dust.lt(G.INF));
-    if ($('rate')._a !== alert) { $('rate')._a = alert; $('rate').parentNode.classList.toggle('alert', alert); }
+    if ($('rate')._a !== alert) { $('rate')._a = alert; $('rate').classList.toggle('alert', alert); }
     if ($('rate')._v !== r) { $('rate')._v = r; $('rate').textContent = r; }
     const ban = $('chal-banner');
     const c = S.chal.active && G.CHALLENGES.find((x) => x.id === S.chal.active);
@@ -747,11 +764,52 @@
     return txt;
   }
 
+  // ------------------------------------------------------------------
+  // Barre de prestiges fixe (au-dessus des onglets)
+  // ------------------------------------------------------------------
+  const SHORT = { 1: 'Mise en prod', 2: 'Burn-out', 3: 'Évacuer', 4: 'Licencié' };
+  let pbarKey = '';
+  function renderPBar() {
+    const S = G.S;
+    const ks = seenLayers();
+    const bar = $('pbar');
+    const key = ks.join(',');
+    if (key !== pbarKey) {
+      pbarKey = key;
+      bar.innerHTML = '';
+      bar.classList.toggle('hidden', !ks.length);
+      document.body.classList.toggle('with-pbar', ks.length > 0);
+      for (const k of ks) {
+        const d = G.layerDef(k);
+        const val = h('span', { class: 'pb-v' });
+        const b = h('button', { class: 'pb', onclick: () => confirmReset(k) },
+          Sprites.el(d.sym, 20), h('span', { class: 'pb-t', text: SHORT[k] || d.name }), val);
+        b._k = k; b._v = val;
+        bar.append(b);
+      }
+    }
+    for (const b of bar.children) {
+      const k = b._k;
+      const d = G.layerDef(k);
+      const auto = G.lay(k).auto.on && G.autoUnlocked(k);
+      let t;
+      if (d.blocked()) t = 'bloqué';
+      else if (G.canReset(k)) t = (k === 3 && S.chal.active ? 'valider' : '+' + fmt(G.gain(k)));
+      else if (G.reached(k)) t = Math.ceil(G.waitLeft(k)) + ' s';
+      else t = pctText(G.progress(k));
+      if (auto) t += ' · auto';
+      if (b._v._t !== t) { b._v._t = t; b._v.textContent = t; }
+      const can = G.canReset(k);
+      if (b._can !== can) { b._can = can; b.classList.toggle('can', can); }
+    }
+  }
+
   let frame = 0;
   function render() {
     renderNav();
     renderView();
     renderHeader();
+    renderPBar();
     for (const u of updaters) u();
     if (frame++ % 5 === 0) updateNavDots();
   }
