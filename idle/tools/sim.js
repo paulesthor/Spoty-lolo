@@ -2,6 +2,10 @@
 // Usage : node idle/tools/sim.js <profil> [heures] [pas] [sortie.json]
 // Profils : voir STRATS ci-dessous. Sans argument : liste les profils.
 require('../js/big.js');
+// réglages temporaires pour l'équilibrage (variables d'environnement)
+if (process.env.ETER_REQ) globalThis.__ETER_REQ = process.env.ETER_REQ;
+if (process.env.META_CAP) globalThis.__META_CAP = process.env.META_CAP;
+if (process.env.META_REQ) { const v = JSON.parse(process.env.META_REQ); globalThis.__META_REQ = (k) => (v[k] !== undefined ? v[k] : 1e9); }
 const G = require('../js/game.js');
 const Big = globalThis.Big;
 

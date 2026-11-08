@@ -633,9 +633,43 @@
     const gl = goal ? goal.label : '';
     if ($('goal-label')._v !== gl) { $('goal-label')._v = gl; $('goal-label').textContent = gl; $('goal').classList.toggle('hidden', !goal); }
     if (goal) {
-      const t = pctText(goal.pct);
+      const t = pctText(goal.pct) + goalExtra(goal);
       if ($('goal-pct')._v !== t) { $('goal-pct')._v = t; $('goal-pct').textContent = t; $('goal-fill').style.width = (goal.pct * 100).toFixed(2) + '%'; }
     }
+  }
+
+  // « ×N restant » et estimation du temps restant au rythme actuel (mesuré sur ~1 min de jeu)
+  const goalHist = { key: null, pts: [] };
+  function goalExtra(goal) {
+    if (!goal.src || !goal.req || goal.src.gte(goal.req)) return '';
+    const S = G.S;
+    if (goalHist.key !== goal.key) { goalHist.key = goal.key; goalHist.pts = []; }
+    const now = S.stats.time;
+    const pts = goalHist.pts;
+    // on suit le maximum atteint (les achats font baisser la monnaie sans que ce soit un recul) ;
+    // une chute de plus de ×100 est un prestige : la mesure repart de zéro
+    const top = pts.length ? pts[pts.length - 1].v : null;
+    if (top && goal.src.mul(100).lt(top)) { goalHist.pts = []; }
+    const p2 = goalHist.pts;
+    const v = p2.length ? goal.src.max(p2[p2.length - 1].v) : goal.src;
+    if (!p2.length || now - p2[p2.length - 1].t >= 1) p2.push({ t: now, v });
+    else p2[p2.length - 1].v = v;
+    while (p2.length > 2 && now - p2[1].t > 60) p2.shift();
+    const left = goal.req.div(goal.src.max(1));
+    let txt = ' · ×' + fmt(left) + ' restant';
+    const a = p2[0], b = p2[p2.length - 1];
+    if (b.t - a.t >= 10) {
+      // croissance mesurée en ordres de grandeur par seconde (fonctionne pour une croissance rapide ou une accumulation lente)
+      const la = a.v.max(1).log10(), lb = b.v.max(1).log10();
+      const lin = b.v.sub(a.v).div(b.t - a.t); // par seconde de jeu
+      let eta = null;
+      if (lin.gt(0)) eta = goal.req.sub(b.v).div(lin).toNumber();
+      // estimation linéaire (pessimiste si ça accélère) et logarithmique (optimiste) : on prend leur moyenne géométrique
+      if (lb > la) { const etaLog = (goal.req.log10() - lb) / ((lb - la) / (b.t - a.t)); eta = eta === null ? etaLog : Math.sqrt(eta * etaLog); }
+      const speed = S.options.admin ? S.options.adminSpeed || 1 : 1; // temps réel = temps de jeu ÷ vitesse admin
+      if (eta !== null && isFinite(eta) && eta > 0) txt += ' · ≈ ' + (eta / speed > 30 * 86400 ? 'plus de 30 j' : duration(eta / speed));
+    }
+    return txt;
   }
 
   let frame = 0;

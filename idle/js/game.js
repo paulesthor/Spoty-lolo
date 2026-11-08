@@ -35,7 +35,7 @@
   ];
   const ACCEL = { base: 3, step: 1 };
 
-  // Le défi n°i se débloque après 2×i Big Bangs.
+  // Le défi n°i se débloque après 4 + 3×i Big Bangs (7, 10, 13, 16, 19, 22).
   const CHALLENGES = [
     { id: 'c1', name: 'Nuit noire', desc: "L'Accélérateur n'a aucun effet.", reward: 'Accélérateur +0,02 par achat.' },
     { id: 'c2', name: 'Sans étoiles', desc: 'Supernova impossible.', reward: "Effet des Éclats : exposant +0,2." },
@@ -45,7 +45,7 @@
     { id: 'c6', name: 'Racine', desc: 'La production de Poussière est mise à la puissance 0,75.', reward: 'Exposant de production +0,03.' },
   ];
   const BREAK_CHALLENGES = 4;
-  const ETER_REQ = 40;
+  const ETER_REQ = +(globalThis.__ETER_REQ || 116); // calé pour une 1re Éternité vers 1,5 jour (bon joueur)
   // Durée minimale d'une partie avant de pouvoir refaire le même prestige (manuel ou
   // automatique). Sans elle, tapoter le bouton le plus vite possible bat les automates.
   const MIN_RUN = 10;
@@ -170,7 +170,7 @@
         { id: 'in_hawk', name: 'Évaporation', desc: () => "Gagne passivement 1 % par seconde du gain d'Effondrement", eff: (l) => l + ' %/s', cost: R(1.5, 0.5), max: 10 },
         {
           id: 'in_break', name: "Briser l'Infini", desc: () => "La Poussière dépasse l'Infini et le Big Bang rapporte plus", eff: () => 'Brisé',
-          cost: R(2, 0), max: 1,
+          cost: R(4, 0), max: 1,
           req: () => chalCount() >= BREAK_CHALLENGES, reqText: () => 'Termine ' + BREAK_CHALLENGES + ' défis (' + chalCount() + '/' + BREAK_CHALLENGES + ')',
         },
         { id: 'in_postcost', name: 'Courbure', desc: () => "Hausse des prix au-delà de l'Infini −10 %", eff: (l) => '−' + 10 * l + ' %', cost: R(3, 1), max: 3, req: () => lvl(3, 'in_break') > 0, reqText: () => "Brise l'Infini" },
@@ -188,7 +188,7 @@
     4: {
       name: 'Éternité', verb: 'Éternité', cur: "Points d'Éternité", sym: 'Ⓔ',
       reqLog: ETER_REQ,
-      reqText: () => "Atteins 1e" + ETER_REQ + " Points d'Infini",
+      reqText: () => 'Atteins ' + fmt(P(ETER_REQ)) + " Points d'Infini",
       sourceLog: () => cur(3).log10(),
       rawLog() {
         const l = cur(3).log10();
@@ -217,7 +217,8 @@
   const META_NAMES = ['Multivers', 'Omnivers', 'Hypervers', 'Absolu', 'Paradoxe', 'Néant', 'Origine', 'Archétype', 'Primordial', 'Ultime'];
   const META_SYMS = ['Ⓜ', 'Ⓞ', 'Ⓗ', 'Ⓐ', 'Ⓟ', 'Ⓝ', 'Ⓡ', 'Ⓚ', 'Ⓘ', 'Ⓤ'];
   // seuil d'une strate : croît avec la profondeur (sinon les strates s'enchaînent en cascade)
-  const metaReq = (k) => 10 + 5 * (k - 5);
+  const META_REQS = { 5: 21.3, 6: 8, 7: 12.3 }; // Multivers ~3 j, Omnivers ~8-9 j, Hypervers ~3 semaines
+  const metaReq = (k) => (globalThis.__META_REQ ? globalThis.__META_REQ(k) : META_REQS[k] !== undefined ? META_REQS[k] : 12.3 + 1.5 * (k - 7));
 
   function roman(n) {
     const t = [[1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'], [100, 'C'], [90, 'XC'], [50, 'L'], [40, 'XL'], [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']];
@@ -236,7 +237,7 @@
       name, verb: name, cur: 'Essence ' + (/^[AEIOUÉÈÊHaeiouéè]/.test(name) ? "d'" : 'de ') + name, sym: i < META_SYMS.length ? META_SYMS[i] : '◈',
       meta: true,
       reqLog: metaReq(k),
-      reqText: () => 'Atteins 1e' + metaReq(k) + ' ' + prev.cur,
+      reqText: () => 'Atteins ' + fmt(P(metaReq(k))) + ' ' + prev.cur,
       sourceLog: () => cur(k - 1).log10(),
       rawLog() {
         const l = cur(k - 1).log10();
@@ -273,12 +274,12 @@
   // Effets
   // ------------------------------------------------------------------
   function shardExp() {
-    return 1.3 + 0.05 * lvl(1, 'sn_nova') + (chalDone('c2') ? 0.2 : 0);
+    return 1.15 + 0.05 * lvl(1, 'sn_nova') + (chalDone('c2') ? 0.2 : 0);
   }
   // Plafond progressif : au-delà de « cap » (en log10), un effet ne croît plus
   // qu'à la puissance 0,7. Garantit qu'aucune boucle prestige → production → prestige
   // ne peut s'emballer, quel que soit le nombre de resets.
-  const CAPS = { 1: 60, 2: 60, 3: 60, 4: 60, meta: 60 };
+  const CAPS = { 1: 60, 2: 60, 3: 60, 4: 60, meta: +(globalThis.__META_CAP || 10) };
   function capLog(L, cap) { return L <= cap ? L : cap * Math.pow(L / cap, 0.7); }
   function curEffLog(k, mult) {
     const L = cur(k).add(1).log10() * (mult || 1);
@@ -574,7 +575,7 @@
   function nextGoal() {
     if (S.chal.active) {
       const c = CHALLENGES.find((x) => x.id === S.chal.active);
-      return { label: 'Défi « ' + c.name + " » : atteins l'Infini", pct: Math.min(1, Math.max(0, S.dust.log10()) / INF_LOG) };
+      return { label: 'Défi « ' + c.name + " » : atteins l'Infini", pct: Math.min(1, Math.max(0, S.dust.log10()) / INF_LOG), key: 'chal', src: S.dust, req: INF };
     }
     const n = layerCount();
     for (let k = 1; k <= n + 1; k++) {
@@ -583,14 +584,14 @@
         if (chalCount() < BREAK_CHALLENGES) return { label: "Termine " + BREAK_CHALLENGES + " défis pour briser l'Infini (" + chalCount() + '/' + BREAK_CHALLENGES + ')', pct: chalCount() / BREAK_CHALLENGES };
         const u = upgDef(3, 'in_break');
         const c = upgCost(3, u).log10();
-        return { label: "Achète « Briser l'Infini » (" + fmt(upgCost(3, u)) + " Points d'Infini)", pct: Math.max(0, Math.min(1, Math.max(0, cur(3).log10()) / c)) };
+        return { label: "Achète « Briser l'Infini » (" + fmt(upgCost(3, u)) + " Points d'Infini)", pct: Math.max(0, Math.min(1, Math.max(0, cur(3).log10()) / c)), key: 'break', src: cur(3), req: upgCost(3, u) };
       }
       const d = layerDef(k);
-      return { label: 'Prochain objectif : ' + d.verb + ' — ' + d.reqText(), pct: progress(k) };
+      return { label: 'Prochain objectif : ' + d.verb + ' — ' + d.reqText(), pct: progress(k), key: 'L' + k, src: P(d.sourceLog()), req: P(d.reqLog) };
     }
     return null;
   }
-  function chalUnlockAt(id) { return 2 * (CHALLENGES.findIndex((c) => c.id === id) + 1); }
+  function chalUnlockAt(id) { return 4 + 3 * (CHALLENGES.findIndex((c) => c.id === id) + 1); }
   function chalUnlocked(id) { return resets(3) >= chalUnlockAt(id); }
   // Un défi repart vraiment de zéro (améliorations d'Éclats et de Singularités comprises).
   // Les améliorations d'avant sont mises de côté et rendues à la sortie du défi.
