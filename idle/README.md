@@ -6,7 +6,9 @@ Jeu incrémental (idle) pour mobile, à prestiges empilés à l'infini. PWA : HT
 Servir le dossier `idle/` en HTTP(S), par exemple `python3 -m http.server` puis ouvrir `http://localhost:8000/` sur le téléphone. (En `file://` le jeu marche, mais sans mode hors-ligne.)
 
 ## Mécaniques
-- **Générateurs** (8 étages) : chaque étage produit le précédent, les Particules produisent la Poussière. Tous les 10 achats, ×2 sur l'étage. **Accélérateur** : multiplie tous les étages.
+- **Générateurs** (8 étages) : chaque étage produit le précédent, les Particules produisent la Poussière. Le prix monte de 12 % à chaque achat et fait un grand saut tous les 10 achats, qui doublent la production de l'étage. **Accélérateur** : multiplie la Poussière.
+- **Barre d'objectif** en haut de l'écran : progression (en %) vers le prochain prestige à débloquer.
+- **Achats** : un tap = un achat ; appui long = achats en continu ; rien n'est acheté en faisant défiler. Les achats automatiques (débloqués par l'Effondrement) sont désactivés par défaut.
 - **Supernova → Éclats** (1e15 Poussière) : multiplicateur + améliorations.
 - **Effondrement → Singularités** (1e12 Éclats) : améliorations, jalons d'automatisation.
 - **Big Bang → Points d'Infini** : la Poussière est plafonnée à l'Infini (1,8e308). 6 **défis**, puis **Briser l'Infini** (4 défis requis).

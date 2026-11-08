@@ -51,6 +51,7 @@ function sensitivity() {
 function offlineVsOnline(save, hours) {
   const prep = () => {
     G.init(G.deserialize(save));
+    G.S.auto.gens = true; G.S.auto.accel = true;
     for (let k = 1; k <= G.layerCount(); k++) { const l = G.lay(k); if (G.autoUnlocked(k)) { l.auto.on = true; l.auto.mode = 'mult'; l.auto.value = 1; } }
   };
   prep();

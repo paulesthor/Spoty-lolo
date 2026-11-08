@@ -62,6 +62,7 @@ function run(name, hours, dt, opts) {
 
   // configure les automates du jeu comme le ferait un joueur idle
   function setupAutos() {
+    G.S.auto.gens = true; G.S.auto.accel = true;
     for (let k = 1; k <= G.layerCount(); k++) {
       const l = G.lay(k);
       if (G.autoUnlocked(k) && !l.auto.on) { l.auto.on = true; l.auto.mode = 'mult'; l.auto.value = Math.max(1, st.mult); }

@@ -63,16 +63,16 @@
 
   function newState() {
     return {
-      version: 1,
+      version: 2,
       dust: B(10),
       gens: GENS.map(() => ({ amount: Big.ZERO, bought: 0 })),
       accel: 0,
       layers: {},
       chal: { active: null, done: {} },
       seen: {},
-      auto: { gens: true, accel: true },
+      auto: { gens: false, accel: false },
       stats: { time: 0, bestDust: B(10), totalDust: Big.ZERO, created: Date.now() },
-      options: { notation: 'scientifique', buy: 'max', offline: true },
+      options: { notation: 'scientifique', buy: '1', offline: true },
       lastTick: Date.now(),
     };
   }
@@ -382,9 +382,11 @@
     if (lc > INF_LOG) lc = INF_LOG + (lc - INF_LOG) * M.postScale;
     return lc;
   }
+  // le prix augmente de 12 % à chaque achat, puis fait un grand saut tous les 10 achats
+  const UNIT_STEP = Math.log10(1.12);
   function genCostLog(i, bought) {
     const g = GENS[i];
-    return scaleLog(g.base + g.step * M.costPow * Math.floor(bought / 10));
+    return scaleLog(g.base + g.step * M.costPow * Math.floor(bought / 10) + (bought % 10) * UNIT_STEP);
   }
   function genCost(i) { return P(genCostLog(i, S.gens[i].bought)); }
   // multiplicateur propre à un générateur (bonus par 10 achats, Accélérateur)
@@ -411,47 +413,61 @@
     return i === 0 || S.gens[i - 1].bought > 0 || S.gens[i].bought > 0;
   }
 
-  // mode : '1' | '10' | 'max'
+  // log10 de la somme des prix des achats n° from … from+n-1 (prix croissants).
+  // Seuls les 80 derniers comptent : les précédents sont négligeables (×1e3 au moins tous les 10 achats).
+  function sumLog(costLog, from, n) {
+    if (n <= 0) return -Infinity;
+    const top = costLog(from + n - 1);
+    let acc = 0;
+    for (let j = from + n - 1; j >= Math.max(from, from + n - 80); j--) acc += Math.pow(10, costLog(j) - top);
+    return top + Math.log10(acc);
+  }
+  // nombre d'achats possibles (au plus « limit ») avec la Poussière actuelle
+  function affordable(costLog, from, limit) {
+    const have = S.dust.log10();
+    if (have === -Infinity || costLog(from) > have) return 0;
+    let hi = 1;
+    while (hi < limit && sumLog(costLog, from, Math.min(hi * 2, limit)) <= have) hi = Math.min(hi * 2, limit);
+    if (hi >= limit) return limit;
+    let lo = hi; hi = Math.min(hi * 2, limit); // lo achetable, hi non
+    while (hi - lo > 1) { const mid = Math.floor((lo + hi) / 2); if (sumLog(costLog, from, mid) <= have) lo = mid; else hi = mid; }
+    return lo;
+  }
+  function spend(costLog, from, n) {
+    S.dust = S.dust.sub(P(sumLog(costLog, from, n))).max(Big.ZERO);
+  }
+
+  // combien un mode d'achat achète : '1' → 1, '10' → jusqu'au prochain palier de 10, 'max' → tout
+  function genTarget(i, mode) {
+    const b = S.gens[i].bought;
+    return mode === '1' ? 1 : mode === '10' ? 10 - (b % 10) : 1e9;
+  }
+  // prix affiché pour un mode (pour 'max' : le prochain achat)
+  function genPrice(i, mode) {
+    const f = (b) => genCostLog(i, b);
+    const b = S.gens[i].bought;
+    return P(mode === 'max' ? f(b) : sumLog(f, b, genTarget(i, mode)));
+  }
+
   function buyGen(i, mode) {
     if (!genUnlocked(i)) return 0;
     const g = S.gens[i];
-    let n = 0;
-    let guard = 0;
-    while (guard++ < 2000) {
-      const price = genCost(i);
-      const left = 10 - (g.bought % 10);
-      if (mode === '1') {
-        if (S.dust.lt(price)) break;
-        S.dust = S.dust.sub(price).max(Big.ZERO); g.bought++; g.amount = g.amount.add(1); n++;
-        break;
-      }
-      const total = price.mul(left);
-      if (S.dust.gte(total)) {
-        S.dust = S.dust.sub(total).max(Big.ZERO); g.bought += left; g.amount = g.amount.add(left); n += left;
-        if (mode === '10') break;
-      } else {
-        if (mode === 'max' && guard === 1) {
-          // achète ce qu'on peut à l'unité dans le paquet en cours
-          const can = Math.min(left - 1, Math.floor(S.dust.div(price).toNumber()));
-          if (can > 0) {
-            S.dust = S.dust.sub(price.mul(can)).max(Big.ZERO); g.bought += can; g.amount = g.amount.add(can); n += can;
-          }
-        }
-        break;
-      }
-    }
+    const f = (b) => genCostLog(i, b);
+    const n = affordable(f, g.bought, genTarget(i, mode));
+    if (n <= 0) return 0;
+    spend(f, g.bought, n);
+    g.bought += n;
+    g.amount = g.amount.add(n);
     return n;
   }
 
-  function accelCost() { return P(scaleLog(ACCEL.base + ACCEL.step * S.accel * M.costPow)); }
+  function accelCostLog(n) { return scaleLog(ACCEL.base + ACCEL.step * n * M.costPow); }
+  function accelCost() { return P(accelCostLog(S.accel)); }
   function buyAccel(max) {
-    let n = 0;
-    while (n < 5000) {
-      const c = accelCost();
-      if (S.dust.lt(c)) break;
-      S.dust = S.dust.sub(c).max(Big.ZERO); S.accel++; n++;
-      if (!max) break;
-    }
+    const n = affordable(accelCostLog, S.accel, max ? 1e9 : 1);
+    if (n <= 0) return 0;
+    spend(accelCostLog, S.accel, n);
+    S.accel += n;
     return n;
   }
   function buyAllMax() {
@@ -511,6 +527,32 @@
     return true;
   }
 
+  // progression (0 → 1, échelle logarithmique) vers le seuil de la couche k
+  function progress(k) {
+    const d = layerDef(k);
+    const src = Math.max(0, d.sourceLog());
+    return Math.max(0, Math.min(1, src / d.reqLog));
+  }
+  // le prochain objectif à afficher au joueur
+  function nextGoal() {
+    if (S.chal.active) {
+      const c = CHALLENGES.find((x) => x.id === S.chal.active);
+      return { label: 'Défi « ' + c.name + " » : atteins l'Infini", pct: Math.min(1, Math.max(0, S.dust.log10()) / INF_LOG) };
+    }
+    const n = layerCount();
+    for (let k = 1; k <= n + 1; k++) {
+      if (resets(k) > 0) continue;
+      if (k === 4 && !lvl(3, 'in_break')) {
+        if (chalCount() < BREAK_CHALLENGES) return { label: "Termine " + BREAK_CHALLENGES + " défis pour briser l'Infini (" + chalCount() + '/' + BREAK_CHALLENGES + ')', pct: chalCount() / BREAK_CHALLENGES };
+        const u = upgDef(3, 'in_break');
+        const c = upgCost(3, u).log10();
+        return { label: "Achète « Briser l'Infini » (" + fmt(upgCost(3, u)) + " Points d'Infini)", pct: Math.max(0, Math.min(1, Math.max(0, cur(3).log10()) / c)) };
+      }
+      const d = layerDef(k);
+      return { label: 'Prochain objectif : ' + d.verb + ' — ' + d.reqText(), pct: progress(k) };
+    }
+    return null;
+  }
   function chalUnlockAt(id) { return 2 * (CHALLENGES.findIndex((c) => c.id === id) + 1); }
   function chalUnlocked(id) { return resets(3) >= chalUnlockAt(id); }
   function startChallenge(id) {
@@ -673,6 +715,8 @@
       s.layers[k].auto = Object.assign(newLayerState().auto, s.layers[k].auto || {});
     }
     if (!Array.isArray(s.gens) || s.gens.length !== GENS.length) s.gens = newState().gens;
+    // v2 : les achats automatiques sont désactivés par défaut (le joueur les active lui-même)
+    if (!(s.version >= 2)) { s.auto.gens = false; s.auto.accel = false; s.version = 2; }
     const int = (x) => (Number.isFinite(x) && x > 0 ? Math.floor(x) : 0);
     s.gens = s.gens.map((g) => ({ amount: g && g.amount instanceof Big ? g.amount : Big.ZERO, bought: int(g && g.bought) }));
     s.accel = int(s.accel);
@@ -700,8 +744,8 @@
     get S() { return S; }, get M() { return M; },
     init, newState, serialize, deserialize, tick, simulate, on: (f) => listeners.push(f),
     lay, lvl, cur, resets, layerDef, layerCount, keepLevel, autoUnlocked, autoGensUnlocked, autoAccelUnlocked,
-    genCost, genMult, genUnlocked, criticalExponent, computeMods: () => computeMods(), buyGen, accelCost, buyAccel, buyAllMax, dustRate,
-    canReset, reached, waitLeft, gain, doReset, startChallenge, chalUnlocked, chalUnlockAt, exitChallenge, chalDone, chalCount, isBroken,
+    genCost, genPrice, genMult, genUnlocked, criticalExponent, computeMods: () => computeMods(), buyGen, accelCost, buyAccel, buyAllMax, dustRate,
+    canReset, reached, waitLeft, progress, nextGoal, gain, doReset, startChallenge, chalUnlocked, chalUnlockAt, exitChallenge, chalDone, chalCount, isBroken,
     upgDef, upgCost, upgAvailable, buyUpg, startDust, fmt,
     refresh: () => { M = computeMods(); },
   };

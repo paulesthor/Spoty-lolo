@@ -38,20 +38,46 @@
     return el;
   }
   // bouton qui se répète quand on garde le doigt dessus
+  // Bouton d'achat : un tap achète une fois ; un appui long (sans bouger) achète en continu.
+  // Rien n'est acheté si le doigt glisse (défilement de la liste) ou si le navigateur
+  // reprend la main (pointercancel), pour éviter les achats involontaires.
   function holdButton(el, action) {
-    let timer = null, rep = null;
+    let timer = null, rep = null, startX = 0, startY = 0, active = false, repeated = false;
     const stop = () => { clearTimeout(timer); clearInterval(rep); timer = rep = null; };
     el.addEventListener('pointerdown', (e) => {
       if (e.button !== undefined && e.button !== 0) return;
-      action();
+      active = true; repeated = false; startX = e.clientX; startY = e.clientY;
       stop();
-      timer = setTimeout(() => { rep = setInterval(action, 70); }, 350);
+      timer = setTimeout(() => { if (!active) return; repeated = true; action(); rep = setInterval(action, 80); }, 450);
     });
-    ['pointerup', 'pointercancel', 'pointerleave'].forEach((ev) => el.addEventListener(ev, stop));
+    el.addEventListener('pointermove', (e) => {
+      if (active && Math.hypot(e.clientX - startX, e.clientY - startY) > 10) { active = false; stop(); }
+    });
+    el.addEventListener('pointerup', () => {
+      if (active && !repeated) action();
+      active = false; stop();
+    });
+    ['pointercancel', 'pointerleave'].forEach((ev) => el.addEventListener(ev, () => { active = false; stop(); }));
     el.addEventListener('contextmenu', (e) => e.preventDefault());
     el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); action(); } });
     return el;
   }
+
+  // barre de progression (0 → 1) avec pourcentage
+  function progressBar(fn, labelFn) {
+    const fill = h('div', { class: 'fill' });
+    const pct = h('span', { class: 'pct' });
+    const box = h('div', { class: 'goal' });
+    if (labelFn) box.append(live(labelFn, 'div', 'goal-label'));
+    box.append(h('div', { class: 'goal-row' }, h('div', { class: 'bar' }, fill), pct));
+    updaters.push(() => {
+      const v = Math.max(0, Math.min(1, fn() || 0));
+      const t = pctText(v);
+      if (pct._v !== t) { pct._v = t; pct.textContent = t; fill.style.width = (v * 100).toFixed(2) + '%'; }
+    });
+    return box;
+  }
+  function pctText(v) { return v >= 1 ? '100 %' : (v < 0.1 ? (v * 100).toFixed(1) : Math.floor(v * 100)).toString().replace('.', ',') + ' %'; }
 
   function toast(msg) {
     const t = h('div', { class: 'toast', text: msg });
@@ -139,15 +165,10 @@
   // ------------------------------------------------------------------
   function buyLabel(i) {
     const S = G.S;
-    const g = S.gens[i];
     const mode = S.options.buy;
-    const price = G.genCost(i);
-    if (mode === '10') {
-      const left = 10 - (g.bought % 10);
-      return { top: '×' + left, cost: price.mul(left) };
-    }
-    if (mode === 'max') return { top: 'Max', cost: price };
-    return { top: '×1', cost: price };
+    const left = 10 - (S.gens[i].bought % 10);
+    const top = mode === '10' ? '×' + left : mode === 'max' ? 'Max' : '×1';
+    return { top, cost: G.genPrice(i, mode) };
   }
 
   function prestigeButton(k, compact) {
@@ -270,6 +291,9 @@
       live(() => d.effectText(), 'div', 'sub')));
 
     root.append(prestigeButton(k));
+    const bar = progressBar(() => G.progress(k), () => 'Seuil : ' + d.reqText());
+    liveClass(bar, 'hidden', () => G.reached(k));
+    root.append(bar);
     root.append(h('div', { class: 'muted', style: 'margin:6px 2px 0' },
       live(() => d.verb + ' : ' + G.resets(k) + ' fois — temps actuel ' + duration(L.time) + (G.M.passive[k] ? ' — passif ' + Math.round(G.M.passive[k] * 100) + ' %/s' : ''))));
 
@@ -522,6 +546,13 @@
     const c = S.chal.active && G.CHALLENGES.find((x) => x.id === S.chal.active);
     const bt = c ? 'Défi : ' + c.name + ' — ' + c.desc : '';
     if (ban._v !== bt) { ban._v = bt; ban.textContent = bt; ban.classList.toggle('hidden', !c); }
+    const goal = G.nextGoal();
+    const gl = goal ? goal.label : '';
+    if ($('goal-label')._v !== gl) { $('goal-label')._v = gl; $('goal-label').textContent = gl; $('goal').classList.toggle('hidden', !goal); }
+    if (goal) {
+      const t = pctText(goal.pct);
+      if ($('goal-pct')._v !== t) { $('goal-pct')._v = t; $('goal-pct').textContent = t; $('goal-fill').style.width = (goal.pct * 100).toFixed(2) + '%'; }
+    }
   }
 
   let frame = 0;
