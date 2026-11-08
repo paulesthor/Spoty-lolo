@@ -123,13 +123,13 @@
     },
     2: {
       name: 'Effondrement', verb: 'Effondrement', cur: 'Singularités', sym: '●',
-      reqLog: 8,
-      reqText: () => 'Atteins 1e8 Éclats',
+      reqLog: 9,
+      reqText: () => 'Atteins 1e9 Éclats',
       sourceLog: () => cur(1).log10(),
       rawLog() {
         const l = cur(1).log10();
-        if (l < 8) return -Infinity;
-        return (l - 8) / 6;
+        if (l < 9) return -Infinity;
+        return (l - 9) / 6;
       },
       blocked: () => inChal('c5') ? 'Bloqué par le défi « Vide quantique »' : null,
       effectText: () => 'Production ×' + fmt(P(curEffLog(2, 3))) + capNote(2, 3) + ", gain d'Éclats ×" + fmt(P(curEffLog(2))),
@@ -272,7 +272,7 @@
   // Effets
   // ------------------------------------------------------------------
   function shardExp() {
-    return 1.5 + 0.05 * lvl(1, 'sn_nova') + (chalDone('c2') ? 0.2 : 0);
+    return 1.3 + 0.05 * lvl(1, 'sn_nova') + (chalDone('c2') ? 0.2 : 0);
   }
   // Plafond progressif : au-delà de « cap » (en log10), un effet ne croît plus
   // qu'à la puissance 0,7. Garantit qu'aucune boucle prestige → production → prestige
@@ -335,7 +335,7 @@
     lp += lvl(1, 'sn_fusion') * Math.log10(2);
     lp += shardEffect().log10();
     lp += lvl(2, 'co_horizon') * Math.log10(5);
-    lp += curEffLog(2, 3);
+    lp += curEffLog(2, 2.5);
     lp += curEffLog(3, 2);
     if (lvl(3, 'in_time')) lp += timeEffect().log10();
     if (lvl(3, 'in_count')) lp += 2 * Math.log10(resets(3) + 1);
@@ -504,12 +504,13 @@
     return P(r + (M.gainLog[k] || 0)).floor().max(Big.ONE);
   }
 
-  function resetBelow(k) {
+  // full : remise à zéro complète, sans tenir compte des paliers « garde les améliorations »
+  function resetBelow(k, full) {
     for (let j = 1; j < k; j++) {
       const l = lay(j);
       l.cur = Big.ZERO;
       l.time = 0;
-      if (keepLevel(j) < k) l.upg = {};
+      if (full || keepLevel(j) < k) l.upg = {};
     }
     lay(k).time = 0;
     S.dust = startDust();
@@ -525,12 +526,14 @@
   }
   function doReset(k, silent) {
     if (!canReset(k)) return false;
+    let finishedChal = false;
     const g = gain(k);
     const l = lay(k);
     if (k === 3 && S.chal.active) {
       const id = S.chal.active;
       if (!S.chal.done[id]) { S.chal.done[id] = true; markFirst('défi ' + id); emit('chal', id); }
       S.chal.active = null;
+      finishedChal = true;
     }
     l.cur = l.cur.add(g);
     l.total = l.total.add(g);
@@ -539,6 +542,7 @@
     if (l.resets === 1) markFirst('L' + k);
     S.seen[k] = true;
     resetBelow(k);
+    if (finishedChal) restoreChalUpgrades();
     if (!silent) emit('reset', k);
     return true;
   }
@@ -571,16 +575,30 @@
   }
   function chalUnlockAt(id) { return 2 * (CHALLENGES.findIndex((c) => c.id === id) + 1); }
   function chalUnlocked(id) { return resets(3) >= chalUnlockAt(id); }
+  // Un défi repart vraiment de zéro (améliorations d'Éclats et de Singularités comprises).
+  // Les améliorations d'avant sont mises de côté et rendues à la sortie du défi.
   function startChallenge(id) {
     if (S.chal.active || !chalUnlocked(id)) return;
+    S.chal.saved = { 1: Object.assign({}, lay(1).upg), 2: Object.assign({}, lay(2).upg) };
     S.chal.active = id;
-    resetBelow(3);
+    resetBelow(3, true);
     emit('chalStart', id);
+  }
+  function restoreChalUpgrades() {
+    const saved = S.chal.saved;
+    if (!saved) return;
+    for (const j of [1, 2]) {
+      const upg = lay(j).upg;
+      for (const id in saved[j] || {}) upg[id] = Math.max(upg[id] || 0, saved[j][id]);
+    }
+    S.chal.saved = null;
+    M = computeMods();
   }
   function exitChallenge() {
     if (!S.chal.active) return;
     S.chal.active = null;
     resetBelow(3);
+    restoreChalUpgrades();
     emit('chalExit');
   }
 
@@ -725,7 +743,7 @@
     s.stats = Object.assign(newState().stats, o.stats || {});
     s.options = Object.assign(newState().options, o.options || {});
     s.auto = Object.assign(newState().auto, o.auto || {});
-    s.chal = Object.assign({ active: null, done: {} }, o.chal || {});
+    s.chal = Object.assign({ active: null, done: {}, saved: null }, o.chal || {});
     for (const k in s.layers) {
       s.layers[k] = Object.assign(newLayerState(), s.layers[k]);
       s.layers[k].auto = Object.assign(newLayerState().auto, s.layers[k].auto || {});

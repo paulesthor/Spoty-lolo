@@ -21,8 +21,11 @@ const STRATS = {
 
 function run(name, hours, dt, opts) {
   opts = opts || {};
-  const st = STRATS[name];
+  // name : nom d'un profil, ou directement un objet stratégie (utilisé par l'optimiseur malin.js)
+  const st = typeof name === 'object' ? name : STRATS[name];
+  if (typeof name === 'object') name = st.name || 'perso';
   G.init();
+  const rate = {}; // meilleur gain par seconde vu pendant la partie en cours, par couche
   const S = () => G.S;
   const ev = [];
   const firsts = {};
@@ -49,6 +52,11 @@ function run(name, hours, dt, opts) {
           const c = G.upgCost(k, u);
           if (G.cur(k).lt(c)) continue;
           if (st.thrift && u.max === Infinity && c.gt(G.cur(k).mul(st.thrift))) continue;
+          // améliorations prioritaires : on économise pour elles (on n'achète rien qui coûte > 1 % de leur prix)
+          if (st.prio) {
+            const pr = d.upgrades.find((v) => st.prio.includes(v.id) && v.id !== u.id && G.upgAvailable(k, v) && G.lvl(k, v.id) < v.max);
+            if (pr && !st.prio.includes(u.id) && c.gt(G.upgCost(k, pr).mul(0.01))) continue;
+          }
           // un joueur économise pour « Briser l'Infini » plutôt que de tout dépenser ailleurs
           if (k === 3 && u.id !== 'in_break') {
             const br = G.upgDef(3, 'in_break');
@@ -83,13 +91,24 @@ function run(name, hours, dt, opts) {
       if (k === 3 && (!G.isBroken() || S().chal.active)) go = true;
       else {
         const minT = st.minTime !== undefined ? st.minTime : 5;
-        go = l.time >= minT && g.gte(l.cur.mul(st.mult));
-        // joueur qui stagne : prestige quand même après 10 min si le gain vaut ≥ 10 % du total
-        if (!go && st.mult > 0 && l.time >= 600 && g.gte(l.cur.mul(0.1))) go = true;
+        const m = st.mults && st.mults[Math.min(k, st.mults.length) - 1] !== undefined ? st.mults[Math.min(k, st.mults.length) - 1] : st.mult;
+        if (m === 'rate') {
+          // joueur « rendement » : prestige quand le gain par seconde commence à baisser
+          const rLog = g.log10() - Math.log10(Math.max(l.time, 1));
+          if (!(rate[k] > rLog)) rate[k] = rLog;
+          go = l.time >= 20 && rLog < rate[k] - Math.log10(1.1) && g.gte(l.cur.mul(0.1));
+        } else {
+          go = l.time >= minT && g.gte(l.cur.mul(m));
+          // joueur qui stagne : prestige quand même après 10 min si le gain vaut ≥ 10 % du total
+          if (!go && m > 0 && l.time >= 600 && g.gte(l.cur.mul(0.1))) go = true;
+        }
+        // garder le gain passif d'Éclats au lieu de faire des Supernovas
+        if (k === 1 && st.hawkHold && G.lvl(2, 'co_hawking') >= st.hawkHold) go = false;
       }
       if (go) {
         const wasChal = S().chal.active;
         G.doReset(k, true);
+        for (let j = 1; j <= k; j++) rate[j] = undefined;
         if (wasChal && k === 3) mark('défi ' + wasChal);
         break;
       }
@@ -98,10 +117,11 @@ function run(name, hours, dt, opts) {
     const chalOk = !st.noChal && G.resets(3) >= (st.chalAfter || 0);
     if (chalOk && !S().chal.active && G.resets(3) % 2 === 0 && G.resets(3) !== lastChalBB && !G.lvl(3, 'in_break')) {
       lastChalBB = G.resets(3);
-      const c = G.CHALLENGES.find((c) => G.chalUnlocked(c.id) && !G.chalDone(c.id) && !(skipChal[c.id] > t));
+      const order = st.chalOrder ? st.chalOrder.map((id) => G.CHALLENGES.find((c) => c.id === id)) : G.CHALLENGES;
+      const c = order.find((c) => G.chalUnlocked(c.id) && !G.chalDone(c.id) && !(skipChal[c.id] > t));
       if (c) { G.startChallenge(c.id); chalStart = t; }
     }
-    if (S().chal.active && t - chalStart > 3600) {
+    if (S().chal.active && t - chalStart > (st.chalGiveUp || 3600)) {
       skipChal[S().chal.active] = t + 2 * 3600;
       G.exitChallenge();
     }
@@ -143,10 +163,12 @@ function run(name, hours, dt, opts) {
     t += dt;
     activeStep();
     checkMarks();
+    if (opts.stopAt && firsts[opts.stopAt] !== undefined) break;
     if (t - lastSample >= 1800) {
       lastSample = t;
       const s = { t, dust: S().dust.log10() };
       for (let k = 1; k <= G.layerCount(); k++) s['L' + k] = G.cur(k).log10();
+      s.layers = G.layerCount();
       samples.push(s);
     }
     // garde-fous : aucune valeur ne doit devenir NaN / négative
@@ -154,6 +176,7 @@ function run(name, hours, dt, opts) {
   }
   const final = { dustLog: S().dust.log10(), layers: G.layerCount(), resets: {}, chal: G.chalCount(), bad };
   for (let k = 1; k <= G.layerCount(); k++) final.resets[k] = G.resets(k);
+  final.time = t;
   return { name, desc: st.desc, hours, dt, events: ev, samples, final, maxTickMs, offlineMs };
 }
 

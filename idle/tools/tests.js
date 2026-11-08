@@ -200,6 +200,28 @@ console.log('Contournement des défis…');
   check("Un défi ne se valide pas sans atteindre l'Infini", G.chalDone('c1') === done0);
 }
 
+console.log('Astuces de joueur malin…');
+{
+  // entrer / sortir d'un défi en boucle ne doit rien rapporter
+  G.init(G.deserialize(mid)); G.lay(3).resets = Math.max(G.lay(3).resets, 20);
+  const before = [1, 2, 3].map((k) => G.lay(k).total.log10());
+  let err = null;
+  try { for (let i = 0; i < 1000; i++) { G.startChallenge('c1'); G.tick(0.05); G.exitChallenge(); } } catch (e) { err = e.message; }
+  const after = [1, 2, 3].map((k) => G.lay(k).total.log10());
+  check('Entrer/sortir d\'un défi 1 000 fois ne rapporte rien', !err && after.every((v, i) => v <= before[i] + 1e-9) && allValid(), err || '');
+
+  // rester à l'Infini 24 h sans faire de Big Bang (gain passif d'Éclats au maximum)
+  G.init(G.deserialize(mid));
+  G.lay(2).upg.co_hawking = 10; delete G.lay(3).upg.in_break; G.refresh(); G.S.auto.gens = true; G.S.auto.accel = true;
+  for (let i = 0; i < 2000; i++) G.tick(1);
+  const g1 = G.gain(3);
+  G.simulate(24 * 3600, 6000);
+  const g2 = G.gain(3);
+  check('Rester 24 h à l\'Infini : Big Bang toujours à 1 point avant d\'avoir brisé l\'Infini', allValid() && g2.lte(g1.max(1).mul(1.0001)), 'gain ' + G.fmt(g1) + ' → ' + G.fmt(g2) + ', Éclats ' + G.fmt(G.cur(1)));
+  const capped = G.layerDef(1).effectText();
+  check('Effet des Éclats accumulés plafonné (pas de croissance illimitée)', /plafonné/.test(capped) || G.cur(1).log10() < 60, capped);
+}
+
 console.log('Automates réglés à 0 (spam)…');
 {
   G.init(G.deserialize(advanced0));

@@ -370,7 +370,7 @@
   function buildChal(root) {
     const S = G.S;
     root.append(h('div', { class: 'card' },
-      h('div', { class: 'sub', text: "Un défi recommence ton Big Bang avec une contrainte. Atteins l'Infini pour le terminer et gagner sa récompense pour toujours." }),
+      h('div', { class: 'sub', text: "Un défi recommence ton Big Bang à zéro (améliorations de Supernova et d'Effondrement comprises) avec une contrainte. Tu retrouves tes améliorations en sortant du défi. Atteins l'Infini pour le terminer et gagner sa récompense pour toujours." }),
       live(() => 'Défis terminés : ' + G.chalCount() + '/' + G.CHALLENGES.length + ' — ' + G.BREAK_CHALLENGES + " requis pour Briser l'Infini", 'div', 'sub')));
     const exit = h('button', { class: 'primary danger', onclick: () => G.exitChallenge() }, 'Quitter le défi en cours');
     liveClass(exit, 'hidden', () => !S.chal.active);
@@ -380,7 +380,7 @@
       liveClass(card, 'done', () => G.chalDone(c.id));
       const btn = h('button', { class: 'small', onclick: () => {
         if (S.chal.active) return;
-        modal(h('div', null, h('h2', { text: c.name }), h('p', { text: c.desc }), h('p', { class: 'muted', text: 'Ta partie actuelle (Poussière, générateurs, Éclats, Singularités) sera remise à zéro.' })),
+        modal(h('div', null, h('h2', { text: c.name }), h('p', { text: c.desc }), h('p', { class: 'muted', text: 'Tout repart de zéro : Poussière, générateurs, Éclats, Singularités et leurs améliorations. Tu retrouveras tes améliorations en sortant du défi.' })),
           [{ label: 'Annuler' }, { label: 'Commencer', cls: 'can', fn: () => G.startChallenge(c.id) }]);
       } }, 'Commencer');
       liveClass(btn, 'hidden', () => !!S.chal.active || !G.chalUnlocked(c.id));
@@ -488,6 +488,13 @@
       h('button', { onclick: importSave }, 'Importer')));
     save.append(h('div', { class: 'muted', style: 'margin-top:6px' }, 'Sauvegarde automatique toutes les 10 s et quand tu quittes l\'appli.'));
     root.append(save);
+    const share = h('div', { class: 'card' }, h('div', { class: 'title', text: 'Partage avec Claude' }),
+      live(syncText, 'div', 'sub'),
+      h('div', { class: 'sub', text: 'Ta partie (temps de jeu, couches, strates, chronologie) est envoyée toutes les 2 minutes et après chaque prestige, pour que Claude puisse l\'analyser.' }));
+    const now = h('button', { class: 'small', style: 'margin-top:6px', onclick: () => { pushParty(true); toast('Partie envoyée'); } }, 'Envoyer maintenant');
+    liveClass(now, 'hidden', () => !sync.ref);
+    share.append(now);
+    root.append(share);
 
     root.append(h('button', { class: 'primary danger', style: 'margin-top:16px', onclick: hardReset }, 'Tout effacer'));
     root.append(h('p', { class: 'muted', style: 'margin-top:16px' }, 'Astuce : ajoute le jeu à ton écran d\'accueil (menu du navigateur → « Ajouter à l\'écran d\'accueil ») pour y jouer comme une appli, même hors connexion. Garde le doigt appuyé sur un bouton d\'achat pour acheter en continu.'));
@@ -688,7 +695,82 @@
     G.S.lastTick = now;
   }
 
+  // ------------------------------------------------------------------
+  // Partage de la partie avec Claude (base de données de l'artifact).
+  // Uniquement quand le jeu est ouvert sur claude.ai : ailleurs, rien n'est envoyé.
+  // ------------------------------------------------------------------
+  const sync = { db: null, ref: null, busy: false, last: 0, lastTime: -1, error: null, state: 'off' };
+  function partySummary() {
+    const S = G.S;
+    const n = G.layerCount();
+    const couches = [];
+    for (let k = 1; k <= n; k++) {
+      const d = G.layerDef(k);
+      const l = G.lay(k);
+      if (!l.resets && !S.seen[k]) continue;
+      couches.push({ couche: k, nom: d.name, monnaie: d.cur, actuel: l.cur.toJSON(), total: l.total.toJSON(), prestiges: l.resets, ameliorations: l.upg });
+    }
+    const chrono = {};
+    for (const key in (S.stats.firsts || {})) {
+      const e = S.stats.firsts[key];
+      chrono[key] = { tempsDeJeuH: e.t == null ? null : +(e.t / 3600).toFixed(3), estime: !!e.approx, accelere: !!e.admin, ressourcesAdmin: !!e.adminRes, date: e.date ? new Date(e.date).toISOString() : null };
+    }
+    return {
+      tempsDeJeuH: +(S.stats.time / 3600).toFixed(3),
+      poussiere: S.dust.toJSON(),
+      meilleurePoussiere: S.stats.bestDust.toJSON(),
+      coucheMax: couches.length ? couches[couches.length - 1].nom : null,
+      couches,
+      defisTermines: Object.keys(S.chal.done).filter((k) => S.chal.done[k]),
+      defiEnCours: S.chal.active,
+      infiniBrise: G.lvl(3, 'in_break') > 0,
+      chronologie: chrono,
+      admin: { utilise: !!S.stats.admin, ressources: !!S.stats.adminRes, vitesse: S.options.admin ? S.options.adminSpeed : 1 },
+      automates: S.auto,
+      modeAchat: S.options.buy,
+      creeLe: S.stats.created ? new Date(S.stats.created).toISOString() : null,
+    };
+  }
+  async function pushParty(force) {
+    if (!sync.ref || sync.busy) return;
+    const t = G.S.stats.time;
+    if (!force && t === sync.lastTime) return; // rien n'a changé
+    sync.busy = true;
+    try {
+      await sync.ref.set({ majLe: new Date().toISOString(), version: 1, resume: partySummary(), sauvegarde: G.serialize() });
+      sync.last = Date.now(); sync.lastTime = t; sync.error = null; sync.state = 'ok';
+    } catch (e) {
+      sync.error = (e && e.code) || 'erreur';
+      if (sync.error === 'invalid_argument' || sync.error === 'revoked' || sync.error === 'not_granted') { sync.state = 'refused'; sync.ref = null; }
+    } finally { sync.busy = false; }
+  }
+  async function initSync() {
+    if (!window.claude || typeof window.claude.use !== 'function') return;
+    try {
+      const [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]);
+      if (!db || !user) { sync.state = 'unavailable'; return; }
+      const id = await user.id();
+      if (!id) { sync.state = 'unavailable'; return; }
+      sync.db = db;
+      sync.ref = db.collection('parties').doc(id);
+      sync.state = 'ready';
+      pushParty(true);
+      setInterval(() => pushParty(false), 120000);
+      document.addEventListener('visibilitychange', () => { if (document.hidden) pushParty(false); });
+    } catch (e) { sync.state = 'unavailable'; }
+  }
+  function syncText() {
+    switch (sync.state) {
+      case 'ok': return 'Partie partagée avec Claude — dernière mise à jour il y a ' + duration((Date.now() - sync.last) / 1000) + '.';
+      case 'ready': return 'Partage avec Claude : envoi en cours…';
+      case 'refused': return 'Partage avec Claude impossible pour ce compte (accès en lecture seule).';
+      case 'unavailable': return 'Partage avec Claude indisponible ici (ouvre le jeu depuis claude.ai, connecté).';
+      default: return 'Partage avec Claude : uniquement quand le jeu est ouvert sur claude.ai.';
+    }
+  }
+
   G.on((type, data) => {
+    if (type === 'reset') pushParty(true);
     if (type === 'chal') {
       const c = G.CHALLENGES.find((x) => x.id === data);
       toast('Défi terminé : ' + c.name + ' !');
@@ -706,6 +788,7 @@
     setInterval(saveGame, 10000);
     document.addEventListener('visibilitychange', () => { if (document.hidden) saveGame(); else { loop(); } });
     window.addEventListener('pagehide', saveGame);
+    initSync();
     if ('serviceWorker' in navigator && location.protocol !== 'file:') {
       navigator.serviceWorker.register('sw.js').catch(() => {});
     }
