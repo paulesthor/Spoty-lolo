@@ -424,6 +424,7 @@
     row('Poussière produite', () => fmt(S.stats.totalDust));
     row('Vitesse du jeu', () => '×' + G.M.speed.toFixed(2));
     row('Mode admin utilisé', () => S.stats.admin ? 'oui' : 'non');
+    row('Ressources admin (×1000) utilisées', () => S.stats.adminRes ? 'oui' : 'non');
     row('Exposant de production', () => '^' + G.M.dustExp.toFixed(3));
     row('Bonus par 10 achats', () => '×' + G.M.perTen.toFixed(2));
     root.append(h('div', { class: 'card' }, t));
@@ -440,7 +441,7 @@
       const tl = h('table', { class: 'stats' });
       for (const key of keys) {
         const e = f[key];
-        const when = e.t == null ? 'avant la chronologie' : (e.approx ? '≈ ' : '') + duration(e.t) + (e.admin ? ' (admin)' : '');
+        const when = e.t == null ? 'avant la chronologie' : (e.approx ? '≈ ' : '') + duration(e.t) + (e.adminRes ? ' (ressources admin)' : e.admin ? ' (accéléré)' : '');
         tl.append(h('tr', null, h('td', { text: names(key) }), h('td', { text: when })));
       }
       root.append(h('h3', { text: 'Chronologie (temps de jeu)' }), h('div', { class: 'card' }, tl));
@@ -499,7 +500,7 @@
   function adminBox() {
     const S = G.S;
     const box = h('div', { class: 'card admin' }, h('div', { class: 'title', text: 'Mode admin' }),
-      h('div', { class: 'sub', text: 'Pour tester : la partie avance plus vite tant que le jeu est ouvert. La sauvegarde garde une trace de son utilisation.' }));
+      h('div', { class: 'sub', text: 'Pour tester. La vitesse et l\'avance rapide gardent le rythme réel du jeu (le temps de jeu compte normalement) ; les boutons ×1000 le faussent. La chronologie des Stats indique ce qui a été utilisé.' }));
 
     box.append(h('h3', { text: 'Vitesse du jeu' }));
     const seg = h('div', { class: 'seg' });
@@ -520,12 +521,12 @@
 
     box.append(h('h3', { text: 'Ressources' }));
     const res = h('div', { class: 'row wrap' });
-    res.append(h('button', { class: 'small', onclick: () => { S.stats.admin = true; S.dust = S.dust.max(10).mul(1000); } }, 'Poussière ×1000'));
+    res.append(h('button', { class: 'small', onclick: () => { S.stats.admin = true; S.stats.adminRes = true; S.dust = S.dust.max(10).mul(1000); } }, 'Poussière ×1000'));
     const n = G.layerCount();
     for (let k = 1; k <= n; k++) {
       if (!G.resets(k) && !S.seen[k]) continue;
       const d = G.layerDef(k);
-      res.append(h('button', { class: 'small', onclick: () => { S.stats.admin = true; const l = G.lay(k); const add = l.cur.max(1).mul(999); l.cur = l.cur.add(add); l.total = l.total.add(add); } }, d.sym + ' ' + d.cur + ' ×1000'));
+      res.append(h('button', { class: 'small', onclick: () => { S.stats.admin = true; S.stats.adminRes = true; const l = G.lay(k); const add = l.cur.max(1).mul(999); l.cur = l.cur.add(add); l.total = l.total.add(add); } }, d.sym + ' ' + d.cur + ' ×1000'));
     }
     box.append(res);
     return box;

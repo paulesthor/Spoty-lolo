@@ -521,7 +521,7 @@
   // chronologie : temps de jeu (et date réelle) de chaque première étape
   function markFirst(key) {
     const f = S.stats.firsts || (S.stats.firsts = {});
-    if (!f[key]) f[key] = { t: S.stats.time, date: Date.now(), admin: !!S.stats.admin };
+    if (!f[key]) f[key] = { t: S.stats.time, date: Date.now(), admin: !!S.stats.admin, adminRes: !!S.stats.adminRes };
   }
   function doReset(k, silent) {
     if (!canReset(k)) return false;
