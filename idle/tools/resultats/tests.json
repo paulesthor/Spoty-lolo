@@ -2,52 +2,52 @@
  "sensitivity": [
   {
    "dt": 0.25,
-   "score": 9.53996037456374,
-   "dust": 14.691764257563895,
-   "L1": 529.5,
-   "L2": 9055.5,
+   "score": 10.073151046248418,
+   "dust": 18.176533504941126,
+   "L1": 593.75,
+   "L2": 11492.75,
    "resets": {
-    "1": 293,
-    "2": 3,
+    "1": 223,
+    "2": 2,
     "3": 0,
     "4": 0
    }
   },
   {
    "dt": 1,
-   "score": 9.621358975136031,
-   "dust": 13.809606190110651,
-   "L1": 527,
-   "L2": 9755,
+   "score": 10.112787458166856,
+   "dust": 18.044422168199105,
+   "L1": 593,
+   "L2": 10923,
    "resets": {
-    "1": 285,
-    "2": 3,
+    "1": 212,
+    "2": 2,
     "3": 0,
     "4": 0
    }
   },
   {
    "dt": 4,
-   "score": 9.614431799927116,
-   "dust": 9.689068072349007,
-   "L1": 524,
-   "L2": 9336,
+   "score": 10.082779600334954,
+   "dust": 12.424464218065195,
+   "L1": 580,
+   "L2": 12164,
    "resets": {
-    "1": 248,
-    "2": 3,
+    "1": 189,
+    "2": 2,
     "3": 0,
     "4": 0
    }
   },
   {
    "dt": 16,
-   "score": 10.152523186694351,
-   "dust": 10.940717652475865,
-   "L1": 528,
-   "L2": 8752,
+   "score": 10.12228438860841,
+   "dust": 14.800681734034525,
+   "L1": 576,
+   "L2": 10544,
    "resets": {
-    "1": 157,
-    "2": 3,
+    "1": 131,
+    "2": 2,
     "3": 0,
     "4": 0
    }
@@ -56,10 +56,10 @@
  "offline": {
   "début": {
    "on": {
-    "dust": 34.65746384131821,
-    "score": 20.492180226701816,
+    "dust": 35.889044779761,
+    "score": 17.481880270062003,
     "L": [
-     2.0492180226701815,
+     1.7481880270062005,
      null,
      null,
      null,
@@ -67,71 +67,71 @@
     ]
    },
    "off": {
-    "dust": 34.65855068648315,
-    "score": 20.492180226701816,
+    "dust": 35.89054692746966,
+    "score": 17.481880270062003,
     "L": [
-     2.0492180226701815,
+     1.7481880270062005,
      null,
      null,
      null,
      null
     ]
    },
-   "ms": 19
+   "ms": 18
   },
   "milieu": {
    "on": {
-    "dust": 92.28939868410946,
-    "score": 2818.8560448387725,
+    "dust": 73.9158513249916,
+    "score": 147.93660909779658,
     "L": [
-     109.35174804607668,
-     17.253385643780057,
-     0,
+     10.022448362583035,
+     0.47712125471966244,
+     null,
      null,
      null
     ]
    },
    "off": {
-    "dust": 100.96251227738959,
-    "score": 2818.8560448387725,
+    "dust": 74.0234612869075,
+    "score": 147.93660909779658,
     "L": [
-     109.35174804607668,
-     17.253385643780057,
-     0,
+     10.022448362583035,
+     0.47712125471966244,
+     null,
      null,
      null
     ]
    },
-   "ms": 35
+   "ms": 22
   },
   "avancée": {
    "on": {
-    "dust": 12352.506743534284,
-    "score": 835896.2786145577,
+    "dust": 9700.300380241662,
+    "score": 425296.98915107903,
     "L": [
-     4562.520749683068,
-     762.7431162380877,
-     373.1078364046595,
-     34.08889230892587,
-     0
+     3501.227819522949,
+     585.72504064117,
+     264.0409489067294,
+     6.767125798500313,
+     null
     ]
    },
    "off": {
-    "dust": 12761.489092899745,
-    "score": 833658.7342636156,
+    "dust": 9701.543818913891,
+    "score": 425328.0068928522,
     "L": [
-     4558.628078814815,
-     761.9873989312761,
-     372.87151476176456,
-     33.90021988205753,
-     0
+     3501.5546244483553,
+     585.7703723147271,
+     264.0641654318928,
+     6.767125798500313,
+     null
     ]
    },
-   "ms": 211
+   "ms": 60
   }
  },
- "offline7dMs": 66,
- "tickMs": 0.0795,
+ "offline7dMs": 35,
+ "tickMs": 0.0055,
  "Ebase": 0.3930851272325909,
  "Emax": 0.7557553042272634,
  "results": [
@@ -173,22 +173,22 @@
   {
    "name": "Pas de temps 0,25 s → 16 s : écart de progression < 25 %",
    "ok": true,
-   "detail": "somme des log10 des totaux : 9.5 / 9.6 / 9.6 / 10.2 ; 1re Supernova : 9 min / 9 min / 9 min / 9 min"
+   "detail": "somme des log10 des totaux : 10.1 / 10.1 / 10.1 / 10.1 ; 1re Supernova : 10 min / 10 min / 10 min / 10 min"
   },
   {
    "name": "[début] 8 h hors-ligne ne rapporte pas plus que 8 h en ligne à 50 ms/tick (+5 %)",
    "ok": true,
-   "detail": "log10 des totaux par couche — en ligne 2.0/–/–/–/–, hors-ligne 2.0/–/–/–/– (calcul 19 ms)"
+   "detail": "log10 des totaux par couche — en ligne 1.7/–/–/–/–, hors-ligne 1.7/–/–/–/– (calcul 18 ms)"
   },
   {
    "name": "[milieu] 8 h hors-ligne ne rapporte pas plus que 8 h en ligne à 50 ms/tick (+5 %)",
    "ok": true,
-   "detail": "log10 des totaux par couche — en ligne 109.4/17.3/0.0/–/–, hors-ligne 109.4/17.3/0.0/–/– (calcul 35 ms)"
+   "detail": "log10 des totaux par couche — en ligne 10.0/0.5/–/–/–, hors-ligne 10.0/0.5/–/–/– (calcul 22 ms)"
   },
   {
    "name": "[avancée] 8 h hors-ligne ne rapporte pas plus que 8 h en ligne à 50 ms/tick (+5 %)",
    "ok": true,
-   "detail": "log10 des totaux par couche — en ligne 4562.5/762.7/373.1/34.1/0.0, hors-ligne 4558.6/762.0/372.9/33.9/0.0 (calcul 211 ms)"
+   "detail": "log10 des totaux par couche — en ligne 3501.2/585.7/264.0/6.8/–, hors-ligne 3501.6/585.8/264.1/6.8/– (calcul 60 ms)"
   },
   {
    "name": "Nombres gigantesques (1e1e300) : pas de plantage ni de NaN",
@@ -198,12 +198,12 @@
   {
    "name": "Achat max avec 1e1e300 Poussière reste rapide",
    "ok": true,
-   "detail": "8 ms"
+   "detail": "3 ms"
   },
   {
    "name": "Achat max des améliorations avec monnaie gigantesque reste rapide",
    "ok": true,
-   "detail": "5 ms"
+   "detail": "3 ms"
   },
   {
    "name": "Format des nombres extrêmes",
@@ -218,7 +218,7 @@
   {
    "name": "Sauvegarde « gens manquants » : le jeu repart sans planter",
    "ok": true,
-   "detail": "Poussière 2,34e8"
+   "detail": "Poussière 1,20e9"
   },
   {
    "name": "Sauvegarde « nombres invalides » : le jeu repart sans planter",
@@ -233,7 +233,7 @@
   {
    "name": "Sauvegarde « infini » : le jeu repart sans planter",
    "ok": true,
-   "detail": "Poussière 1,85e307"
+   "detail": "Poussière 3,90e305"
   },
   {
    "name": "Temps négatif (horloge reculée) ignoré",
@@ -243,7 +243,7 @@
   {
    "name": "Rattrapage 7 jours hors-ligne en moins de 5 s (PC)",
    "ok": true,
-   "detail": "66 ms"
+   "detail": "35 ms"
   },
   {
    "name": "Défi « Sans étoiles » : aucun Éclat gagné (même en passif)",
@@ -271,14 +271,29 @@
    "detail": ""
   },
   {
+   "name": "Entrer/sortir d'un défi 1 000 fois ne rapporte rien",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "Rester 24 h à l'Infini : Big Bang toujours à 1 point avant d'avoir brisé l'Infini",
+   "ok": true,
+   "detail": "gain 0 → 0, Éclats 5,79e45"
+  },
+  {
+   "name": "Effet des Éclats accumulés plafonné (pas de croissance illimitée)",
+   "ok": true,
+   "detail": "Production ×1,74e61 (plafonné)"
+  },
+  {
    "name": "Automates à 0 s : pas de plantage, tick < 5 ms",
    "ok": true,
-   "detail": "0.09 ms/tick"
+   "detail": "0.00 ms/tick"
   },
   {
    "name": "Tick en partie avancée < 2 ms (PC)",
    "ok": true,
-   "detail": "0.080 ms"
+   "detail": "0.005 ms"
   },
   {
    "name": "Exposant critique < 1 même avec toutes les améliorations (pas d'emballement)",

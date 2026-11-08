@@ -22,7 +22,8 @@ Servir le dossier `idle/` en HTTP(S), par exemple `python3 -m http.server` puis 
 - `js/ui.js` : interface mobile.
 - `tools/sim.js` : bot joueur, 9 profils (`node tools/sim.js` pour la liste ; `node tools/sim.js patient 300 1 sortie.json`).
 - `tools/campaign.js` : lance tous les profils en parallèle (`node tools/campaign.js 300 1 resultats/`).
-- `tools/tests.js` : 34 tests de robustesse (resets instantanés, pas de temps, hors-ligne, valeurs extrêmes, sauvegardes corrompues, défis…).
+- `tools/malin.js` : optimiseur de stratégies (« joueur malin ») : `node tools/malin.js bb|eter|strates <essais> <mutations>`.
+- `tools/tests.js` : 37 tests de robustesse (resets instantanés, pas de temps, hors-ligne, valeurs extrêmes, sauvegardes corrompues, défis…).
 - `tools/rapport.js` : génère le rapport d'équilibrage à partir des résultats (`tools/resultats/`).
 - `tools/icons.js` : régénère les icônes PNG depuis `icon.svg`.
 

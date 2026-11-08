@@ -104,7 +104,7 @@ code { font-family: var(--font-data); font-size: .92em; background: var(--accent
   <header>
     <div class="eyebrow">Rapport d'équilibrage · {{HOURS}} h de jeu simulées par profil</div>
     <h1>Équilibrage de Cosmos Infini</h1>
-    <p class="lead">Neuf profils de joueurs simulés, une batterie de {{TESTN}} tests de robustesse, neuf problèmes corrigés. Combien de temps prend chaque étape, et peut-on casser le jeu ?</p>
+    <p class="lead">Onze profils de joueurs simulés, un optimiseur de stratégies, {{TESTN}} tests de robustesse, dix problèmes corrigés. Combien de temps prend chaque étape, et peut-on casser le jeu ?</p>
   </header>
 
   <section class="verdict" aria-labelledby="v">
@@ -183,6 +183,11 @@ code { font-family: var(--font-data); font-size: .92em; background: var(--accent
         <p class="fix">plafond adouci (puissance 0,7 au lieu de 0,5), nouvelle formule d'Éternité et seuils des Strates abaissés.</p>
       </article>
       <article class="issue">
+        <h3><span class="sev maj">Majeur</span> Les défis gardaient les améliorations</h3>
+        <p>Les défis se débloquent après 2 Big Bangs, au moment exact où le palier « garde les améliorations d'Éclats lors d'un Big Bang » s'active. Lancer un défi gardait donc toutes les améliorations de Supernova achetées juste avant : un joueur malin atteignait l'Éternité en 3,4 h.</p>
+        <p class="fix">un défi remet maintenant tout à zéro, améliorations comprises ; celles d'avant sont rendues à la sortie du défi. Éternité au mieux en 6,4 h.</p>
+      </article>
+      <article class="issue">
         <h3><span class="sev min">Mineur</span> Défis infaisables et sauvegardes trafiquées</h3>
         <p>Trois défis (« Sans étoiles », « Inflation », « Racine ») n'étaient jamais terminés : l'Infini ne pouvait pas être brisé. Par ailleurs, une sauvegarde importée pouvait contenir une Poussière négative.</p>
         <p class="fix">défis adoucis (puissance 0,75, prix +50 %) et débloqués progressivement ; toute valeur négative ou invalide d'une sauvegarde est remise à zéro.</p>
@@ -194,6 +199,11 @@ code { font-family: var(--font-data); font-size: .92em; background: var(--accent
     <h2 id="ts">Tests de robustesse</h2>
     <p>Exécutés par <code>node idle/tools/tests.js</code>. Ils tentent de casser le jeu : resets instantanés, pas de temps extrêmes, hors-ligne, nombres gigantesques, sauvegardes corrompues, horloge reculée, contournement des défis, automates réglés à zéro.</p>
     <div class="scroll"><table><thead><tr><th scope="col">Résultat</th><th scope="col">Test</th></tr></thead><tbody>{{TESTS}}</tbody></table></div>
+  </section>
+
+  <section aria-labelledby="malin">
+    <h2 id="malin">Le joueur malin : peut-il casser le jeu ?</h2>
+    {{MALIN}}
   </section>
 
   <section aria-labelledby="strat">

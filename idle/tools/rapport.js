@@ -10,7 +10,7 @@ const coarse = load(coarseFile);
 const notes = load(notesFile) || {};
 
 const PROFILES = [
-  ['actif', 'Actif'], ['patient', 'Patient'], ['econome', 'Économe'], ['cher', 'Achats chers'],
+  ['actif', 'Actif'], ['patient', 'Patient (×10)'], ['patient100', 'Patient ×100'], ['patient1000', 'Patient ×1000'], ['econome', 'Économe'], ['cher', 'Achats chers'],
   ['spam', 'Spam de prestige'], ['defistard', 'Défis tardifs'], ['sansdefis', 'Sans défis'],
   ['idle', 'Idle 3×/jour'], ['idle1', 'Idle 1×/jour'],
 ].filter(([k]) => camp[k]);
@@ -143,6 +143,7 @@ const html = tpl
   .replace('{{FINE}}', fineNote)
   .replace('{{VERDICT}}', notes.VERDICT || '')
   .replace('{{STRAT}}', notes.STRAT || '')
+  .replace('{{MALIN}}', notes.MALIN || '')
   .replace('{{SENS}}', sens)
   .replace(/{{HOURS}}/g, hours)
   .replace(/{{EBASE}}/g, (tests.Ebase || 0).toFixed(2).replace('.', ','))

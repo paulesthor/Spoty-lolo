@@ -1,0 +1,4103 @@
+{
+ "goal": "bb",
+ "results": [
+  {
+   "strat": {
+    "mults": [
+     1000000,
+     1000000,
+     1,
+     1000,
+     "rate"
+    ],
+    "hawkHold": 0,
+    "prio": [
+     "sn_nova",
+     "sn_mass"
+    ],
+    "thrift": 0,
+    "expensiveFirst": false,
+    "chalOrder": [
+     "c3",
+     "c2",
+     "c6",
+     "c5",
+     "c1",
+     "c4"
+    ],
+    "chalGiveUp": 7200,
+    "minTime": 30
+   },
+   "label": "seuils 1e6/1e6/1/1000/R prio sn_nova+sn_mass",
+   "score": 7341,
+   "ev": {
+    "L1 #1": 593,
+    "L2 #1": 5272,
+    "L1 #10": 5430,
+    "L3 #1": 7341
+   },
+   "final": {
+    "dustLog": 1,
+    "layers": 4,
+    "resets": {
+     "1": 14,
+     "2": 4,
+     "3": 1,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 7341
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 3601,
+     "dust": 25.478491561890927,
+     "L1": 2.4166405073382813,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 5401,
+     "dust": 13.34778995113275,
+     "L1": null,
+     "L2": 0.47712125471966244,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 7201,
+     "dust": 43.718272376631155,
+     "L1": 7.51198668671992,
+     "L2": -4.440892098500626e-16,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     1000000,
+     1000000,
+     1,
+     1000,
+     "rate"
+    ],
+    "hawkHold": 3,
+    "prio": [
+     "sn_nova",
+     "sn_mass"
+    ],
+    "thrift": 0,
+    "expensiveFirst": false,
+    "chalOrder": [
+     "c3",
+     "c2",
+     "c6",
+     "c5",
+     "c1",
+     "c4"
+    ],
+    "chalGiveUp": 7200,
+    "minTime": 30
+   },
+   "label": "seuils 1e6/1e6/1/1000/R passif≥3 prio sn_nova+sn_mass",
+   "score": 7341,
+   "ev": {
+    "L1 #1": 593,
+    "L2 #1": 5272,
+    "L1 #10": 5430,
+    "L3 #1": 7341
+   },
+   "final": {
+    "dustLog": 1,
+    "layers": 4,
+    "resets": {
+     "1": 14,
+     "2": 4,
+     "3": 1,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 7341
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 3601,
+     "dust": 25.478491561890927,
+     "L1": 2.4166405073382813,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 5401,
+     "dust": 13.34778995113275,
+     "L1": null,
+     "L2": 0.47712125471966244,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 7201,
+     "dust": 43.718272376631155,
+     "L1": 7.51198668671992,
+     "L2": -4.440892098500626e-16,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     1000000,
+     1000000,
+     1,
+     1000,
+     "rate"
+    ],
+    "hawkHold": 10,
+    "prio": [
+     "sn_nova",
+     "sn_mass"
+    ],
+    "thrift": 0,
+    "expensiveFirst": false,
+    "chalOrder": [
+     "c3",
+     "c2",
+     "c6",
+     "c5",
+     "c1",
+     "c4"
+    ],
+    "chalGiveUp": 7200,
+    "minTime": 30
+   },
+   "label": "seuils 1e6/1e6/1/1000/R passif≥10 prio sn_nova+sn_mass",
+   "score": 7341,
+   "ev": {
+    "L1 #1": 593,
+    "L2 #1": 5272,
+    "L1 #10": 5430,
+    "L3 #1": 7341
+   },
+   "final": {
+    "dustLog": 1,
+    "layers": 4,
+    "resets": {
+     "1": 14,
+     "2": 4,
+     "3": 1,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 7341
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 3601,
+     "dust": 25.478491561890927,
+     "L1": 2.4166405073382813,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 5401,
+     "dust": 13.34778995113275,
+     "L1": null,
+     "L2": 0.47712125471966244,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 7201,
+     "dust": 43.718272376631155,
+     "L1": 7.51198668671992,
+     "L2": -4.440892098500626e-16,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     1000000,
+     1000000,
+     1,
+     1000000,
+     "rate"
+    ],
+    "hawkHold": 3,
+    "prio": [
+     "sn_nova",
+     "sn_mass"
+    ],
+    "thrift": 0,
+    "expensiveFirst": false,
+    "chalOrder": [
+     "c3",
+     "c2",
+     "c6",
+     "c5",
+     "c1",
+     "c4"
+    ],
+    "chalGiveUp": 7200,
+    "minTime": 30
+   },
+   "label": "seuils 1e6/1e6/1/1e6/R passif≥3 prio sn_nova+sn_mass",
+   "score": 7341,
+   "ev": {
+    "L1 #1": 593,
+    "L2 #1": 5272,
+    "L1 #10": 5430,
+    "L3 #1": 7341
+   },
+   "final": {
+    "dustLog": 1,
+    "layers": 4,
+    "resets": {
+     "1": 14,
+     "2": 4,
+     "3": 1,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 7341
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 3601,
+     "dust": 25.478491561890927,
+     "L1": 2.4166405073382813,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 5401,
+     "dust": 13.34778995113275,
+     "L1": null,
+     "L2": 0.47712125471966244,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 7201,
+     "dust": 43.718272376631155,
+     "L1": 7.51198668671992,
+     "L2": -4.440892098500626e-16,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     1000000,
+     1000000,
+     1,
+     1000,
+     "rate"
+    ],
+    "hawkHold": 3,
+    "prio": [
+     "sn_nova",
+     "sn_mass"
+    ],
+    "thrift": 0,
+    "expensiveFirst": false,
+    "chalOrder": [
+     "c3",
+     "c2",
+     "c6",
+     "c5",
+     "c1",
+     "c4"
+    ],
+    "chalGiveUp": 7200,
+    "minTime": 30
+   },
+   "label": "seuils 1e6/1e6/1/1000/R passif≥3 prio sn_nova+sn_mass",
+   "score": 7341,
+   "ev": {
+    "L1 #1": 593,
+    "L2 #1": 5272,
+    "L1 #10": 5430,
+    "L3 #1": 7341
+   },
+   "final": {
+    "dustLog": 1,
+    "layers": 4,
+    "resets": {
+     "1": 14,
+     "2": 4,
+     "3": 1,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 7341
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 3601,
+     "dust": 25.478491561890927,
+     "L1": 2.4166405073382813,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 5401,
+     "dust": 13.34778995113275,
+     "L1": null,
+     "L2": 0.47712125471966244,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 7201,
+     "dust": 43.718272376631155,
+     "L1": 7.51198668671992,
+     "L2": -4.440892098500626e-16,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     1000000,
+     1000000,
+     1,
+     1000,
+     10
+    ],
+    "hawkHold": 10,
+    "prio": [
+     "sn_nova",
+     "sn_mass"
+    ],
+    "thrift": 0,
+    "expensiveFirst": false,
+    "chalOrder": [
+     "c3",
+     "c2",
+     "c6",
+     "c5",
+     "c1",
+     "c4"
+    ],
+    "chalGiveUp": 7200,
+    "minTime": 30
+   },
+   "label": "seuils 1e6/1e6/1/1000/10 passif≥10 prio sn_nova+sn_mass",
+   "score": 7341,
+   "ev": {
+    "L1 #1": 593,
+    "L2 #1": 5272,
+    "L1 #10": 5430,
+    "L3 #1": 7341
+   },
+   "final": {
+    "dustLog": 1,
+    "layers": 4,
+    "resets": {
+     "1": 14,
+     "2": 4,
+     "3": 1,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 7341
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 3601,
+     "dust": 25.478491561890927,
+     "L1": 2.4166405073382813,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 5401,
+     "dust": 13.34778995113275,
+     "L1": null,
+     "L2": 0.47712125471966244,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 7201,
+     "dust": 43.718272376631155,
+     "L1": 7.51198668671992,
+     "L2": -4.440892098500626e-16,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     1000000,
+     1000000,
+     100,
+     1000,
+     "rate"
+    ],
+    "hawkHold": 3,
+    "prio": [
+     "sn_nova",
+     "sn_mass"
+    ],
+    "thrift": 0,
+    "expensiveFirst": false,
+    "chalOrder": [
+     "c3",
+     "c2",
+     "c6",
+     "c5",
+     "c1",
+     "c4"
+    ],
+    "chalGiveUp": 7200,
+    "minTime": 30
+   },
+   "label": "seuils 1e6/1e6/100/1000/R passif≥3 prio sn_nova+sn_mass",
+   "score": 7341,
+   "ev": {
+    "L1 #1": 593,
+    "L2 #1": 5272,
+    "L1 #10": 5430,
+    "L3 #1": 7341
+   },
+   "final": {
+    "dustLog": 1,
+    "layers": 4,
+    "resets": {
+     "1": 14,
+     "2": 4,
+     "3": 1,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 7341
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 3601,
+     "dust": 25.478491561890927,
+     "L1": 2.4166405073382813,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 5401,
+     "dust": 13.34778995113275,
+     "L1": null,
+     "L2": 0.47712125471966244,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 7201,
+     "dust": 43.718272376631155,
+     "L1": 7.51198668671992,
+     "L2": -4.440892098500626e-16,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     1000000,
+     1000000,
+     1,
+     1000,
+     "rate"
+    ],
+    "hawkHold": 3,
+    "prio": [
+     "sn_nova",
+     "sn_mass"
+    ],
+    "thrift": 0,
+    "expensiveFirst": false,
+    "chalOrder": [
+     "c3",
+     "c2",
+     "c6",
+     "c5",
+     "c1",
+     "c4"
+    ],
+    "chalGiveUp": 7200,
+    "minTime": 30
+   },
+   "label": "seuils 1e6/1e6/1/1000/R passif≥3 prio sn_nova+sn_mass",
+   "score": 7341,
+   "ev": {
+    "L1 #1": 593,
+    "L2 #1": 5272,
+    "L1 #10": 5430,
+    "L3 #1": 7341
+   },
+   "final": {
+    "dustLog": 1,
+    "layers": 4,
+    "resets": {
+     "1": 14,
+     "2": 4,
+     "3": 1,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 7341
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 3601,
+     "dust": 25.478491561890927,
+     "L1": 2.4166405073382813,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 5401,
+     "dust": 13.34778995113275,
+     "L1": null,
+     "L2": 0.47712125471966244,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 7201,
+     "dust": 43.718272376631155,
+     "L1": 7.51198668671992,
+     "L2": -4.440892098500626e-16,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     1000000,
+     1000000,
+     1,
+     1000,
+     1000000
+    ],
+    "hawkHold": 10,
+    "prio": [
+     "sn_nova",
+     "sn_mass"
+    ],
+    "thrift": 0,
+    "expensiveFirst": false,
+    "chalOrder": [
+     "c3",
+     "c2",
+     "c6",
+     "c5",
+     "c1",
+     "c4"
+    ],
+    "chalGiveUp": 7200,
+    "minTime": 30
+   },
+   "label": "seuils 1e6/1e6/1/1000/1e6 passif≥10 prio sn_nova+sn_mass",
+   "score": 7341,
+   "ev": {
+    "L1 #1": 593,
+    "L2 #1": 5272,
+    "L1 #10": 5430,
+    "L3 #1": 7341
+   },
+   "final": {
+    "dustLog": 1,
+    "layers": 4,
+    "resets": {
+     "1": 14,
+     "2": 4,
+     "3": 1,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 7341
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 3601,
+     "dust": 25.478491561890927,
+     "L1": 2.4166405073382813,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 5401,
+     "dust": 13.34778995113275,
+     "L1": null,
+     "L2": 0.47712125471966244,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 7201,
+     "dust": 43.718272376631155,
+     "L1": 7.51198668671992,
+     "L2": -4.440892098500626e-16,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     1000000,
+     1000000,
+     1,
+     1000000,
+     "rate"
+    ],
+    "hawkHold": 3,
+    "prio": [
+     "sn_nova",
+     "sn_mass"
+    ],
+    "thrift": 0,
+    "expensiveFirst": false,
+    "chalOrder": [
+     "c4",
+     "c5",
+     "c6",
+     "c3",
+     "c2",
+     "c1"
+    ],
+    "chalGiveUp": 7200,
+    "minTime": 30
+   },
+   "label": "seuils 1e6/1e6/1/1e6/R passif≥3 prio sn_nova+sn_mass",
+   "score": 7341,
+   "ev": {
+    "L1 #1": 593,
+    "L2 #1": 5272,
+    "L1 #10": 5430,
+    "L3 #1": 7341
+   },
+   "final": {
+    "dustLog": 1,
+    "layers": 4,
+    "resets": {
+     "1": 14,
+     "2": 4,
+     "3": 1,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 7341
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 3601,
+     "dust": 25.478491561890927,
+     "L1": 2.4166405073382813,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 5401,
+     "dust": 13.34778995113275,
+     "L1": null,
+     "L2": 0.47712125471966244,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 7201,
+     "dust": 43.718272376631155,
+     "L1": 7.51198668671992,
+     "L2": -4.440892098500626e-16,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     1000000,
+     3,
+     1,
+     1000,
+     "rate"
+    ],
+    "hawkHold": 3,
+    "prio": [
+     "sn_nova",
+     "sn_mass"
+    ],
+    "thrift": 0,
+    "expensiveFirst": false,
+    "chalOrder": [
+     "c3",
+     "c2",
+     "c6",
+     "c5",
+     "c1",
+     "c4"
+    ],
+    "chalGiveUp": 7200,
+    "minTime": 30
+   },
+   "label": "seuils 1e6/3/1/1000/R passif≥3 prio sn_nova+sn_mass",
+   "score": 7703,
+   "ev": {
+    "L1 #1": 593,
+    "L2 #1": 5272,
+    "L1 #10": 5430,
+    "L3 #1": 7703
+   },
+   "final": {
+    "dustLog": 1,
+    "layers": 4,
+    "resets": {
+     "1": 14,
+     "2": 7,
+     "3": 1,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 7703
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 3601,
+     "dust": 25.478491561890927,
+     "L1": 2.4166405073382813,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 5401,
+     "dust": 13.34778995113275,
+     "L1": null,
+     "L2": 0.47712125471966244,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 7201,
+     "dust": 43.718272376631155,
+     "L1": 7.51198668671992,
+     "L2": -4.440892098500626e-16,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     1000000,
+     1,
+     1,
+     1000,
+     "rate"
+    ],
+    "hawkHold": 0,
+    "prio": [
+     "sn_nova",
+     "sn_mass"
+    ],
+    "thrift": 0,
+    "expensiveFirst": false,
+    "chalOrder": [
+     "c3",
+     "c2",
+     "c6",
+     "c5",
+     "c1",
+     "c4"
+    ],
+    "chalGiveUp": 7200,
+    "minTime": 30
+   },
+   "label": "seuils 1e6/1/1/1000/R prio sn_nova+sn_mass",
+   "score": 7892,
+   "ev": {
+    "L1 #1": 593,
+    "L2 #1": 5272,
+    "L1 #10": 5430,
+    "L3 #1": 7892
+   },
+   "final": {
+    "dustLog": 1,
+    "layers": 4,
+    "resets": {
+     "1": 14,
+     "2": 8,
+     "3": 1,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 7892
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 3601,
+     "dust": 25.478491561890927,
+     "L1": 2.4166405073382813,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 5401,
+     "dust": 13.34778995113275,
+     "L1": null,
+     "L2": 0.47712125471966244,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 7201,
+     "dust": 43.718272376631155,
+     "L1": 7.51198668671992,
+     "L2": -4.440892098500626e-16,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     1000000,
+     10,
+     3,
+     1000,
+     1000000
+    ],
+    "hawkHold": 10,
+    "prio": [
+     "co_horizon",
+     "co_hawking"
+    ],
+    "thrift": 0,
+    "expensiveFirst": true,
+    "chalOrder": [
+     "c5",
+     "c3",
+     "c6",
+     "c1",
+     "c2",
+     "c4"
+    ],
+    "chalGiveUp": 3600,
+    "minTime": 10
+   },
+   "label": "seuils 1e6/10/3/1000/1e6 passif≥10 prio co_horizon+co_hawking cher",
+   "score": 8856,
+   "ev": {
+    "L1 #1": 593,
+    "L1 #10": 5638,
+    "L2 #1": 6239,
+    "L2 #10": 8835,
+    "L3 #1": 8856
+   },
+   "final": {
+    "dustLog": 1,
+    "layers": 4,
+    "resets": {
+     "1": 13,
+     "2": 11,
+     "3": 1,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 8856
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 3601,
+     "dust": 18.860006107254033,
+     "L1": 1.0413926851582251,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 5401,
+     "dust": 43.96007214908626,
+     "L1": 4.302936699704867,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 7201,
+     "dust": 28.275825047761696,
+     "L1": 2.2728391051841257,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     1000000,
+     10,
+     3,
+     1000,
+     1000000
+    ],
+    "hawkHold": 10,
+    "prio": [
+     "co_horizon",
+     "co_hawking"
+    ],
+    "thrift": 0,
+    "expensiveFirst": true,
+    "chalOrder": [
+     "c5",
+     "c6",
+     "c2",
+     "c1",
+     "c4",
+     "c3"
+    ],
+    "chalGiveUp": 3600,
+    "minTime": 10
+   },
+   "label": "seuils 1e6/10/3/1000/1e6 passif≥10 prio co_horizon+co_hawking cher",
+   "score": 8856,
+   "ev": {
+    "L1 #1": 593,
+    "L1 #10": 5638,
+    "L2 #1": 6239,
+    "L2 #10": 8835,
+    "L3 #1": 8856
+   },
+   "final": {
+    "dustLog": 1,
+    "layers": 4,
+    "resets": {
+     "1": 13,
+     "2": 11,
+     "3": 1,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 8856
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 3601,
+     "dust": 18.860006107254033,
+     "L1": 1.0413926851582251,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 5401,
+     "dust": 43.96007214908626,
+     "L1": 4.302936699704867,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 7201,
+     "dust": 28.275825047761696,
+     "L1": 2.2728391051841257,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     1000000,
+     10,
+     3,
+     1000,
+     1000000
+    ],
+    "hawkHold": 0,
+    "prio": [
+     "co_horizon",
+     "co_hawking"
+    ],
+    "thrift": 0,
+    "expensiveFirst": true,
+    "chalOrder": [
+     "c5",
+     "c6",
+     "c2",
+     "c1",
+     "c4",
+     "c3"
+    ],
+    "chalGiveUp": 3600,
+    "minTime": 10
+   },
+   "label": "seuils 1e6/10/3/1000/1e6 prio co_horizon+co_hawking cher",
+   "score": 8856,
+   "ev": {
+    "L1 #1": 593,
+    "L1 #10": 5638,
+    "L2 #1": 6239,
+    "L2 #10": 8835,
+    "L3 #1": 8856
+   },
+   "final": {
+    "dustLog": 1,
+    "layers": 4,
+    "resets": {
+     "1": 13,
+     "2": 11,
+     "3": 1,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 8856
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 3601,
+     "dust": 18.860006107254033,
+     "L1": 1.0413926851582251,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 5401,
+     "dust": 43.96007214908626,
+     "L1": 4.302936699704867,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 7201,
+     "dust": 28.275825047761696,
+     "L1": 2.2728391051841257,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     1000000,
+     10,
+     3,
+     1000,
+     100
+    ],
+    "hawkHold": 10,
+    "prio": [
+     "co_horizon",
+     "co_hawking"
+    ],
+    "thrift": 0,
+    "expensiveFirst": true,
+    "chalOrder": [
+     "c5",
+     "c3",
+     "c6",
+     "c1",
+     "c2",
+     "c4"
+    ],
+    "chalGiveUp": 3600,
+    "minTime": 10
+   },
+   "label": "seuils 1e6/10/3/1000/100 passif≥10 prio co_horizon+co_hawking cher",
+   "score": 8856,
+   "ev": {
+    "L1 #1": 593,
+    "L1 #10": 5638,
+    "L2 #1": 6239,
+    "L2 #10": 8835,
+    "L3 #1": 8856
+   },
+   "final": {
+    "dustLog": 1,
+    "layers": 4,
+    "resets": {
+     "1": 13,
+     "2": 11,
+     "3": 1,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 8856
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 3601,
+     "dust": 18.860006107254033,
+     "L1": 1.0413926851582251,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 5401,
+     "dust": 43.96007214908626,
+     "L1": 4.302936699704867,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 7201,
+     "dust": 28.275825047761696,
+     "L1": 2.2728391051841257,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     1000000,
+     1000000,
+     1,
+     1000,
+     "rate"
+    ],
+    "hawkHold": 0,
+    "prio": [
+     "co_hawking",
+     "co_spaghetti"
+    ],
+    "thrift": 0,
+    "expensiveFirst": false,
+    "chalOrder": [
+     "c3",
+     "c2",
+     "c6",
+     "c5",
+     "c1",
+     "c4"
+    ],
+    "chalGiveUp": 7200,
+    "minTime": 30
+   },
+   "label": "seuils 1e6/1e6/1/1000/R prio co_hawking+co_spaghetti",
+   "score": 8875,
+   "ev": {
+    "L1 #1": 593,
+    "L1 #10": 5658,
+    "L2 #1": 5659,
+    "L3 #1": 8875
+   },
+   "final": {
+    "dustLog": 1,
+    "layers": 4,
+    "resets": {
+     "1": 15,
+     "2": 5,
+     "3": 1,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 8875
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 3601,
+     "dust": 20.364200655181282,
+     "L1": 1.113943352306837,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 5401,
+     "dust": 57.20018935309191,
+     "L1": 7.781730105874787,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 7201,
+     "dust": 46.55888252008527,
+     "L1": 7.367021851802262,
+     "L2": 0.3010299956639812,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     1000000,
+     10,
+     100,
+     1000,
+     1000000
+    ],
+    "hawkHold": 10,
+    "prio": [
+     "co_hawking",
+     "co_spaghetti"
+    ],
+    "thrift": 0,
+    "expensiveFirst": false,
+    "chalOrder": [
+     "c1",
+     "c6",
+     "c4",
+     "c2",
+     "c5",
+     "c3"
+    ],
+    "chalGiveUp": 1800,
+    "minTime": 10
+   },
+   "label": "seuils 1e6/10/100/1000/1e6 passif≥10 prio co_hawking+co_spaghetti",
+   "score": 9006,
+   "ev": {
+    "L1 #1": 593,
+    "L1 #10": 5658,
+    "L2 #1": 5659,
+    "L2 #10": 8995,
+    "L3 #1": 9006
+   },
+   "final": {
+    "dustLog": 1,
+    "layers": 4,
+    "resets": {
+     "1": 15,
+     "2": 10,
+     "3": 1,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 9006
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 5401,
+     "dust": 57.20018935309191,
+     "L1": 7.781730105874787,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 7201,
+     "dust": 46.55888252008527,
+     "L1": 7.367021851802262,
+     "L2": 0.3010299956639812,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 9001,
+     "dust": 305.4059266230082,
+     "L1": 106.21131138615038,
+     "L2": 16.029743438881663,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     1000000,
+     100,
+     1000000,
+     1000000,
+     "rate"
+    ],
+    "hawkHold": 3,
+    "prio": [
+     "co_hawking"
+    ],
+    "thrift": 0,
+    "expensiveFirst": false,
+    "chalOrder": [
+     "c6",
+     "c1",
+     "c5",
+     "c4",
+     "c3",
+     "c2"
+    ],
+    "chalGiveUp": 7200,
+    "minTime": 30
+   },
+   "label": "seuils 1e6/100/1e6/1e6/R passif≥3 prio co_hawking",
+   "score": 9961,
+   "ev": {
+    "L1 #1": 593,
+    "L1 #10": 5658,
+    "L2 #1": 5659,
+    "L3 #1": 9961
+   },
+   "final": {
+    "dustLog": 1,
+    "layers": 4,
+    "resets": {
+     "1": 18,
+     "2": 7,
+     "3": 1,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 9961
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 5401,
+     "dust": 57.20018935309191,
+     "L1": 7.781730105874787,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 7201,
+     "dust": 46.7584653069253,
+     "L1": 5.1745685620921975,
+     "L2": 0.6020599913279624,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 9001,
+     "dust": 17.750876364831626,
+     "L1": 0.4578818967339924,
+     "L2": 0.3010299956639812,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     1000000,
+     100,
+     1000000,
+     "rate",
+     "rate"
+    ],
+    "hawkHold": 3,
+    "prio": [
+     "co_hawking"
+    ],
+    "thrift": 0,
+    "expensiveFirst": false,
+    "chalOrder": [
+     "c6",
+     "c1",
+     "c5",
+     "c4",
+     "c3",
+     "c2"
+    ],
+    "chalGiveUp": 7200,
+    "minTime": 30
+   },
+   "label": "seuils 1e6/100/1e6/R/R passif≥3 prio co_hawking",
+   "score": 9961,
+   "ev": {
+    "L1 #1": 593,
+    "L1 #10": 5658,
+    "L2 #1": 5659,
+    "L3 #1": 9961
+   },
+   "final": {
+    "dustLog": 1,
+    "layers": 4,
+    "resets": {
+     "1": 18,
+     "2": 7,
+     "3": 1,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 9961
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 5401,
+     "dust": 57.20018935309191,
+     "L1": 7.781730105874787,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 7201,
+     "dust": 46.7584653069253,
+     "L1": 5.1745685620921975,
+     "L2": 0.6020599913279624,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 9001,
+     "dust": 17.750876364831626,
+     "L1": 0.4578818967339924,
+     "L2": 0.3010299956639812,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     1000000,
+     10,
+     100,
+     1000,
+     1000000
+    ],
+    "hawkHold": 10,
+    "prio": [
+     "co_hawking"
+    ],
+    "thrift": 0,
+    "expensiveFirst": false,
+    "chalOrder": [
+     "c1",
+     "c6",
+     "c4",
+     "c2",
+     "c5",
+     "c3"
+    ],
+    "chalGiveUp": 1800,
+    "minTime": 10
+   },
+   "label": "seuils 1e6/10/100/1000/1e6 passif≥10 prio co_hawking",
+   "score": 9970,
+   "ev": {
+    "L1 #1": 593,
+    "L1 #10": 5658,
+    "L2 #1": 5659,
+    "L2 #10": 9949,
+    "L3 #1": 9970
+   },
+   "final": {
+    "dustLog": 1,
+    "layers": 4,
+    "resets": {
+     "1": 18,
+     "2": 11,
+     "3": 1,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 9970
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 5401,
+     "dust": 57.20018935309191,
+     "L1": 7.781730105874787,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 7201,
+     "dust": 46.7584653069253,
+     "L1": 5.1745685620921975,
+     "L2": 0.6020599913279624,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 9001,
+     "dust": 17.750876364831626,
+     "L1": 0.4578818967339924,
+     "L2": 0.3010299956639812,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     1,
+     "rate",
+     100,
+     "rate",
+     1000000
+    ],
+    "hawkHold": 0,
+    "prio": [
+     "sn_nova",
+     "sn_mass"
+    ],
+    "thrift": 0,
+    "expensiveFirst": false,
+    "chalOrder": [
+     "c2",
+     "c6",
+     "c1",
+     "c5",
+     "c3",
+     "c4"
+    ],
+    "chalGiveUp": 7200,
+    "minTime": 5
+   },
+   "label": "seuils 1/R/100/R/1e6 prio sn_nova+sn_mass",
+   "score": 10384,
+   "ev": {
+    "L1 #1": 593,
+    "L1 #10": 4214,
+    "L1 #100": 9981,
+    "L2 #1": 10236,
+    "L3 #1": 10384
+   },
+   "final": {
+    "dustLog": 1,
+    "layers": 4,
+    "resets": {
+     "1": 128,
+     "2": 3,
+     "3": 1,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 10384
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 5401,
+     "dust": 20.95848230402698,
+     "L1": 2.53655844257153,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 7201,
+     "dust": 19.367016797970518,
+     "L1": 2.3483048630481607,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 9001,
+     "dust": 33.523720215357095,
+     "L1": 5.84648741882196,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     100,
+     1,
+     1000,
+     "rate",
+     3
+    ],
+    "hawkHold": 10,
+    "prio": [
+     "co_horizon",
+     "co_hawking"
+    ],
+    "thrift": 0,
+    "expensiveFirst": false,
+    "chalOrder": [
+     "c5",
+     "c3",
+     "c2",
+     "c4",
+     "c1",
+     "c6"
+    ],
+    "chalGiveUp": 7200,
+    "minTime": 5
+   },
+   "label": "seuils 100/1/1000/R/3 passif≥10 prio co_horizon+co_hawking",
+   "score": 10492,
+   "ev": {
+    "L1 #1": 593,
+    "L1 #10": 4582,
+    "L2 #1": 4866,
+    "L2 #10": 10216,
+    "L3 #1": 10492
+   },
+   "final": {
+    "dustLog": 1,
+    "layers": 4,
+    "resets": {
+     "1": 58,
+     "2": 28,
+     "3": 1,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 10492
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 5401,
+     "dust": 17.850330127322067,
+     "L1": 0,
+     "L2": 0,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 7201,
+     "dust": 41.4966747904672,
+     "L1": 6.9762536163909035,
+     "L2": 0.3010299956639812,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 9001,
+     "dust": 19.992527857977333,
+     "L1": 0,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     100,
+     100,
+     "rate",
+     100,
+     1000
+    ],
+    "hawkHold": 1,
+    "prio": [
+     "sn_gravity",
+     "sn_remnant",
+     "sn_mass"
+    ],
+    "thrift": 0,
+    "expensiveFirst": false,
+    "chalOrder": [
+     "c5",
+     "c3",
+     "c6",
+     "c4",
+     "c1",
+     "c2"
+    ],
+    "chalGiveUp": 7200,
+    "minTime": 30
+   },
+   "label": "seuils 100/100/R/100/1000 passif≥1 prio sn_gravity+sn_remnant+sn_mass",
+   "score": 11173,
+   "ev": {
+    "L1 #1": 593,
+    "L1 #10": 5188,
+    "L2 #1": 5589,
+    "L3 #1": 11173
+   },
+   "final": {
+    "dustLog": 1,
+    "layers": 4,
+    "resets": {
+     "1": 51,
+     "2": 7,
+     "3": 1,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 11173
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 7201,
+     "dust": 7.9523951799995585,
+     "L1": null,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 9001,
+     "dust": 13.178315487929531,
+     "L1": null,
+     "L2": 0,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 10801,
+     "dust": 20.533756123107135,
+     "L1": 2.8651039746411313,
+     "L2": 0.3010299956639812,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     1000,
+     100,
+     10,
+     10,
+     10
+    ],
+    "hawkHold": 1,
+    "prio": [
+     "co_hawking"
+    ],
+    "thrift": 0,
+    "chalOrder": [
+     "c1",
+     "c2",
+     "c3",
+     "c4",
+     "c5",
+     "c6"
+    ],
+    "minTime": 5
+   },
+   "label": "seuils 1000/100/10/10/10 passif≥1 prio co_hawking",
+   "score": 11227,
+   "ev": {
+    "L1 #1": 593,
+    "L1 #10": 4927,
+    "L2 #1": 4928,
+    "L2 #10": 11206,
+    "L3 #1": 11227
+   },
+   "final": {
+    "dustLog": 1,
+    "layers": 4,
+    "resets": {
+     "1": 32,
+     "2": 11,
+     "3": 1,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 11227
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 7201,
+     "dust": 8.044038153889367,
+     "L1": null,
+     "L2": 0.3010299956639812,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 9001,
+     "dust": 11.093496578240204,
+     "L1": 0,
+     "L2": 0.47712125471966244,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 10801,
+     "dust": 19.82310380115549,
+     "L1": 4.672947135346503,
+     "L2": 0.6020599913279624,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     1000000,
+     1000000,
+     1,
+     1000,
+     "rate"
+    ],
+    "hawkHold": 3,
+    "prio": [
+     "in_hawk",
+     "in_ipmult"
+    ],
+    "thrift": 0,
+    "expensiveFirst": false,
+    "chalOrder": [
+     "c3",
+     "c2",
+     "c6",
+     "c5",
+     "c1",
+     "c4"
+    ],
+    "chalGiveUp": 7200,
+    "minTime": 30
+   },
+   "label": "seuils 1e6/1e6/1/1000/R passif≥3 prio in_hawk+in_ipmult",
+   "score": 11822,
+   "ev": {
+    "L1 #1": 593,
+    "L1 #10": 5658,
+    "L2 #1": 5659,
+    "L3 #1": 11822
+   },
+   "final": {
+    "dustLog": 1,
+    "layers": 4,
+    "resets": {
+     "1": 25,
+     "2": 7,
+     "3": 1,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 11822
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 7201,
+     "dust": 46.63399560539309,
+     "L1": 6.281416105305014,
+     "L2": 0,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 9001,
+     "dust": 5.156255307556354,
+     "L1": null,
+     "L2": 0,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 10801,
+     "dust": 20.325664072846664,
+     "L1": 0.47712125471966216,
+     "L2": 0.6020599913279624,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     100,
+     1,
+     10,
+     1000,
+     100
+    ],
+    "hawkHold": 1,
+    "prio": [
+     "sn_gravity",
+     "sn_remnant",
+     "sn_mass"
+    ],
+    "thrift": 0.1,
+    "expensiveFirst": false,
+    "chalOrder": [
+     "c2",
+     "c1",
+     "c6",
+     "c4",
+     "c5",
+     "c3"
+    ],
+    "chalGiveUp": 7200,
+    "minTime": 30
+   },
+   "label": "seuils 100/1/10/1000/100 passif≥1 prio sn_gravity+sn_remnant+sn_mass éco0.1",
+   "score": 12079,
+   "ev": {
+    "L1 #1": 593,
+    "L1 #10": 5188,
+    "L2 #1": 5535,
+    "L2 #10": 11976,
+    "L3 #1": 12079
+   },
+   "final": {
+    "dustLog": 1,
+    "layers": 4,
+    "resets": {
+     "1": 42,
+     "2": 13,
+     "3": 1,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 12079
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 7201,
+     "dust": 33.36933848277689,
+     "L1": 4.88024177589548,
+     "L2": 0,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 9001,
+     "dust": 2.827135998382851,
+     "L1": null,
+     "L2": 0.47712125471966244,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 10801,
+     "dust": 15.110383214026518,
+     "L1": 0.6989700043360189,
+     "L2": 0.6020599913279624,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     1000000,
+     "rate",
+     1,
+     "rate",
+     3
+    ],
+    "hawkHold": 3,
+    "prio": null,
+    "thrift": 0,
+    "expensiveFirst": false,
+    "chalOrder": [
+     "c2",
+     "c5",
+     "c1",
+     "c3",
+     "c4",
+     "c6"
+    ],
+    "chalGiveUp": 7200,
+    "minTime": 10
+   },
+   "label": "seuils 1e6/R/1/R/3 passif≥3",
+   "score": 12083,
+   "ev": {
+    "L1 #1": 593,
+    "L1 #10": 5658,
+    "L2 #1": 12066,
+    "L3 #1": 12083
+   },
+   "final": {
+    "dustLog": 1,
+    "layers": 4,
+    "resets": {
+     "1": 22,
+     "2": 1,
+     "3": 1,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 12083
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 7201,
+     "dust": 136.68758267391246,
+     "L1": 30.422733722723493,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 9001,
+     "dust": 184.6398894275034,
+     "L1": 46.90242409192326,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 10801,
+     "dust": 199.90979269176734,
+     "L1": 53.75216725780765,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     1000000,
+     1,
+     1000000,
+     100,
+     "rate"
+    ],
+    "hawkHold": 0,
+    "prio": [
+     "sn_gravity",
+     "sn_remnant",
+     "sn_mass"
+    ],
+    "thrift": 0,
+    "expensiveFirst": true,
+    "chalOrder": [
+     "c2",
+     "c1",
+     "c4",
+     "c3",
+     "c6",
+     "c5"
+    ],
+    "chalGiveUp": 7200,
+    "minTime": 10
+   },
+   "label": "seuils 1e6/1/1e6/100/R prio sn_gravity+sn_remnant+sn_mass cher",
+   "score": 12627,
+   "ev": {
+    "L1 #1": 593,
+    "L1 #10": 5617,
+    "L2 #1": 6784,
+    "L2 #10": 12353,
+    "L3 #1": 12627
+   },
+   "final": {
+    "dustLog": 1,
+    "layers": 4,
+    "resets": {
+     "1": 20,
+     "2": 30,
+     "3": 1,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 12627
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 9001,
+     "dust": 26.10899352364065,
+     "L1": 2.066437746453992,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 10801,
+     "dust": 12.396256980533938,
+     "L1": null,
+     "L2": 0,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 12601,
+     "dust": 297.7039427400093,
+     "L1": 101.3241085757084,
+     "L2": 14.630488757747477,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     10,
+     3,
+     1,
+     100,
+     100
+    ],
+    "hawkHold": 3,
+    "prio": [
+     "sn_nova",
+     "sn_mass"
+    ],
+    "thrift": 0,
+    "expensiveFirst": false,
+    "chalOrder": [
+     "c6",
+     "c4",
+     "c3",
+     "c2",
+     "c5",
+     "c1"
+    ],
+    "chalGiveUp": 3600,
+    "minTime": 5
+   },
+   "label": "seuils 10/3/1/100/100 passif≥3 prio sn_nova+sn_mass",
+   "score": 13249,
+   "ev": {
+    "L1 #1": 593,
+    "L1 #10": 4161,
+    "L2 #1": 4550,
+    "L2 #10": 13148,
+    "L3 #1": 13249
+   },
+   "final": {
+    "dustLog": 1,
+    "layers": 4,
+    "resets": {
+     "1": 87,
+     "2": 19,
+     "3": 1,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 13249
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 9001,
+     "dust": 23.74162893008882,
+     "L1": 2.247973266361807,
+     "L2": 0,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 10801,
+     "dust": 14.70784137430953,
+     "L1": 2.164352855784437,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 12601,
+     "dust": 3.5,
+     "L1": 3.8087509723495945,
+     "L2": 0,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     1000000,
+     "rate",
+     1,
+     100,
+     1000000
+    ],
+    "hawkHold": 10,
+    "prio": [
+     "sn_gravity",
+     "sn_remnant",
+     "sn_mass"
+    ],
+    "thrift": 0,
+    "expensiveFirst": false,
+    "chalOrder": [
+     "c5",
+     "c3",
+     "c1",
+     "c4",
+     "c2",
+     "c6"
+    ],
+    "chalGiveUp": 3600,
+    "minTime": 5
+   },
+   "label": "seuils 1e6/R/1/100/1e6 passif≥10 prio sn_gravity+sn_remnant+sn_mass",
+   "score": 13386,
+   "ev": {
+    "L1 #1": 593,
+    "L1 #10": 5617,
+    "L2 #1": 13369,
+    "L3 #1": 13386
+   },
+   "final": {
+    "dustLog": 1,
+    "layers": 4,
+    "resets": {
+     "1": 24,
+     "2": 1,
+     "3": 1,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 13386
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 9001,
+     "dust": 169.13033358684862,
+     "L1": 43.077159967727404,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 10801,
+     "dust": 188.64680997576377,
+     "L1": 52.19106875190905,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 12601,
+     "dust": 193.69534379136775,
+     "L1": 54.913994265431704,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     10,
+     1000000,
+     1,
+     1000,
+     "rate"
+    ],
+    "hawkHold": 10,
+    "prio": [
+     "sn_nova",
+     "sn_mass"
+    ],
+    "thrift": 0,
+    "expensiveFirst": false,
+    "chalOrder": [
+     "c3",
+     "c2",
+     "c6",
+     "c5",
+     "c1",
+     "c4"
+    ],
+    "chalGiveUp": 7200,
+    "minTime": 30
+   },
+   "label": "seuils 10/1e6/1/1000/R passif≥10 prio sn_nova+sn_mass",
+   "score": 13510,
+   "ev": {
+    "L1 #1": 593,
+    "L1 #10": 4161,
+    "L2 #1": 4550,
+    "L3 #1": 13510
+   },
+   "final": {
+    "dustLog": 1,
+    "layers": 4,
+    "resets": {
+     "1": 83,
+     "2": 6,
+     "3": 1,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 13510
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 9001,
+     "dust": 23.74162893008882,
+     "L1": 2.247973266361807,
+     "L2": 0,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 10801,
+     "dust": 14.70784137430953,
+     "L1": 2.164352855784437,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 12601,
+     "dust": 26.534847677201235,
+     "L1": 2.727541257028556,
+     "L2": 0,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     100,
+     1,
+     10,
+     "rate",
+     100
+    ],
+    "hawkHold": 3,
+    "prio": [
+     "co_density",
+     "co_hawking"
+    ],
+    "thrift": 0.5,
+    "expensiveFirst": false,
+    "chalOrder": [
+     "c3",
+     "c6",
+     "c4",
+     "c5",
+     "c1",
+     "c2"
+    ],
+    "chalGiveUp": 1800,
+    "minTime": 5
+   },
+   "label": "seuils 100/1/10/R/100 passif≥3 prio co_density+co_hawking éco0.5",
+   "score": 14012,
+   "ev": {
+    "L1 #1": 593,
+    "L1 #10": 4760,
+    "L2 #1": 5174,
+    "L2 #10": 13770,
+    "L3 #1": 14012
+   },
+   "final": {
+    "dustLog": 1,
+    "layers": 4,
+    "resets": {
+     "1": 55,
+     "2": 25,
+     "3": 1,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 14012
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 9001,
+     "dust": 18.65993983454377,
+     "L1": 0,
+     "L2": 0.6020599913279624,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 10801,
+     "dust": 0.9231589671142916,
+     "L1": -0.050609993355087424,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 12601,
+     "dust": 15.568992316226446,
+     "L1": 1.522965595491982,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     10,
+     10,
+     10,
+     10,
+     10
+    ],
+    "hawkHold": 0,
+    "prio": null,
+    "thrift": 0,
+    "chalOrder": [
+     "c1",
+     "c2",
+     "c3",
+     "c4",
+     "c5",
+     "c6"
+    ],
+    "minTime": 5
+   },
+   "label": "seuils 10/10/10/10/10",
+   "score": 14693,
+   "ev": {
+    "L1 #1": 593,
+    "L1 #10": 4157,
+    "L2 #1": 5374,
+    "L1 #100": 14426,
+    "L2 #10": 14652,
+    "L3 #1": 14693
+   },
+   "final": {
+    "dustLog": 1,
+    "layers": 4,
+    "resets": {
+     "1": 117,
+     "2": 13,
+     "3": 1,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 14693
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 10801,
+     "dust": 29.205718660064946,
+     "L1": 4.628542183412569,
+     "L2": 0,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 12601,
+     "dust": 20.690803225105334,
+     "L1": 3.4762517960070336,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 14401,
+     "dust": 33.422003896248334,
+     "L1": 7.736366969247738,
+     "L2": 0,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     1000000,
+     "rate",
+     "rate",
+     10,
+     1000
+    ],
+    "hawkHold": 1,
+    "prio": [
+     "co_hawking"
+    ],
+    "thrift": 0.5,
+    "expensiveFirst": true,
+    "chalOrder": [
+     "c5",
+     "c2",
+     "c6",
+     "c4",
+     "c3",
+     "c1"
+    ],
+    "chalGiveUp": 7200,
+    "minTime": 5
+   },
+   "label": "seuils 1e6/R/R/10/1000 passif≥1 prio co_hawking éco0.5 cher",
+   "score": 14852,
+   "ev": {
+    "L1 #1": 593,
+    "L1 #10": 5760,
+    "L2 #1": 6338,
+    "L3 #1": 14852
+   },
+   "final": {
+    "dustLog": 1,
+    "layers": 4,
+    "resets": {
+     "1": 29,
+     "2": 4,
+     "3": 1,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 14852
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 10801,
+     "dust": 35.265321139721856,
+     "L1": 1.301029995663981,
+     "L2": 0.47712125471966244,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 12601,
+     "dust": 20.03383466553757,
+     "L1": 1.9190780923760724,
+     "L2": 0.6020599913279624,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 14401,
+     "dust": 153.0923471712361,
+     "L1": 36.38287752298352,
+     "L2": 0.6020599913279624,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     100,
+     100,
+     1000000,
+     3,
+     "rate"
+    ],
+    "hawkHold": 0,
+    "prio": null,
+    "thrift": 0,
+    "expensiveFirst": true,
+    "chalOrder": [
+     "c1",
+     "c3",
+     "c5",
+     "c4",
+     "c6",
+     "c2"
+    ],
+    "chalGiveUp": 1800,
+    "minTime": 30
+   },
+   "label": "seuils 100/100/1e6/3/R cher",
+   "score": 16037,
+   "ev": {
+    "L1 #1": 593,
+    "L1 #10": 4868,
+    "L2 #1": 5612,
+    "L3 #1": 16037
+   },
+   "final": {
+    "dustLog": 1,
+    "layers": 4,
+    "resets": {
+     "1": 82,
+     "2": 7,
+     "3": 1,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 16037
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 10801,
+     "dust": 25.13892977987557,
+     "L1": 1.7558748556725026,
+     "L2": 0,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 12601,
+     "dust": 20.577369740596513,
+     "L1": 0.3010299956639812,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 14401,
+     "dust": 13.153179240627075,
+     "L1": null,
+     "L2": 0,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     3,
+     1,
+     1000000,
+     100,
+     100
+    ],
+    "hawkHold": 3,
+    "prio": [
+     "sn_nova",
+     "sn_mass"
+    ],
+    "thrift": 0,
+    "expensiveFirst": false,
+    "chalOrder": [
+     "c4",
+     "c3",
+     "c6",
+     "c2",
+     "c1",
+     "c5"
+    ],
+    "chalGiveUp": 7200,
+    "minTime": 10
+   },
+   "label": "seuils 3/1/1e6/100/100 passif≥3 prio sn_nova+sn_mass",
+   "score": 16081,
+   "ev": {
+    "L1 #1": 593,
+    "L1 #10": 4350,
+    "L2 #1": 5129,
+    "L1 #100": 15285,
+    "L2 #10": 15812,
+    "L3 #1": 16081
+   },
+   "final": {
+    "dustLog": 1,
+    "layers": 4,
+    "resets": {
+     "1": 155,
+     "2": 30,
+     "3": 1,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 16081
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 10801,
+     "dust": 32.57192315948419,
+     "L1": 5.293755783341023,
+     "L2": 0,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 12601,
+     "dust": 16.341551421010784,
+     "L1": 1.9395192526186185,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 14401,
+     "dust": 18.966175281740433,
+     "L1": 1.3010299956639813,
+     "L2": 0,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     10,
+     1,
+     100,
+     10,
+     "rate"
+    ],
+    "hawkHold": 0,
+    "prio": [
+     "in_hawk",
+     "in_ipmult"
+    ],
+    "thrift": 0,
+    "expensiveFirst": true,
+    "chalOrder": [
+     "c4",
+     "c5",
+     "c1",
+     "c6",
+     "c2",
+     "c3"
+    ],
+    "chalGiveUp": 3600,
+    "minTime": 30
+   },
+   "label": "seuils 10/1/100/10/R prio in_hawk+in_ipmult cher",
+   "score": 19986,
+   "ev": {
+    "L1 #1": 593,
+    "L1 #10": 4474,
+    "L2 #1": 6512,
+    "L1 #100": 16531,
+    "L2 #10": 19913,
+    "L3 #1": 19986
+   },
+   "final": {
+    "dustLog": 1,
+    "layers": 4,
+    "resets": {
+     "1": 155,
+     "2": 12,
+     "3": 1,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 19986
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 16201,
+     "dust": 14.963589802715342,
+     "L1": 1.4471580313422192,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 18001,
+     "dust": 13.25295367375191,
+     "L1": null,
+     "L2": 0,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 19801,
+     "dust": 33.22168016819423,
+     "L1": 5.574630759218523,
+     "L2": 0.3010299956639812,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     1000,
+     "rate",
+     1000000,
+     100,
+     3
+    ],
+    "hawkHold": 0,
+    "prio": [
+     "in_hawk",
+     "in_ipmult"
+    ],
+    "thrift": 0.5,
+    "expensiveFirst": false,
+    "chalOrder": [
+     "c2",
+     "c1",
+     "c6",
+     "c5",
+     "c4",
+     "c3"
+    ],
+    "chalGiveUp": 1800,
+    "minTime": 10
+   },
+   "label": "seuils 1000/R/1e6/100/3 prio in_hawk+in_ipmult éco0.5",
+   "score": 21409,
+   "ev": {
+    "L1 #1": 593,
+    "L1 #10": 4960,
+    "L2 #1": 21393,
+    "L3 #1": 21409
+   },
+   "final": {
+    "dustLog": 1,
+    "layers": 4,
+    "resets": {
+     "1": 47,
+     "2": 1,
+     "3": 1,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 21409
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 16201,
+     "dust": 190.13009143450782,
+     "L1": 56.99949265065157,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 18001,
+     "dust": 189.710060747611,
+     "L1": 57.2276329367994,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 19801,
+     "dust": 190.02688526586758,
+     "L1": 57.39099741880322,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     1,
+     1000,
+     1000000,
+     10,
+     1000
+    ],
+    "hawkHold": 1,
+    "prio": [
+     "sn_nova",
+     "sn_mass"
+    ],
+    "thrift": 0.5,
+    "expensiveFirst": true,
+    "chalOrder": [
+     "c1",
+     "c2",
+     "c3",
+     "c4",
+     "c5",
+     "c6"
+    ],
+    "chalGiveUp": 1800,
+    "minTime": 10
+   },
+   "label": "seuils 1/1000/1e6/10/1000 passif≥1 prio sn_nova+sn_mass éco0.5 cher",
+   "score": 23688,
+   "ev": {
+    "L1 #1": 593,
+    "L1 #10": 4186,
+    "L2 #1": 8739,
+    "L1 #100": 13403,
+    "L3 #1": 23688
+   },
+   "final": {
+    "dustLog": 1,
+    "layers": 4,
+    "resets": {
+     "1": 322,
+     "2": 9,
+     "3": 1,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 23688
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 19801,
+     "dust": 22.267214566243464,
+     "L1": 2.5211380837040362,
+     "L2": 0.3010299956639812,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 21601,
+     "dust": 16.174614502792753,
+     "L1": 1.7481880270062002,
+     "L2": 0.47712125471966244,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 23401,
+     "dust": 13.5,
+     "L1": 10.827400696980945,
+     "L2": 0.3010299956639812,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     3,
+     1000,
+     100,
+     3,
+     "rate"
+    ],
+    "hawkHold": 0,
+    "prio": [
+     "co_hawking",
+     "co_spaghetti"
+    ],
+    "thrift": 0,
+    "expensiveFirst": true,
+    "chalOrder": [
+     "c3",
+     "c1",
+     "c4",
+     "c6",
+     "c5",
+     "c2"
+    ],
+    "chalGiveUp": 1800,
+    "minTime": 10
+   },
+   "label": "seuils 3/1000/100/3/R prio co_hawking+co_spaghetti cher",
+   "score": 27981,
+   "ev": {
+    "L1 #1": 593,
+    "L1 #10": 4530,
+    "L2 #1": 9313,
+    "L1 #100": 14289,
+    "L3 #1": 27981
+   },
+   "final": {
+    "dustLog": 1,
+    "layers": 4,
+    "resets": {
+     "1": 306,
+     "2": 9,
+     "3": 1,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 27981
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 23401,
+     "dust": 18.211818407355732,
+     "L1": 1.9777236052888478,
+     "L2": 0,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 25201,
+     "dust": 11.225659159266106,
+     "L1": null,
+     "L2": 0.3010299956639812,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 27001,
+     "dust": 21.918745406739525,
+     "L1": 3.3003780648707024,
+     "L2": 0.3010299956639812,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     1,
+     1000,
+     "rate",
+     "rate",
+     1000
+    ],
+    "hawkHold": 3,
+    "prio": [
+     "co_hawking",
+     "co_spaghetti"
+    ],
+    "thrift": 0.5,
+    "expensiveFirst": false,
+    "chalOrder": [
+     "c1",
+     "c2",
+     "c3",
+     "c6",
+     "c5",
+     "c4"
+    ],
+    "chalGiveUp": 7200,
+    "minTime": 10
+   },
+   "label": "seuils 1/1000/R/R/1000 passif≥3 prio co_hawking+co_spaghetti éco0.5",
+   "score": 28633,
+   "ev": {
+    "L1 #1": 593,
+    "L1 #10": 3990,
+    "L2 #1": 11678,
+    "L1 #100": 13825,
+    "L3 #1": 28633
+   },
+   "final": {
+    "dustLog": 1,
+    "layers": 4,
+    "resets": {
+     "1": 444,
+     "2": 9,
+     "3": 1,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 28633
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 23401,
+     "dust": 6.097432585469647,
+     "L1": 0.6989700043360189,
+     "L2": 0.47712125471966244,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 25201,
+     "dust": 17.65842481688008,
+     "L1": 5.282721783011316,
+     "L2": 0.47712125471966244,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 27001,
+     "dust": 14.806457704674152,
+     "L1": 2.271841606536499,
+     "L2": 0.3010299956639812,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     "rate",
+     "rate",
+     "rate",
+     "rate",
+     "rate"
+    ],
+    "hawkHold": 0,
+    "prio": null,
+    "thrift": 0,
+    "chalOrder": [
+     "c1",
+     "c2",
+     "c3",
+     "c4",
+     "c5",
+     "c6"
+    ],
+    "minTime": 5
+   },
+   "label": "seuils R/R/R/R/R",
+   "score": 57600,
+   "ev": {
+    "L1 #1": 653,
+    "L1 #10": 4076,
+    "L1 #100": 18085
+   },
+   "final": {
+    "dustLog": 11.661768617989178,
+    "layers": 4,
+    "resets": {
+     "1": 252,
+     "2": 0,
+     "3": 0,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 28800
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 23401,
+     "dust": 15.192083748841078,
+     "L1": 1.0791812460476264,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 25201,
+     "dust": 8.422709984278514,
+     "L1": 0.47712125471966604,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 27001,
+     "dust": 11.259013602498262,
+     "L1": 2.2095150145426308,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     "rate",
+     3,
+     1000000,
+     100,
+     100
+    ],
+    "hawkHold": 0,
+    "prio": [
+     "co_density",
+     "co_hawking"
+    ],
+    "thrift": 0,
+    "expensiveFirst": false,
+    "chalOrder": [
+     "c5",
+     "c2",
+     "c6",
+     "c4",
+     "c3",
+     "c1"
+    ],
+    "chalGiveUp": 3600,
+    "minTime": 10
+   },
+   "label": "seuils R/3/1e6/100/100 prio co_density+co_hawking",
+   "score": 57600,
+   "ev": {
+    "L1 #1": 653,
+    "L1 #10": 4076,
+    "L1 #100": 18085
+   },
+   "final": {
+    "dustLog": 11.661768617989178,
+    "layers": 4,
+    "resets": {
+     "1": 252,
+     "2": 0,
+     "3": 0,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 28800
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 23401,
+     "dust": 15.192083748841078,
+     "L1": 1.0791812460476264,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 25201,
+     "dust": 8.422709984278514,
+     "L1": 0.47712125471966604,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 27001,
+     "dust": 11.259013602498262,
+     "L1": 2.2095150145426308,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     "rate",
+     "rate",
+     1,
+     10,
+     10
+    ],
+    "hawkHold": 1,
+    "prio": [
+     "co_horizon",
+     "co_hawking"
+    ],
+    "thrift": 0,
+    "expensiveFirst": true,
+    "chalOrder": [
+     "c3",
+     "c4",
+     "c1",
+     "c5",
+     "c2",
+     "c6"
+    ],
+    "chalGiveUp": 3600,
+    "minTime": 5
+   },
+   "label": "seuils R/R/1/10/10 passif≥1 prio co_horizon+co_hawking cher",
+   "score": 57600,
+   "ev": {
+    "L1 #1": 653,
+    "L1 #10": 4076,
+    "L1 #100": 18085
+   },
+   "final": {
+    "dustLog": 11.661768617989178,
+    "layers": 4,
+    "resets": {
+     "1": 252,
+     "2": 0,
+     "3": 0,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 28800
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 23401,
+     "dust": 15.192083748841078,
+     "L1": 1.0791812460476264,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 25201,
+     "dust": 8.422709984278514,
+     "L1": 0.47712125471966604,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 27001,
+     "dust": 11.259013602498262,
+     "L1": 2.2095150145426308,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     "rate",
+     10,
+     "rate",
+     1,
+     1
+    ],
+    "hawkHold": 1,
+    "prio": null,
+    "thrift": 0,
+    "expensiveFirst": true,
+    "chalOrder": [
+     "c2",
+     "c1",
+     "c4",
+     "c6",
+     "c5",
+     "c3"
+    ],
+    "chalGiveUp": 1800,
+    "minTime": 5
+   },
+   "label": "seuils R/10/R/1/1 passif≥1 cher",
+   "score": 57600,
+   "ev": {
+    "L1 #1": 653,
+    "L1 #10": 4076,
+    "L1 #100": 18085
+   },
+   "final": {
+    "dustLog": 11.661768617989178,
+    "layers": 4,
+    "resets": {
+     "1": 252,
+     "2": 0,
+     "3": 0,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 28800
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 23401,
+     "dust": 15.192083748841078,
+     "L1": 1.0791812460476264,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 25201,
+     "dust": 8.422709984278514,
+     "L1": 0.47712125471966604,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 27001,
+     "dust": 11.259013602498262,
+     "L1": 2.2095150145426308,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     "rate",
+     100,
+     10,
+     3,
+     3
+    ],
+    "hawkHold": 0,
+    "prio": [
+     "co_horizon",
+     "co_hawking"
+    ],
+    "thrift": 0,
+    "expensiveFirst": false,
+    "chalOrder": [
+     "c4",
+     "c1",
+     "c5",
+     "c3",
+     "c2",
+     "c6"
+    ],
+    "chalGiveUp": 7200,
+    "minTime": 5
+   },
+   "label": "seuils R/100/10/3/3 prio co_horizon+co_hawking",
+   "score": 57600,
+   "ev": {
+    "L1 #1": 653,
+    "L1 #10": 4076,
+    "L1 #100": 18085
+   },
+   "final": {
+    "dustLog": 11.661768617989178,
+    "layers": 4,
+    "resets": {
+     "1": 252,
+     "2": 0,
+     "3": 0,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 28800
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 23401,
+     "dust": 15.192083748841078,
+     "L1": 1.0791812460476264,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 25201,
+     "dust": 8.422709984278514,
+     "L1": 0.47712125471966604,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 27001,
+     "dust": 11.259013602498262,
+     "L1": 2.2095150145426308,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     1,
+     100,
+     10,
+     10,
+     100
+    ],
+    "hawkHold": 10,
+    "prio": null,
+    "thrift": 0,
+    "expensiveFirst": false,
+    "chalOrder": [
+     "c6",
+     "c5",
+     "c3",
+     "c4",
+     "c2",
+     "c1"
+    ],
+    "chalGiveUp": 1800,
+    "minTime": 10
+   },
+   "label": "seuils 1/100/10/10/100 passif≥10",
+   "score": 57600,
+   "ev": {
+    "L1 #1": 593,
+    "L1 #10": 3832,
+    "L2 #1": 10923,
+    "L1 #100": 13021
+   },
+   "final": {
+    "dustLog": 20.944459470541723,
+    "layers": 4,
+    "resets": {
+     "1": 348,
+     "2": 3,
+     "3": 0,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 28800
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 23401,
+     "dust": 31.338173065393,
+     "L1": 5.898142441382383,
+     "L2": 0,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 25201,
+     "dust": 6.933014071468695,
+     "L1": 1.0791812460476249,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 27001,
+     "dust": 16.943935624715582,
+     "L1": 1.9867717342662448,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     "rate",
+     3,
+     1000,
+     3,
+     1
+    ],
+    "hawkHold": 0,
+    "prio": [
+     "sn_gravity",
+     "sn_remnant",
+     "sn_mass"
+    ],
+    "thrift": 0,
+    "expensiveFirst": false,
+    "chalOrder": [
+     "c6",
+     "c5",
+     "c1",
+     "c3",
+     "c4",
+     "c2"
+    ],
+    "chalGiveUp": 1800,
+    "minTime": 10
+   },
+   "label": "seuils R/3/1000/3/1 prio sn_gravity+sn_remnant+sn_mass",
+   "score": 57600,
+   "ev": {
+    "L1 #1": 653,
+    "L1 #10": 4561,
+    "L1 #100": 17294
+   },
+   "final": {
+    "dustLog": 11.241403200078548,
+    "layers": 4,
+    "resets": {
+     "1": 246,
+     "2": 0,
+     "3": 0,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 28800
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 23401,
+     "dust": 17.948784091948802,
+     "L1": 2.2041199826559246,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 25201,
+     "dust": 18.539679297834734,
+     "L1": 3.3142886609474975,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 27001,
+     "dust": 18.758364276931456,
+     "L1": 2.0413926851582236,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     1,
+     1000000,
+     1000000,
+     1,
+     10
+    ],
+    "hawkHold": 3,
+    "prio": [
+     "co_hawking",
+     "co_spaghetti"
+    ],
+    "thrift": 0,
+    "expensiveFirst": false,
+    "chalOrder": [
+     "c2",
+     "c3",
+     "c5",
+     "c6",
+     "c4",
+     "c1"
+    ],
+    "chalGiveUp": 3600,
+    "minTime": 5
+   },
+   "label": "seuils 1/1e6/1e6/1/10 passif≥3 prio co_hawking+co_spaghetti",
+   "score": 57600,
+   "ev": {
+    "L1 #1": 593,
+    "L1 #10": 3832,
+    "L2 #1": 10923,
+    "L1 #100": 12739
+   },
+   "final": {
+    "dustLog": 0.943393302908986,
+    "layers": 4,
+    "resets": {
+     "1": 357,
+     "2": 4,
+     "3": 0,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 28800
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 23401,
+     "dust": 20.590953054887784,
+     "L1": 3.617210094557434,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 25201,
+     "dust": 6.339233592596765,
+     "L1": null,
+     "L2": 0,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 27001,
+     "dust": 18.605987728397782,
+     "L1": 2.637489729512511,
+     "L2": 0,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     1,
+     3,
+     1000000,
+     1000000,
+     1
+    ],
+    "hawkHold": 0,
+    "prio": [
+     "co_hawking"
+    ],
+    "thrift": 0,
+    "expensiveFirst": false,
+    "chalOrder": [
+     "c4",
+     "c3",
+     "c1",
+     "c2",
+     "c6",
+     "c5"
+    ],
+    "chalGiveUp": 1800,
+    "minTime": 10
+   },
+   "label": "seuils 1/3/1e6/1e6/1 prio co_hawking",
+   "score": 57600,
+   "ev": {
+    "L1 #1": 593,
+    "L1 #10": 3832,
+    "L2 #1": 10923,
+    "L1 #100": 12739
+   },
+   "final": {
+    "dustLog": 23.606244661239735,
+    "layers": 4,
+    "resets": {
+     "1": 466,
+     "2": 5,
+     "3": 0,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 28800
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 23401,
+     "dust": 3.5,
+     "L1": 1.8325089127062362,
+     "L2": 0.47712125471966244,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 25201,
+     "dust": 20.595770021877748,
+     "L1": 5.189841088681609,
+     "L2": 0.47712125471966244,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 27001,
+     "dust": 9.17284508634856,
+     "L1": 1.6812412373755872,
+     "L2": 0.6020599913279624,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  },
+  {
+   "strat": {
+    "mults": [
+     "rate",
+     3,
+     1,
+     1000,
+     "rate"
+    ],
+    "hawkHold": 3,
+    "prio": [
+     "sn_nova",
+     "sn_mass"
+    ],
+    "thrift": 0,
+    "expensiveFirst": false,
+    "chalOrder": [
+     "c3",
+     "c2",
+     "c6",
+     "c5",
+     "c1",
+     "c4"
+    ],
+    "chalGiveUp": 7200,
+    "minTime": 30
+   },
+   "label": "seuils R/3/1/1000/R passif≥3 prio sn_nova+sn_mass",
+   "score": 57600,
+   "ev": {
+    "L1 #1": 653,
+    "L1 #10": 3636,
+    "L1 #100": 23391
+   },
+   "final": {
+    "dustLog": 6,
+    "layers": 4,
+    "resets": {
+     "1": 177,
+     "2": 0,
+     "3": 0,
+     "4": 0
+    },
+    "chal": 0,
+    "bad": false,
+    "time": 28800
+   },
+   "maxLayers": 4,
+   "samples": [
+    {
+     "t": 23401,
+     "dust": 6.6161413258171455,
+     "L1": 0.6020599913279749,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 25201,
+     "dust": 11.942726583791176,
+     "L1": 0.7781512503836518,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    },
+    {
+     "t": 27001,
+     "dust": 6.175212542894923,
+     "L1": 2.3483048630481607,
+     "L2": null,
+     "L3": null,
+     "L4": null,
+     "layers": 4
+    }
+   ]
+  }
+ ]
+}
