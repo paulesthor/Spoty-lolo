@@ -6,6 +6,7 @@
     <title>Spoti-Lolo</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="tourne-page.css">
+    <link rel="stylesheet" href="transcription.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -47,6 +48,7 @@
             <a href="#random" class="nav-link" data-view="random-view">🎲 Aléatoire</a>
             <a href="#stats" class="nav-link" data-view="stats-view">Statistiques</a>
             <a href="#tournepage" class="nav-link" data-view="tournepage-view"><i class="fas fa-microphone"></i> Tourne-page</a>
+            <a href="#transcription" class="nav-link" data-view="transcription-view"><i class="fas fa-music"></i> Transcrire</a>
             <a href="#settings" class="nav-link" data-view="settings-view"><i class="fas fa-cog"></i> Paramètres</a>
         </nav>
     </header>
@@ -493,6 +495,94 @@
             </div>
         </div>
 
+        <!-- Transcription audio -> partition (bêta) : tout est dans transcription.js / transcription.css -->
+        <div id="transcription-view" class="app-view" style="display:none;">
+            <div class="main-container tr-container">
+                <div class="card tr-card">
+                    <h2 class="tr-title"><i class="fas fa-music"></i> Jouez, l'app écrit la partition</h2>
+                    <p class="tr-intro">Appuyez sur le bouton, jouez votre morceau au piano, puis appuyez sur « J'ai fini » : la partition de ce qui a été entendu s'affiche en dessous.</p>
+                    <button id="tr-listen" class="btn tr-listen-btn">
+                        <i class="fas fa-microphone"></i> Écouter au piano
+                        <small>Posez le téléphone près du piano</small>
+                    </button>
+                    <div id="tr-rec-panel" class="tr-rec-panel" style="display:none;">
+                        <span class="tr-rec-dot"></span>
+                        <strong id="tr-rec-time">0:00</strong>
+                        <div class="tr-level"><div id="tr-rec-level" class="tr-level-fill"></div></div>
+                    </div>
+
+                    <details class="tr-import">
+                        <summary><i class="fas fa-file-audio"></i> Ou partir d'un fichier audio (mp3, m4a, wav…)</summary>
+                        <input type="file" id="tr-file" accept="audio/*">
+                        <div class="tr-row">
+                            <button id="tr-file-go" class="btn" disabled>Écrire la partition de ce fichier</button>
+                        </div>
+                    </details>
+
+                    <div id="tr-source-info" class="tr-source-info"></div>
+                    <audio id="tr-source-audio" controls style="display:none;"></audio>
+                    <div id="tr-progress" class="tr-progress" style="display:none;"></div>
+                    <p id="tr-status" class="tr-status"></p>
+                </div>
+
+                <details class="card tr-card tr-settings">
+                    <summary><i class="fas fa-sliders-h"></i> Réglages de la partition <small>(s'appliquent tout de suite au résultat)</small></summary>
+                    <div class="tr-settings-grid">
+                        <label>Titre<input type="text" id="tr-title"></label>
+                        <label>Sensibilité <strong id="tr-sensitivity-label"></strong>
+                            <input type="range" id="tr-sensitivity" min="1" max="10" value="5">
+                            <small>Plus haut : garde les notes jouées doucement, mais aussi plus de fausses notes.</small>
+                        </label>
+                        <label>Tempo
+                            <select id="tr-tempo-mode"><option value="auto">Détecté automatiquement</option><option value="manual">Je le choisis</option></select>
+                            <input type="number" id="tr-bpm" min="40" max="220" value="100" title="Pulsations par minute">
+                        </label>
+                        <label>Mesure
+                            <select id="tr-time-signature">
+                                <option value="4/4">4/4</option><option value="3/4">3/4 (valse)</option><option value="2/4">2/4 (marche, paso doble)</option>
+                                <option value="6/8">6/8</option><option value="2/2">2/2</option>
+                            </select>
+                        </label>
+                        <label>Précision du rythme
+                            <select id="tr-grid">
+                                <option value="1">Noires (très simplifié)</option>
+                                <option value="0.5" selected>Croches</option>
+                                <option value="0.25">Doubles croches (plus fidèle, plus chargé)</option>
+                            </select>
+                        </label>
+                        <label>Tonalité
+                            <select id="tr-key"><option value="auto">Détectée automatiquement</option></select>
+                        </label>
+                        <label>Portées
+                            <select id="tr-staves">
+                                <option value="piano">Piano : main droite + main gauche</option>
+                                <option value="single">Une seule portée (mélodie)</option>
+                            </select>
+                        </label>
+                        <label>Séparation des mains
+                            <select id="tr-split"></select>
+                            <small>Les notes à partir de cette note vont à la main droite.</small>
+                        </label>
+                    </div>
+                </details>
+
+                <div id="tr-results" class="card tr-card" style="display:none;">
+                    <div id="tr-summary" class="tr-summary"></div>
+                    <div class="tr-row">
+                        <button id="tr-play" class="btn"><i class="fas fa-play"></i> Écouter la transcription</button>
+                    </div>
+                    <canvas id="tr-roll" class="tr-roll" title="Notes entendues (de bas en haut : grave vers aigu)"></canvas>
+                    <div id="tr-score" class="tr-score"></div>
+                    <div class="tr-row tr-exports">
+                        <button id="tr-save" class="btn btn-accent"><i class="fas fa-plus"></i> Ajouter à ma bibliothèque</button>
+                        <button id="tr-export-pdf" class="btn"><i class="fas fa-file-pdf"></i> PDF</button>
+                        <button id="tr-export-midi" class="btn"><i class="fas fa-file-audio"></i> MIDI</button>
+                        <button id="tr-export-xml" class="btn"><i class="fas fa-file-code"></i> MusicXML (MuseScore)</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </main>
 
     <div id="generic-modal" class="modal-overlay">
@@ -546,5 +636,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="app.js"></script>
     <script src="tourne-page.js"></script>
+    <script src="transcription.js"></script>
 </body>
 </html>
