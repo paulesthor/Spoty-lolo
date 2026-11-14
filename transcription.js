@@ -256,7 +256,7 @@
 
     // Une portée -> suite d'événements { start, dur, pitches|null } en seizièmes.
     // Les notes attaquées ensemble forment un accord ; un accord dure jusqu'à
-    // la note suivante (ou moins si toutes ses notes s'arrêtent avant).
+    // la note suivante (ou moins si toutes ses notes s'arrêtent bien avant).
     const staffEvents = (notes, totalUnits) => {
         const byStart = new Map();
         for (const n of notes) {
@@ -271,7 +271,10 @@
             if (s > cursor) events.push({ start: cursor, dur: s - cursor, pitches: null });
             const group = byStart.get(s);
             const next = i + 1 < starts.length ? starts[i + 1] : totalUnits;
-            const end = Math.min(next, Math.max(...group.map(n => Math.round(n.end * DIVISIONS))));
+            let end = Math.min(next, Math.max(...group.map(n => Math.round(n.end * DIVISIONS))));
+            // Petit silence avant la note suivante (moins d'un temps) : c'est
+            // presque toujours une note relâchée un peu tôt, pas une vraie pause
+            if (next - end < DIVISIONS) end = next;
             const dur = Math.max(1, end - s);
             events.push({ start: s, dur, pitches: [...new Set(group.map(n => n.pitch))].sort((a, b) => a - b) });
             cursor = s + dur;
