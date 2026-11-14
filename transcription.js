@@ -148,6 +148,8 @@
     const MINOR_PROFILE = [6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17];
     const FIFTHS_OF_MAJOR = { 0: 0, 7: 1, 2: 2, 9: 3, 4: 4, 11: 5, 6: 6, 1: -5, 8: -4, 3: -3, 10: -2, 5: -1 };
     const NOTE_NAMES_FR = ['Do', 'Do#', 'Ré', 'Mib', 'Mi', 'Fa', 'Fa#', 'Sol', 'Lab', 'La', 'Sib', 'Si'];
+    // Numérotation française des octaves : le Do du milieu du piano est Do3
+    const noteNameFr = (midi) => NOTE_NAMES_FR[midi % 12] + (Math.floor(midi / 12) - 2);
 
     const correlation = (a, b) => {
         const ma = a.reduce((s, v) => s + v, 0) / 12, mb = b.reduce((s, v) => s + v, 0) / 12;
@@ -439,8 +441,7 @@
         // ---------- Options ----------
         KEY_CHOICES.forEach(k => keySel.insertAdjacentHTML('beforeend', `<option value="${k.fifths}">${k.label}</option>`));
         for (let m = 48; m <= 67; m++) {
-            const { step, alter, octave } = spell(m, 0);
-            const name = NOTE_NAMES_FR[m % 12] + (octave);
+            const name = noteNameFr(m);
             splitSel.insertAdjacentHTML('beforeend', `<option value="${m}" ${m === 60 ? 'selected' : ''}>${name}${m === 60 ? ' (Do du milieu)' : ''}</option>`);
         }
         titleInput.value = 'Transcription du ' + new Date().toLocaleDateString('fr-FR');
@@ -601,7 +602,7 @@
                 `<span>Durée <strong>${Math.floor(duration / 60)}:${String(Math.round(duration % 60)).padStart(2, '0')}</strong></span>` +
                 `<span>Tempo ${opts.bpm ? 'choisi' : 'détecté'} <strong>≈ ${state.quant.bpm}</strong></span>` +
                 `<span>Tonalité ${keySel.value === 'auto' ? 'détectée' : 'choisie'} <strong>${keySel.value === 'auto' ? key.label : keySel.selectedOptions[0].text}</strong></span>` +
-                `<span>Notes de <strong>${NOTE_NAMES_FR[lowest % 12]}${Math.floor(lowest / 12) - 1}</strong> à <strong>${NOTE_NAMES_FR[highest % 12]}${Math.floor(highest / 12) - 1}</strong></span>`;
+                `<span>Notes de <strong>${noteNameFr(lowest)}</strong> à <strong>${noteNameFr(highest)}</strong></span>`;
             drawRoll(notes);
             await loadScript(LIBS.osmd);
             scoreEl.innerHTML = '';
@@ -726,7 +727,12 @@
                 zip.file(`enregistrement.${audioExtension(state.blob)}`, state.blob);
                 zip.file('partition.musicxml', state.xml);
                 zip.file('partition.mid', buildMidi(state.quant));
-                try { zip.file('partition.pdf', await buildPdf()); } catch (e) { console.error(e); }
+                try {
+                    zip.file('partition.pdf', await buildPdf());
+                } catch (e) {
+                    console.error(e);
+                    zip.file('erreur-pdf.txt', `${e.name}: ${e.message}\n${e.stack || ''}`);
+                }
                 zip.file('notes-brutes.json', JSON.stringify(state.rawNotes.map(n => ({
                     note: n.pitch, debut: +n.start.toFixed(3), fin: +n.end.toFixed(3), force: +n.velocity.toFixed(2)
                 }))));
@@ -767,7 +773,10 @@
         // PDF : on refait la mise en page au format A4 dans un bloc caché,
         // puis chaque page SVG est convertie en page PDF.
         const buildPdf = async () => {
-            await Promise.all([loadScript(LIBS.jspdf), loadScript(LIBS.svg2pdf)]);
+            // svg2pdf doit se charger après jsPDF (sinon il ne s'y branche pas,
+            // ce qui arrivait sur iPhone) ; on l'appelle aussi directement.
+            await loadScript(LIBS.jspdf);
+            await loadScript(LIBS.svg2pdf);
             const holder = document.createElement('div');
             holder.style.cssText = 'position:absolute; left:-10000px; top:0; width:1000px; background:white;';
             document.body.appendChild(holder);
@@ -787,7 +796,7 @@
                     const svg = pages[i];
                     const w = parseFloat(svg.getAttribute('width')), h = parseFloat(svg.getAttribute('height'));
                     const scale = Math.min(W / w, H / h);
-                    await pdf.svg(svg, { x: 0, y: 0, width: w * scale, height: h * scale });
+                    await window.svg2pdf.svg2pdf(svg, pdf, { x: 0, y: 0, width: w * scale, height: h * scale });
                 }
                 return pdf.output('blob');
             } finally {
