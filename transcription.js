@@ -21,7 +21,8 @@
         magentaModel: 'https://storage.googleapis.com/magentadata/js/checkpoints/transcription/onsets_frames_uni',
         osmd: 'https://cdn.jsdelivr.net/npm/opensheetmusicdisplay@1.8.9/build/opensheetmusicdisplay.min.js',
         jspdf: 'https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js',
-        svg2pdf: 'https://cdn.jsdelivr.net/npm/svg2pdf.js@2.2.4/dist/svg2pdf.umd.min.js'
+        svg2pdf: 'https://cdn.jsdelivr.net/npm/svg2pdf.js@2.2.4/dist/svg2pdf.umd.min.js',
+        jszip: 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js'
     };
 
     const loadedScripts = {};
@@ -458,6 +459,7 @@
         // ---------- Source audio ----------
         const setSource = (blob, label) => {
             state.blob = blob;
+            state.sourceLabel = label;
             sourceInfo.textContent = label;
             sourceAudio.src = URL.createObjectURL(blob);
             sourceAudio.style.display = 'block';
@@ -550,7 +552,8 @@
                 window.TranscriptionEngine.lastNotes = notes; // pour le débogage depuis la console
                 onStep('Écriture de la partition...');
                 await renderScore();
-                setStatus(`Partition écrite en ${Math.round((Date.now() - t0) / 1000)} s.`);
+                state.transcribeSeconds = Math.round((Date.now() - t0) / 1000);
+                setStatus(`Partition écrite en ${state.transcribeSeconds} s.`);
                 results.scrollIntoView({ behavior: 'smooth', block: 'start' });
             } catch (e) {
                 console.error(e);
@@ -590,6 +593,9 @@
             state.cleanNotes = notes;
             const duration = notes[notes.length - 1].end;
             const lowest = Math.min(...notes.map(n => n.pitch)), highest = Math.max(...notes.map(n => n.pitch));
+            state.analysis = { tempoDetecte: opts.bpm === null, tempo: state.quant.bpm, tonaliteDetectee: key.label,
+                               tonaliteUtilisee: keySel.value === 'auto' ? key.label : keySel.selectedOptions[0].text,
+                               notesGardees: notes.length, notesBrutes: state.rawNotes.length, dureeSecondes: Math.round(duration * 10) / 10 };
             summary.innerHTML =
                 `<span><strong>${notes.length}</strong> notes</span>` +
                 `<span>Durée <strong>${Math.floor(duration / 60)}:${String(Math.round(duration % 60)).padStart(2, '0')}</strong></span>` +
@@ -699,6 +705,63 @@
         });
         $('tr-export-xml').addEventListener('click', () => {
             if (state.xml) download(new Blob([state.xml], { type: 'application/vnd.recordare.musicxml+xml' }), safeName() + '.musicxml');
+        });
+
+        // Compte rendu : un seul fichier .zip avec l'enregistrement, la partition
+        // (PDF, MusicXML, MIDI), les notes brutes et les réglages, pour analyser
+        // un essai. Sur téléphone, il passe par le menu Partager si possible.
+        const AUDIO_EXT = { 'audio/webm': 'webm', 'audio/mp4': 'm4a', 'audio/x-m4a': 'm4a', 'audio/aac': 'aac',
+                            'audio/ogg': 'ogg', 'audio/wav': 'wav', 'audio/x-wav': 'wav', 'audio/mpeg': 'mp3' };
+        const audioExtension = (blob) => {
+            if (blob.name && /\.[a-z0-9]+$/i.test(blob.name)) return blob.name.split('.').pop().toLowerCase();
+            return AUDIO_EXT[(blob.type || '').split(';')[0]] || 'audio';
+        };
+
+        $('tr-export-report').addEventListener('click', async () => {
+            if (!state.xml || !state.blob) return;
+            setStatus('Préparation du compte rendu...');
+            try {
+                await loadScript(LIBS.jszip);
+                const zip = new window.JSZip();
+                zip.file(`enregistrement.${audioExtension(state.blob)}`, state.blob);
+                zip.file('partition.musicxml', state.xml);
+                zip.file('partition.mid', buildMidi(state.quant));
+                try { zip.file('partition.pdf', await buildPdf()); } catch (e) { console.error(e); }
+                zip.file('notes-brutes.json', JSON.stringify(state.rawNotes.map(n => ({
+                    note: n.pitch, debut: +n.start.toFixed(3), fin: +n.end.toFixed(3), force: +n.velocity.toFixed(2)
+                }))));
+                zip.file('rapport.json', JSON.stringify({
+                    date: new Date().toISOString(),
+                    titre: titleInput.value.trim(),
+                    source: state.sourceLabel,
+                    tempsDeCalculSecondes: state.transcribeSeconds,
+                    appareil: navigator.userAgent,
+                    reglages: {
+                        sensibilite: Number(sensInput.value), tempo: tempoMode.value === 'manual' ? Number(bpmInput.value) : 'auto',
+                        mesure: tsSel.value, precisionRythme: gridSel.selectedOptions[0].text,
+                        tonalite: keySel.selectedOptions[0].text, portees: stavesSel.selectedOptions[0].text,
+                        separationMains: splitSel.disabled ? null : splitSel.selectedOptions[0].text
+                    },
+                    analyse: state.analysis
+                }, null, 2));
+                const blob = await zip.generateAsync({ type: 'blob' });
+                const name = `compte-rendu-${safeName()}.zip`;
+                const file = new File([blob], name, { type: 'application/zip' });
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    try {
+                        await navigator.share({ files: [file], title: `Compte rendu : ${titleInput.value.trim()}` });
+                        setStatus('Compte rendu partagé ✓');
+                        return;
+                    } catch (e) {
+                        if (e.name === 'AbortError') { setStatus('Partage annulé.'); return; }
+                    }
+                }
+                download(blob, name);
+                setStatus('Compte rendu téléchargé ✓ (fichier .zip)');
+            } catch (e) {
+                console.error(e);
+                setStatus('Compte rendu impossible : ' + e.message);
+            }
         });
 
         // PDF : on refait la mise en page au format A4 dans un bloc caché,
