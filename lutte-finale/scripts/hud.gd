@@ -13,6 +13,7 @@ const C_BORDER := Color(1, 1, 1, 0.18)
 var game
 var font: Font
 var root: Control
+var minimap: Control
 var xp_fill: Panel
 var lvl_label: Label
 var timer_label: Label
@@ -54,6 +55,9 @@ func setup(g):
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(root)
+	minimap = load("res://scripts/minimap.gd").new()
+	minimap.setup(game)
+	root.add_child(minimap)
 	hurt_rect = ColorRect.new()
 	hurt_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
 	hurt_rect.color = Color(0.7, 0.0, 0.0, 0.0)
@@ -108,11 +112,12 @@ func setup(g):
 		decret_slots.append([p, l])
 	var wl := _label(bottom, "ARMES", 18, Color.WHITE)
 	wl.position = Vector2(2, 74)
-	for i in Data.WEAPON_SLOTS:
+	for i in Data.MAX_SLOTS:
 		var p := _panel(bottom, C_BG, 2, 1)
 		p.position = Vector2(i * 108, 102); p.size = Vector2(98, 98)
-		var n := _label(p, "", 15, C_FG)
-		n.size = Vector2(98, 30); n.position = Vector2(0, 28); n.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		var n := _label(p, "", 14, C_FG)
+		n.size = Vector2(94, 50); n.position = Vector2(2, 8); n.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		n.vertical_alignment = VERTICAL_ALIGNMENT_CENTER; n.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		var lv := _label(p, "", 18, C_ACC)
 		lv.size = Vector2(98, 30); lv.position = Vector2(0, 58); lv.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		weapon_slots.append([p, n, lv])
@@ -199,18 +204,25 @@ func _process(d: float):
 	var t: float = game.time
 	timer_label.text = "%02d:%02d" % [int(t) / 60, int(t) % 60]
 	timer_label.add_theme_color_override("font_color", Color(1, 0.35, 0.3) if game.krach else Color.WHITE)
-	zone_label.text = "LE KRACH  ·  FUIS OU MEURS" if game.krach else "ZONE 1/3  ·  HYPERMARCHÉ"
+	var zt: String = ("ZONE %d · SANS FIN" % game.zone) if game.endless else ("ZONE %d/3" % game.zone)
+	if game.door != null: zt = "LA PORTE EST OUVERTE · SUIS LE FAISCEAU ROUGE"
+	elif game.krach: zt = "LE KRACH  ·  FUIS OU MEURS"
+	else: zt += "  ·  " + (game.tpl["name"] as String).to_upper()
+	if game.tier > 1 and game.door == null and not game.krach: zt += "  ·  " + (Meta.TIERS[game.tier - 1]["name"] as String).to_upper()
+	zone_label.text = zt
 	hp_fill.size = Vector2(244.0 * clampf(p.hp / p.max_hp, 0.0, 1.0), 24)
 	hp_label.text = "%d / %d" % [ceili(p.hp), int(p.max_hp)]
 	rub_label.text = "%d RBL" % game.rubles
 	kill_label.text = "%d KO" % game.kills
-	var wids: Array = game.weapons.owned.keys()
+	var wids: Array = game.weapons.slot_ids()
+	var nslots: int = game.weapon_slots()
 	for i in weapon_slots.size():
 		var s: Array = weapon_slots[i]
+		(s[0] as Panel).visible = i < nslots
 		if i < wids.size():
 			var w: Dictionary = game.weapons.owned[wids[i]]
-			var nm: String = Data.WEAPONS[wids[i]]["evo_name"] if w["evo"] else Data.WEAPONS[wids[i]]["name"]
-			s[1].text = nm.to_upper().replace("COCKTAIL ", "").replace("RÉVOLUTION ", "RÉVOL. ")
+			var nm: String = game.weapons.display_name(wids[i])
+			s[1].text = nm.to_upper().replace("COCKTAIL MOLOTOV", "MOLOTOV").replace("RÉVOLUTION ", "RÉVOL. ")
 			s[2].text = ("NV %d ★" if w["evo"] else "NV %d") % w["lv"]
 			(s[0] as Panel).modulate = Color(1, 0.35, 0.35, 1) if wids[i] == game.player.seized_weapon else Color(1, 1, 1, 1)
 		else:

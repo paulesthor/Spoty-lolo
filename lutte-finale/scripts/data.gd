@@ -3,6 +3,7 @@ class_name Data
 
 const MAX_WEAPON_LV := 10
 const WEAPON_SLOTS := 4
+const MAX_SLOTS := 6
 const DECRET_SLOTS := 4
 const DECRET_MAX_PICKS := 6
 const EVO_MIN_LV := 6
@@ -69,13 +70,114 @@ const WEAPONS := {
 		"ups": ["dmg", "cd", "area"],
 		"evo": "cadence", "evo_name": "Radio d'État", "evo_desc": "Diffusion à 360° et recharge bien plus rapide.",
 	},
+	"tracteur": {
+		"name": "Tracteur du Kolkhoze", "tags": ["projectile", "melee"],
+		"desc": "Un tracteur fonce en ligne droite à travers la foule et écrase tout. Il ne freine jamais.",
+		"dmg": 26.0, "cd": 3.6, "count": 1, "area": 1.6, "speed": 17.0, "range": 26.0,
+		"ups": ["dmg", "cd", "count", "area"],
+		"evo": "vitesse", "evo_name": "Moissonneuse-Batteuse", "evo_desc": "Deux fois plus large, +50 % de dégâts, +1 engin.",
+	},
+	"ours": {
+		"name": "Ours de Sibérie", "tags": ["melee"],
+		"desc": "Un ours apprivoisé (plus ou moins) court sur les capitalistes et les gifle.",
+		"dmg": 18.0, "cd": 0.9, "count": 1, "area": 1.8, "speed": 9.0,
+		"ups": ["dmg", "cd", "count", "area"],
+		"evo": "endurance", "evo_name": "Grand Ours Soviétique", "evo_desc": "+1 ours, plus gros, ses gifles étourdissent.",
+	},
+	"vodka": {
+		"name": "Vodka Frappée", "tags": ["projectile"],
+		"desc": "Une bouteille qui rebondit d'un ennemi à l'autre. Elle ne se casse jamais, c'est de la qualité soviétique.",
+		"dmg": 16.0, "cd": 1.6, "count": 1, "chain": 3, "speed": 20.0,
+		"ups": ["dmg", "cd", "count", "chain"],
+		"evo": "chance", "evo_name": "Tournée Générale", "evo_desc": "+4 rebonds, chaque rebond frappe 10 % plus fort.",
+	},
+	"piolet": {
+		"name": "Piolet", "tags": ["melee"],
+		"desc": "Grand coup en arc devant toi. Très gros dégâts, courte portée.",
+		"dmg": 46.0, "cd": 1.1, "area": 4.6,
+		"ups": ["dmg", "cd", "area"],
+		"evo": "critique", "evo_name": "Pic à Glace Révolutionnaire", "evo_desc": "Frappe tout autour de toi, deux fois de suite.",
+	},
+	"rideau": {
+		"name": "Rideau de Fer", "tags": ["zone"],
+		"desc": "Un mur d'acier surgit devant toi : il repousse et broie ceux qui le touchent.",
+		"dmg": 12.0, "cd": 6.0, "area": 4.0, "duration": 4.0,
+		"ups": ["dmg", "cd", "area", "duration"],
+		"evo": "armure", "evo_name": "Frontière Infranchissable", "evo_desc": "Quatre murs t'encerclent et protègent le camarade.",
+	},
+	"t34": {
+		"name": "Char du Peuple", "tags": ["projectile", "zone"],
+		"desc": "Un obus lent qui explose à l'impact. Les capitalistes détestent les grosses explosions.",
+		"dmg": 40.0, "cd": 2.8, "count": 1, "area": 2.6, "speed": 16.0,
+		"ups": ["dmg", "cd", "count", "area"],
+		"evo": "productivite", "evo_name": "Division Blindée", "evo_desc": "+2 obus, explosions 30 % plus grandes.",
+	},
+	"katioucha": {
+		"name": "Orgue du Peuple", "tags": ["zone"],
+		"desc": "Une salve de roquettes tombe du ciel sur les ennemis autour de toi.",
+		"dmg": 14.0, "cd": 3.5, "count": 4, "area": 1.8,
+		"ups": ["dmg", "cd", "count", "area"],
+		"evo": "collectivisation", "evo_name": "Salve Infinie", "evo_desc": "Deux fois plus de roquettes.",
+	},
+	"balalaika": {
+		"name": "Balalaïka", "tags": ["projectile"],
+		"desc": "Des notes têtes chercheuses. Personne n'échappe à la musique folklorique.",
+		"dmg": 17.0, "cd": 0.75, "count": 2, "speed": 15.0, "pierce": 0,
+		"ups": ["dmg", "cd", "count", "pierce"],
+		"evo": "propagande", "evo_name": "Chœur de l'Armée Rouge", "evo_desc": "+3 notes qui traversent 2 ennemis.",
+	},
+	"goulag": {
+		"name": "Goulag Portatif", "tags": ["zone"],
+		"desc": "Une cage tombe sur un groupe d'ennemis : ils sont immobilisés et prennent des dégâts. Rééducation express.",
+		"dmg": 7.0, "cd": 7.0, "area": 3.0, "duration": 3.0,
+		"ups": ["dmg", "cd", "area", "duration"],
+		"evo": "duree", "evo_name": "Archipel", "evo_desc": "Trois cages à chaque fois.",
+	},
+	"etoile": {
+		"name": "Étoile Rouge", "tags": ["zone"],
+		"desc": "Une étoile tombe sur l'ennemi le plus coriace. Idéale contre les élites et les boss.",
+		"dmg": 90.0, "cd": 3.0, "area": 2.2,
+		"ups": ["dmg", "cd", "area"],
+		"evo": "chance", "evo_name": "Pluie d'Étoiles", "evo_desc": "Trois étoiles, sur les trois ennemis les plus coriaces.",
+	},
+	"tracts": {
+		"name": "Tracts de Propagande", "tags": ["projectile"],
+		"desc": "Des tracts partent en spirale autour de toi. Lire, c'est déjà se rendre.",
+		"dmg": 8.0, "cd": 0.45, "count": 2, "speed": 11.0, "pierce": 1,
+		"ups": ["dmg", "cd", "count", "pierce"],
+		"evo": "perforation", "evo_name": "Pluie de Tracts", "evo_desc": "Deux fois plus de tracts, qui traversent tout.",
+	},
+	"cigare": {
+		"name": "Havane Explosif", "tags": ["projectile", "zone"],
+		"desc": "Un cigare se colle sur un ennemi puis explose. Fumer tue (surtout les autres).",
+		"dmg": 30.0, "cd": 1.8, "count": 1, "area": 2.2, "speed": 18.0,
+		"ups": ["dmg", "cd", "count", "area"],
+		"evo": "aimant", "evo_name": "Boîte de Havanes", "evo_desc": "Chaque explosion en déclenche trois autres autour.",
+	},
 }
+
+# fusions (Survivor.io-style union): two weapons at level 6+ merge into one slot, both keep firing (+25 % damage) with a bonus effect
+const FUSIONS := {
+	"faucille_marteau": {"a": "marteau", "b": "faucille", "name": "Faucille et Marteau", "desc": "Chaque onde de choc projette une couronne de faucilles."},
+	"armee_rouge": {"a": "kalach", "b": "t34", "name": "Armée Rouge", "desc": "Les balles du Kalach explosent à l'impact."},
+	"cocktail_luxe": {"a": "molotov", "b": "vodka", "name": "Cocktail de Luxe", "desc": "Chaque rebond de la Vodka laisse une flaque de feu."},
+	"conquete_spatiale": {"a": "spoutnik", "b": "etoile", "name": "Conquête Spatiale", "desc": "Les satellites font tomber une étoile toutes les 2 s."},
+	"ours_tractoriste": {"a": "tracteur", "b": "ours", "name": "Ours Tractoriste", "desc": "Chaque ours lance aussi son propre tracteur."},
+	"poupees_balistiques": {"a": "matriochka", "b": "katioucha", "name": "Poupées Balistiques", "desc": "Chaque roquette libère des matriochkas en explosant."},
+	"datcha_infernale": {"a": "samovar", "b": "goulag", "name": "Datcha Infernale", "desc": "Les cages ébouillantent : leurs dégâts sont triplés et elles ralentissent autour."},
+	"symphonie": {"a": "hautparleur", "b": "balalaika", "name": "Propagande Symphonique", "desc": "Les notes étourdissent et chaque discours lance 6 notes."},
+}
+
+static func fusion_of(w: String) -> String:
+	for f in FUSIONS:
+		if FUSIONS[f]["a"] == w or FUSIONS[f]["b"] == w: return f
+	return ""
 
 # value per card (multiplied by rarity). "int": value floored per rarity table
 const DECRETS := {
 	"productivite": {"name": "Productivité", "fmt": "+%d %% de dégâts", "base": 10.0, "pct": true},
 	"cadence": {"name": "Cadence", "fmt": "+%d %% de vitesse d'attaque", "base": 8.0, "pct": true},
-	"collectivisation": {"name": "Collectivisation", "fmt": "+%d projectile(s) (Kalach, Faucille, Matriochka, Molotov)", "base": 1.0, "int": true},
+	"collectivisation": {"name": "Collectivisation", "fmt": "+%d projectile(s) (armes à projectiles, roquettes, ours)", "base": 1.0, "int": true},
 	"perforation": {"name": "Perforation", "fmt": "Les projectiles traversent +%d ennemi(s)", "base": 1.0, "int": true},
 	"expansion": {"name": "Expansion", "fmt": "+%d %% de taille des zones (max +60 %%)", "base": 9.0, "pct": true},
 	"duree": {"name": "Plan Quinquennal", "fmt": "+%d %% de durée des effets", "base": 15.0, "pct": true},
@@ -105,6 +207,8 @@ const ENEMIES := {
 	"actionnaire": {"name": "Actionnaire", "models": ["character-male-d"], "h": 2.6, "hp": 240.0, "speed": 2.2, "dmg": 22.0, "xp": 12, "r": 0.85, "armor": 5.0, "acc": ["tophat", "cigar"], "ai": "slammer"},
 	"golden": {"name": "Golden Boy", "models": ["character-male-d"], "h": 3.2, "hp": 420.0, "speed": 2.8, "dmg": 18.0, "xp": 30, "r": 1.0, "armor": 3.0, "acc": ["tophat", "cigar", "monocle"], "elite": true},
 	"boss": {"name": "Le Directeur Black Friday", "models": ["character-male-d"], "h": 5.6, "hp": 32000.0, "speed": 3.1, "dmg": 30.0, "xp": 150, "r": 1.7, "armor": 6.0, "acc": ["tophat", "cigar"], "boss": true},
+	"boss2": {"name": "Le PDG Vertical", "models": [], "h": 6.0, "hp": 52000.0, "speed": 3.3, "dmg": 34.0, "xp": 200, "r": 1.8, "armor": 8.0, "acc": ["tophat", "sunglasses"], "boss": true},
+	"boss3": {"name": "La Main Invisible", "models": [], "h": 6.6, "hp": 80000.0, "speed": 3.5, "dmg": 40.0, "xp": 300, "r": 1.9, "armor": 10.0, "acc": ["tophat", "monocle", "cigar"], "boss": true},
 	"fisc": {"name": "Contrôleur Fiscal", "models": ["character-male-c"], "h": 2.2, "hp": 1.0, "speed": 6.4, "dmg": 45.0, "xp": 0, "r": 0.6, "armor": 0.0, "acc": ["cap", "sunglasses"], "invincible": true},
 }
 
@@ -139,7 +243,7 @@ static func weapon_up_value(stat: String, rarity: int) -> float:
 		"area": return 0.07 * m
 		"range": return 0.12 * m
 		"duration": return 0.15 * m
-		"count", "pierce", "split": return float(int_bonus(rarity))
+		"count", "pierce", "split", "chain": return float(int_bonus(rarity))
 	return 0.0
 
 static func weapon_up_text(stat: String, v: float) -> String:
@@ -152,6 +256,7 @@ static func weapon_up_text(stat: String, v: float) -> String:
 		"count": return "+%d projectile(s)" % int(v)
 		"pierce": return "+%d perforation" % int(v)
 		"split": return "+%d poupée(s) par explosion" % int(v)
+		"chain": return "+%d rebond(s)" % int(v)
 	return ""
 
 static func decret_value(id: String, rarity: int) -> float:

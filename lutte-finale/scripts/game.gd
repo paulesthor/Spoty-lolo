@@ -3,11 +3,20 @@ extends Node3D
 # Test flags (after "--"): bot  speed=4  dur=600  shots=60  shotdir=res://proto_shots  seed=1  warp=300  pos=x,z yaw=deg
 
 const ZONE_TIME := 600.0      # 10:00, then the Krach
+const ZONE_OFFSET := 240.0    # each later zone starts as if this much more time had passed (difficulty)
 const BOSS_TIME := 480.0      # 08:00
 const CAM_OFFSET := Vector3(0, 7.5, 10.5)
 const CAM_LOOK := Vector3(0, 0.3, -6.5)
 
 var state := "menu"
+var zone := 1
+var tier := 1
+var endless := false
+var tpl: Dictionary = Levels.HYPERMARCHE
+var run_time := 0.0        # time spent in previous zones
+var bosses_killed: Array = []
+var door: Node3D = null
+var carried := false
 var time := 0.0
 var level := 1
 var xp := 0
@@ -80,6 +89,10 @@ var shot_dir := "res://proto_shots"
 var shot_n := 0
 var log_t := 0.0
 var choice_wait := 0.0
+var test_killboss := false
+var test_god := false
+var test_give := ""
+static var _zone_arg_used := false
 var shot_choice_done := false
 
 func _ready():
@@ -96,13 +109,24 @@ func _ready():
 			var xz := a.substr(4).split(",")
 			test_pos = Vector3(float(xz[0]), 0, float(xz[1]))
 		elif a.begins_with("yaw="): test_yaw = deg_to_rad(float(a.substr(4)))
+		elif a.begins_with("zone=") and Meta.carry.is_empty() and not _zone_arg_used: Meta.run_zone = int(a.substr(5)); _zone_arg_used = true
+		elif a.begins_with("tier="): Meta.run_tier = int(a.substr(5))
+		elif a == "endless": Meta.run_endless = true
+		elif a == "killboss": test_killboss = true
+		elif a == "god": test_god = true
+		elif a.begins_with("give="): test_give = a.substr(5)
+	zone = Meta.run_zone
+	tier = Meta.run_tier
+	endless = Meta.run_endless
+	tpl = Levels.zone(zone)
+	seed_v += zone * 101
 	rng.seed = seed_v
 	seed(seed_v)
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_setup_input()
 	world = load("res://scripts/world.gd").new()
 	add_child(world)
-	world.build(seed_v)
+	world.build(seed_v, tpl)
 	player = load("res://scripts/player.gd").new()
 	add_child(player)
 	player.setup(self)
@@ -119,7 +143,11 @@ func _ready():
 	add_child(weather)
 	weather.process_mode = Node.PROCESS_MODE_PAUSABLE
 	_load_meta()
-	weapons.add_weapon(Meta.CHARACTERS[char_id]["weapon"])
+	if not Meta.carry.is_empty():
+		_restore(Meta.carry)
+		Meta.carry = {}
+	elif not "solo" in OS.get_cmdline_user_args():
+		weapons.add_weapon(Meta.CHARACTERS[char_id]["weapon"])
 	for n in [world, player, enemies, weapons]:
 		n.process_mode = Node.PROCESS_MODE_PAUSABLE
 	_setup_camera()
@@ -184,6 +212,15 @@ func _warmup():
 	for id in Data.WEAPONS:
 		weapons._fire(id, weapons.stats(id))
 	if weapons.owned.has("spoutnik"): weapons._update_sats(0.016)
+	weapons._update_bears(0.016)
+	weapons._wall(front, Vector3.RIGHT, weapons.stats("rideau"))
+	weapons._cage(front, weapons.stats("goulag"))
+	weapons._star(front + Vector3(0, 5, 0), front, weapons.stats("etoile"))
+	weapons._rocket(front, weapons.stats("katioucha"), 0.0)
+	weapons._tractor(front, Vector3.FORWARD, weapons.stats("tracteur"))
+	weapons._note(front, Vector3.FORWARD, weapons.stats("balalaika"))
+	weapons._blast(front, 2.0, 1.0, weapons.stats("t34"), Color(1, 0.5, 0.2))
+	weapons._slash_fx(front, 2.0, Color(1, 1, 1))
 	weapons._ring_fx(front, 3.0, Color(1, 0.3, 0.2))
 	weapons._beam(front + Vector3(0, 2, 0), front + Vector3(2, 1, 0))
 	weapons._doll_burst(front, weapons.stats("matriochka"), 0, 1.0)
@@ -219,6 +256,12 @@ func _warmup():
 	weapons.projectiles.clear()
 	for f in weapons.fires: f["n"].queue_free()
 	weapons.fires.clear()
+	for b in weapons.bears: b.queue_free()
+	weapons.bears.clear()
+	for w in weapons.walls: w["n"].queue_free()
+	weapons.walls.clear()
+	for c in weapons.cages: c["n"].queue_free()
+	weapons.cages.clear()
 	for id in temp:
 		weapons.owned.erase(id); weapons.timers.erase(id)
 		if id == "spoutnik":
@@ -231,8 +274,9 @@ func _warmup():
 	for arr in [gems, coins]:
 		for g in arr: g["n"].queue_free()
 		arr.clear()
-	kills = 0; ult_kills = 0
-	kills_by_kind.clear(); kills_by_weapon.clear(); dmg_by_weapon.clear()
+	if not carried:
+		kills = 0; ult_kills = 0
+		kills_by_kind.clear(); kills_by_weapon.clear(); dmg_by_weapon.clear()
 	cover.queue_free()
 	warming = false
 
@@ -267,6 +311,7 @@ func dv(id: String) -> float:
 	var v: float = (decrets[id]["v"] if decrets.has(id) else 0.0)
 	if id == "endurance": return v
 	v += mods.get(id, 0.0)
+	if id == "productivite" and char_id == "barbudo": v += minf(30.0, 3.0 * (elites_killed + bosses_killed.size()))
 	if id == "cadence":
 		if char_id == "stakhanov": v += minf(20.0, floorf(kills / 150.0) * 2.0)
 		if ult_t > 0.0 and char_id == "stakhanov": v = (1.0 + v / 100.0) * (2.0 * (1.0 + mods.get("ult_power", 0.0) / 100.0)) * 100.0 - 100.0
@@ -321,6 +366,13 @@ func _setup_input():
 	for a in pads:
 		var ev := InputEventJoypadButton.new(); ev.button_index = pads[a]
 		InputMap.action_add_event(a, ev)
+	# map keys use the printed key (AZERTY-friendly): M toggles the minimap, Tab shows the big map
+	for pair in [["minimap", KEY_M], ["bigmap", KEY_TAB]]:
+		if not InputMap.has_action(pair[0]): InputMap.add_action(pair[0], 0.2)
+		var kev := InputEventKey.new(); kev.keycode = pair[1]
+		InputMap.action_add_event(pair[0], kev)
+	var bev := InputEventJoypadButton.new(); bev.button_index = JOY_BUTTON_BACK
+	InputMap.action_add_event("bigmap", bev)
 	var mb := InputEventMouseButton.new(); mb.button_index = MOUSE_BUTTON_RIGHT
 	InputMap.action_add_event("dodge", mb)
 	var axes := [["move_left", JOY_AXIS_LEFT_X, -1.0], ["move_right", JOY_AXIS_LEFT_X, 1.0], ["move_forward", JOY_AXIS_LEFT_Y, -1.0], ["move_back", JOY_AXIS_LEFT_Y, 1.0], ["cam_left", JOY_AXIS_RIGHT_X, -1.0], ["cam_right", JOY_AXIS_RIGHT_X, 1.0]]
@@ -502,8 +554,19 @@ func start():
 	hud.hide_screen()
 	hud.set_hud_visible(true)
 	if not bot: Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-	hud.toast("ZONE 1 · L'HYPERMARCHÉ · %s" % Meta.CHARACTERS[char_id]["name"].to_upper(), 2.5)
+	hud.toast("ZONE %d · %s · %s" % [zone, tpl["name"].to_upper(), Meta.CHARACTERS[char_id]["name"].to_upper()], 2.5)
+	if test_give != "":
+		var ids: Array = Data.WEAPONS.keys() if test_give.begins_with("all") else Array(test_give.split(","))
+		for id in ids:
+			weapons.add_weapon(id)
+			for i in Data.EVO_MIN_LV - weapons.level(id): weapons.upgrade(id, {"dmg": 0.1})
+			if test_give.ends_with("evo"): weapons.evolve(id)
+		if test_give.ends_with("evo"):
+			for f in Data.FUSIONS:
+				if weapons.can_fuse(f): weapons.fuse(f)
 	var sl := int(mods.get("start_level", 0.0))
+	if carried: sl = 0
+	elif zone > 1: sl += 12 * (zone - 1)     # starting directly in a later zone: catch-up levels
 	if sl > 0:
 		level += sl
 		pending_levels += sl
@@ -575,6 +638,9 @@ func _process(d: float):
 			return
 	if Input.is_action_just_pressed("pause"):
 		_pause(); return
+	if Input.is_action_just_pressed("minimap"):
+		Meta.set_opt("minimap", 0.0 if Meta.opt("minimap") > 0.0 else 1.0)
+		hud.toast("MINI-CARTE " + ("ACTIVÉE" if Meta.opt("minimap") > 0.0 else "DÉSACTIVÉE · TAB POUR LA GRANDE CARTE"), 1.2)
 	if Input.is_action_just_pressed("ultimate") or (bot and ult_kills >= ultimate_cost() and enemies.count() > 25):
 		_try_ultimate()
 	ult_t = maxf(0.0, ult_t - rd)
@@ -586,6 +652,7 @@ func _process(d: float):
 	_events(rd)
 	_update_pickups(rd)
 	_update_interactions(rd)
+	_update_door()
 	_bot_tick(d)
 
 func _update_camera(d: float):
@@ -622,7 +689,7 @@ func _pause():
 	var lines := []
 	for id in weapons.owned:
 		var w: Dictionary = weapons.owned[id]
-		lines.append("%s niv %d%s" % [Data.WEAPONS[id]["evo_name"] if w["evo"] else Data.WEAPONS[id]["name"], w["lv"], " ★" if w["evo"] else ""])
+		lines.append("%s niv %d%s" % [weapons.display_name(id), w["lv"], " ★" if w["evo"] else ""])
 	var dl := []
 	for id in decrets:
 		dl.append("%s (%s)" % [Data.DECRETS[id]["name"], Data.decret_text(id, dv(id))])
@@ -648,20 +715,25 @@ func spawn_point(min_d: float, max_d: float) -> Vector3:
 			return world.resolve(p, 0.6)
 	return world.resolve(Vector3(pp.x + min_d, 0, pp.z), 0.6)
 
+# difficulty clock: zone time plus an offset per zone already crossed
+func dtime() -> float:
+	return time + (zone - 1) * ZONE_OFFSET
+
 func mults() -> Array:
-	var tm := time / 60.0
-	var hp := (1.0 + 0.36 * tm + 0.12 * tm * tm + 0.014 * tm * tm * tm) * (1.0 + 0.2 * bets) * (1.0 + 0.25 * dirl("productivisme"))
-	return [hp, (1.0 + 0.1 * tm) * (1.0 + 0.25 * dirl("sans_pitie"))]
+	var tm := dtime() / 60.0
+	var t: Dictionary = Meta.TIERS[tier - 1]
+	var hp := (1.0 + 0.36 * tm + 0.12 * tm * tm + 0.014 * tm * tm * tm) * (1.0 + 0.2 * bets) * (1.0 + 0.25 * dirl("productivisme")) * float(t["hp"])
+	return [hp, (1.0 + 0.1 * tm) * (1.0 + 0.25 * dirl("sans_pitie")) * float(t["dmg"])]
 
 func enemy_speed_mult() -> float:
 	return 0.55 if event_name == "greve" else 1.0
 
 func _pick_kind() -> String:
-	var tm := time / 60.0
+	var tm := dtime() / 60.0
 	var total := 0.0
 	var pool := []
 	for row in Data.SPAWN_TABLE:
-		if time < row[1]: continue
+		if dtime() < row[1]: continue
 		var w: float = row[2] + row[3] * maxf(0.0, tm - row[1] / 60.0)
 		pool.append([row[0], w]); total += w
 	var r := rng.randf() * total
@@ -671,10 +743,10 @@ func _pick_kind() -> String:
 	return "stagiaire"
 
 func _director(d: float):
-	var tm := time / 60.0
+	var tm := dtime() / 60.0
 	var m := mults()
 	var cap := 260 if not krach else 320
-	var rate := (1.1 + 0.9 * tm + 0.19 * tm * tm) * (1.0 + 0.15 * bets) * (1.0 + 0.25 * dirl("cadence"))
+	var rate := (1.1 + 0.9 * tm + 0.19 * tm * tm) * (1.0 + 0.15 * bets) * (1.0 + 0.25 * dirl("cadence")) * float(Meta.TIERS[tier - 1]["rate"])
 	if krach: rate *= 2.2
 	spawn_acc += rate * d
 	while spawn_acc >= 1.0:
@@ -696,8 +768,11 @@ func _director(d: float):
 		hud.toast("UN GOLDEN BOY APPROCHE · IL TRANSPORTE UN COFFRE", 2.5)
 	if not boss_spawned and time >= BOSS_TIME:
 		boss_spawned = true
-		boss = enemies.spawn("boss", spawn_point(20.0, 24.0), 1.0 + 0.2 * bets, 1.0)
-		hud.toast("LE DIRECTEUR BLACK FRIDAY ARRIVE", 3.0)
+		var bk: String = tpl["boss"]
+		var zl := 1.0 + 1.2 * floorf((zone - 1) / 3.0)     # endless: bosses get tougher every loop
+		boss = enemies.spawn(bk, spawn_point(20.0, 24.0), (1.0 + 0.2 * bets) * zl * float(Meta.TIERS[tier - 1]["hp"]), float(Meta.TIERS[tier - 1]["dmg"]))
+		hud.toast("%s ARRIVE" % Data.ENEMIES[bk]["name"].to_upper(), 3.0)
+		if test_killboss: get_tree().create_timer(3.0, false).timeout.connect(func(): if boss.alive: enemies.kill(boss))
 		shake(0.4)
 	if not krach and time >= (420.0 if dirl("surveillance") > 0 else ZONE_TIME):
 		krach = true
@@ -720,9 +795,9 @@ func _events(d: float):
 		"black_friday":
 			hud.toast("ÉVÉNEMENT · BLACK FRIDAY ! UNE RUÉE DE CLIENTS ARRIVE", 3.0)
 			var a := rng.randf() * TAU
-			for i in int(30 + time / 20.0):
+			for i in int(30 + dtime() / 20.0):
 				var p: Vector3 = player.global_position + Vector3(cos(a), 0, sin(a)) * 24.0 + Vector3(rng.randf_range(-6, 6), 0, rng.randf_range(-6, 6))
-				var e = enemies.spawn("trader" if i % 4 == 0 else "stagiaire", world.resolve(p, 0.5), m[0] * 0.7, m[1])
+				enemies.spawn("trader" if i % 4 == 0 else "stagiaire", world.resolve(p, 0.5), m[0] * 0.7, m[1])
 		"pluie":
 			hud.toast("ÉVÉNEMENT · PLUIE DE BILLETS ! RAMASSE VITE", 3.0)
 			for i in 30:
@@ -754,6 +829,9 @@ func on_enemy_killed(e):
 	kills_by_kind[e.kind] = int(kills_by_kind.get(e.kind, 0)) + 1
 	if e.last_w != "": kills_by_weapon[e.last_w] = int(kills_by_weapon.get(e.last_w, 0)) + 1
 	if e.elite: elites_killed += 1
+	if char_id == "barbudo" and ult_t > 0.0 and not e.boss:
+		var bp: Vector3 = e.node.position
+		weapons._blast(bp, 2.6, 30.0 + 6.0 * level, {"crit": 0.1, "id": ""}, Color(1, 0.4, 0.15), false)
 	spark(e.node.position + Vector3(0, 1.0, 0), true)
 	_drop_gem(e.node.position, e.xp)
 	var luck := 1.0 + dv("chance") / 100.0
@@ -765,7 +843,7 @@ func on_enemy_killed(e):
 		_make_chest(e.node.position + Vector3(-0.8, 0, 0), true)
 		hud.toast("LE GOLDEN BOY A LÂCHÉ UN COFFRE", 2.0)
 	if e.boss:
-		_win()
+		_boss_down(e)
 
 func on_player_hit(amount: float):
 	hud.hurt()
@@ -1035,7 +1113,10 @@ func _roll_options(n: int, min_r := 0, bonus := 0, exclude: Array = []) -> Array
 			pool.append({"kind": "evo", "id": id, "w": 4.0})
 		elif weapons.level(id) < Data.MAX_WEAPON_LV:
 			pool.append({"kind": "weapon_up", "id": id, "w": 1.3})
-	if weapons.owned.size() < weapon_slots():
+	for f in Data.FUSIONS:
+		if weapons.can_fuse(f):
+			pool.append({"kind": "fusion", "id": f, "w": 4.0})
+	if weapons.slot_ids().size() < weapon_slots() and not "solo" in OS.get_cmdline_user_args():
 		for id in Data.WEAPONS:
 			if not weapons.owned.has(id) and Meta.weapon_unlocked(id):
 				pool.append({"kind": "weapon_new", "id": id, "w": 0.7})
@@ -1064,7 +1145,7 @@ func _roll_options(n: int, min_r := 0, bonus := 0, exclude: Array = []) -> Array
 				chosen = o; break
 		out.append(chosen); pool.erase(chosen)
 	for o in out:
-		o["rarity"] = roll_rarity(min_r, bonus) if o["kind"] != "evo" else 3
+		o["rarity"] = roll_rarity(min_r, bonus) if not o["kind"] in ["evo", "fusion"] else 3
 		_describe(o)
 	return out
 
@@ -1078,12 +1159,23 @@ func _describe(o: Dictionary):
 			o["lv"] = "Arme ultime"
 			o["desc"] = w["evo_desc"]
 			o["short"] = "évolution"
+		"fusion":
+			var fu: Dictionary = Data.FUSIONS[o["id"]]
+			o["title"] = fu["name"]
+			o["tag"] = "FUSION · %s + %s" % [(Data.WEAPONS[fu["a"]]["name"] as String).to_upper(), (Data.WEAPONS[fu["b"]]["name"] as String).to_upper()]
+			o["lv"] = "Libère un emplacement"
+			o["desc"] = fu["desc"] + "\n\nLes deux armes continuent de tirer (+25 % de dégâts) mais n'occupent plus qu'un emplacement."
+			o["short"] = "fusion"
 		"weapon_new":
 			var w: Dictionary = Data.WEAPONS[o["id"]]
 			o["title"] = w["name"]
 			o["tag"] = "NOUVELLE ARME"
 			o["lv"] = "Niveau 1"
 			o["desc"] = w["desc"] + "\n\nÉvolue avec : " + Data.DECRETS[w["evo"]]["name"]
+			var fid := Data.fusion_of(o["id"])
+			if fid != "":
+				var fd: Dictionary = Data.FUSIONS[fid]
+				o["desc"] += "\nFusionne avec : " + Data.WEAPONS[fd["b"] if fd["a"] == o["id"] else fd["a"]]["name"]
 			o["short"] = "nouvelle arme"
 		"weapon_up":
 			var w: Dictionary = Data.WEAPONS[o["id"]]
@@ -1120,6 +1212,10 @@ func _apply(o: Dictionary):
 	match o["kind"]:
 		"pack":
 			rerolls += 2; banishes += 1; skips += 1
+		"fusion":
+			got_evo = true
+			weapons.fuse(o["id"])
+			hud.toast("FUSION : " + (Data.FUSIONS[o["id"]]["name"] as String).to_upper(), 3.0)
 		"evo":
 			got_evo = true
 			weapons.evolve(o["id"])
@@ -1214,7 +1310,105 @@ func _try_ultimate():
 			player.hp = player.max_hp
 			player.invuln = 4.0 * pw
 			hud.toast("ELLE A CONNU PIRE !", 1.5)
+		"barbudo":
+			ult_t = 8.0 * pw
+			hud.toast("¡VIVA LA REVOLUCIÓN !", 1.5)
+		"youri":
+			var best: Vector3 = pp + player.facing * 6.0
+			var bn := -1
+			var cand: Array = enemies.in_radius(pp, 18.0)
+			for i in mini(24, cand.size()):
+				var e = cand[randi() % cand.size()]
+				var nb: int = enemies.in_radius(e.node.position, 5.0).size()
+				if nb > bn: bn = nb; best = e.node.position
+			var tgt: Vector3 = Vector3(best.x, 0, best.z)
+			enemies._telegraph_circle(tgt, 7.0, 0.8)
+			hud.toast("RETOUR SUR TERRE !", 1.5)
+			var dmg: float = (500.0 + 90.0 * level) * pw
+			var cap := Node3D.new()
+			add_child(cap)
+			cap.global_position = tgt + Vector3(4, 30, 4)
+			U.sphere(cap, 1.3, Vector3.ZERO, U.solid(Color(0.75, 0.75, 0.72), 0.0, 0.4, 0.8))
+			U.label(cap, "CCCP", Vector3(0, 0, 1.35), 120, Color(0.85, 0.1, 0.1), Color(0, 0, 0, 0), false)
+			U.sprite(cap, "flame_02.png", Vector3(0, 1.4, 0), 3.0, Color(1, 0.5, 0.2), 3.0)
+			var tw := cap.create_tween()
+			tw.tween_property(cap, "global_position", tgt + Vector3(0, 1.0, 0), 0.8).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
+			tw.tween_callback(func():
+				for e in enemies.in_radius(tgt, 7.0):
+					enemies.damage(e, dmg, tgt, 14.0, "", true, true, 0.2, "")
+					if e.alive: enemies.stun(e, 2.0 * pw, true)
+				weapons._ring_fx(tgt, 7.0, Color(1, 0.6, 0.3))
+				shake(0.45))
+			tw.tween_interval(1.5)
+			tw.tween_callback(cap.queue_free)
 	shake(0.3)
+
+# ---------------------------------------------------------------- zones
+func _boss_down(e):
+	bosses_killed.append(zone)
+	if zone >= 3 and not endless:
+		_win()
+		return
+	# the way to the next zone opens near where the boss fell
+	var p: Vector3 = world.resolve(e.node.position, 2.0)
+	if not world.inside(p): p = world.player_start
+	_open_door(p)
+	var nxt: Dictionary = Levels.zone(zone + 1)
+	hud.toast("%s EST BONKÉ ! LA PORTE VERS %s EST OUVERTE" % [Data.ENEMIES[e.kind]["name"].to_upper(), nxt["name"].to_upper()], 4.0)
+	player.heal(player.max_hp * 0.3)
+
+func _open_door(p: Vector3):
+	door = Node3D.new()
+	add_child(door)
+	door.global_position = Vector3(p.x, 0, p.z)
+	var red := U.solid(Color(0.75, 0.06, 0.08), 0.0, 0.6)
+	U.box(door, Vector3(0.6, 5.0, 0.6), Vector3(-2.0, 2.5, 0), red)
+	U.box(door, Vector3(0.6, 5.0, 0.6), Vector3(2.0, 2.5, 0), red)
+	U.box(door, Vector3(4.6, 0.7, 0.7), Vector3(0, 5.2, 0), red)
+	var star := Label3D.new(); star.text = "★"; star.font = load("res://fonts/Symbols.ttf"); star.font_size = 256; star.pixel_size = 0.006
+	star.modulate = Color(1, 0.8, 0.2); star.outline_size = 0; star.position = Vector3(0, 6.3, 0); star.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	door.add_child(star)
+	U.sprite(door, "circle_03.png", Vector3(0, 0.08, 0), 5.0, Color(1, 0.3, 0.2, 0.7), 2.5, false, Vector3(-PI / 2, 0, 0))
+	U.sprite(door, "light_01.png", Vector3(0, 2.4, 0), 4.0, Color(1, 0.45, 0.3, 0.7), 3.0)
+	_beam(door, Color(1, 0.3, 0.2), 40.0)
+	U.label(door, "VERS LA ZONE %d" % (zone + 1), Vector3(0, 7.6, 0), 96, Color(1, 0.9, 0.6), Color(0, 0, 0, 1))
+
+func _update_door():
+	if door == null: return
+	var v: Vector3 = player.global_position - door.global_position
+	v.y = 0
+	if v.length() < 2.6: _next_zone()
+
+func _next_zone():
+	if state != "play": return
+	state = "loading"
+	get_tree().paused = true
+	Meta.carry = _snapshot()
+	Meta.run_zone = zone + 1
+	print("[game] ZONE %d -> %d t=%s level=%d kills=%d" % [zone, zone + 1, _fmt(run_time + time), level, kills])
+	get_tree().paused = false
+	get_tree().change_scene_to_file("res://scenes/main.tscn")
+
+func _snapshot() -> Dictionary:
+	return {"owned": weapons.owned.duplicate(true), "decrets": decrets.duplicate(true), "level": level, "xp": xp, "rubles": rubles,
+		"kills": kills, "kills_by_kind": kills_by_kind.duplicate(), "kills_by_weapon": kills_by_weapon.duplicate(), "dmg_by_weapon": dmg_by_weapon.duplicate(),
+		"elites": elites_killed, "chests": chests_opened, "shrines": shrines_used, "evo": got_evo, "rerolls": rerolls, "banishes": banishes, "skips": skips,
+		"banned": banned.duplicate(), "revives": revives, "ult_kills": ult_kills, "ult_uses": ult_uses, "hp": player.hp, "max_hp": player.max_hp, "run_time": run_time + time,
+		"bosses": bosses_killed.duplicate(), "market_buys": market_buys}
+
+func _restore(c: Dictionary):
+	carried = true
+	for id in c["owned"]:
+		weapons.add_weapon(id)
+		weapons.owned[id] = (c["owned"][id] as Dictionary).duplicate(true)
+	decrets = c["decrets"]; level = c["level"]; xp = c["xp"]; rubles = c["rubles"]; kills = c["kills"]
+	kills_by_kind = c["kills_by_kind"]; kills_by_weapon = c["kills_by_weapon"]; dmg_by_weapon = c["dmg_by_weapon"]
+	elites_killed = c["elites"]; chests_opened = c["chests"]; shrines_used = c["shrines"]; got_evo = c["evo"]
+	rerolls = c["rerolls"]; banishes = c["banishes"]; skips = c["skips"]; banned = c["banned"]; revives = c["revives"]
+	ult_kills = c["ult_kills"]; ult_uses = c["ult_uses"]; run_time = c["run_time"]; bosses_killed = c["bosses"]
+	market_buys = c.get("market_buys", 0)
+	player.max_hp = c["max_hp"]
+	player.hp = player.max_hp     # a new zone: the Party grants a full meal
 
 # ---------------------------------------------------------------- end
 func game_over(abandon := false):
@@ -1241,8 +1435,8 @@ func _win():
 	get_tree().paused = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	var rep := _report(true)
-	hud.show_screen("ZONE NETTOYÉE",
-		"Le Directeur Black Friday a été bonké. L'Hypermarché appartient au peuple.\nTemps : %s   ·   Niveau %d   ·   %d capitalistes bonkés\n\n%s" % [_fmt(time), level, kills, "\n".join(rep["lines"])],
+	hud.show_screen("LE CAPITALISME EST TOMBÉ",
+		"La Main Invisible a été bonkée. La Bourse, les tours et l'hypermarché appartiennent au peuple.\nLe Parti te remercie et t'oubliera dès demain.\nTemps total : %s   ·   Niveau %d   ·   %d capitalistes bonkés\n\n%s" % [_fmt(run_time + time), level, kills, "\n".join(rep["lines"])],
 		"ENTRÉE ou A : retour au Kolkhoze", Color(0.95, 0.75, 0.25))
 	print("[game] WIN t=%s level=%d kills=%d" % [_fmt(time), level, kills])
 
@@ -1251,9 +1445,12 @@ func _report(win: bool) -> Dictionary:
 	report_done = true
 	var r := {"char": char_id, "time": time, "kills": kills, "kills_by_kind": kills_by_kind, "kills_by_weapon": kills_by_weapon,
 		"dmg_by_weapon": dmg_by_weapon, "boss": win, "elites": elites_killed, "level": level, "chests": chests_opened,
-		"shrines": shrines_used, "evo": got_evo, "ferveur": Meta.ferveur(dirs), "win": win}
+		"shrines": shrines_used, "evo": got_evo, "ferveur": Meta.ferveur(dirs), "win": win,
+		"bosses": bosses_killed, "tier": tier, "endless": endless, "zone": zone}
+	r["time"] = run_time + time
+	r["boss"] = not bosses_killed.is_empty()
 	var out: Dictionary = Meta.end_run(r)
-	print("[meta] run=%d char=%s time=%s win=%s lvl=%d kills=%d medals=%d total=%d" % [Meta.data["runs"], char_id, _fmt(time), win, level, kills, out["medals"], Meta.data["medals"]])
+	print("[meta] run=%d char=%s zone=%d time=%s win=%s lvl=%d kills=%d medals=%d total=%d" % [Meta.data["runs"], char_id, zone, _fmt(run_time + time), win, level, kills, out["medals"], Meta.data["medals"]])
 	return out
 
 func _back_to_hub():
@@ -1273,8 +1470,8 @@ func _bot_pick() -> int:
 		var o: Dictionary = hud.options[i]
 		var sc: float = 1.0 + o["rarity"] * 0.6
 		match o["kind"]:
-			"evo": sc += 10.0
-			"weapon_new": sc += 3.0 if weapons.owned.size() < 3 else 1.0
+			"evo", "fusion": sc += 10.0
+			"weapon_new": sc += 3.0 if weapons.slot_ids().size() < 3 else 1.0
 			"weapon_up": sc += 2.0
 			"decret":
 				sc += 2.5 if o["id"] in ["productivite", "cadence", "endurance", "armure", "collectivisation", "expansion"] else 0.5
@@ -1301,12 +1498,15 @@ func _bot_tick(d: float):
 	if multi_run and state in ["over", "win"]:
 		_back_to_hub()
 		return
-	if multi_run and time >= 700.0:
+	if multi_run and time >= 720.0:
 		game_over(true)
 		return
 	if test_dur > 0.0 and (time >= test_dur or state in ["over", "win"]):
 		if state in ["over", "win"]: _screenshot()
 		print("[bot] END state=%s t=%s lvl=%d kills=%d" % [state, _fmt(time), level, kills])
+		var dl := []
+		for k in dmg_by_weapon: dl.append("%s=%d" % [k, int(dmg_by_weapon[k])])
+		print("[bot] DMG " + " ".join(dl))
 		get_tree().quit()
 
 func _screenshot():

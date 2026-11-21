@@ -9,6 +9,25 @@ var data := {}
 # run configuration chosen in the Kolkhoze
 var run_char := "stakhanov"
 var run_directives := {}     # id -> level
+var run_zone := 1            # zone the next game scene builds
+var run_tier := 1            # difficulty tier (1..3)
+var run_endless := false
+var carry := {}              # run state carried from one zone to the next
+
+const TIERS := [
+	{"name": "Camarade", "hp": 1.0, "dmg": 1.0, "rate": 1.0, "medals": 1.0, "desc": "La difficulté normale."},
+	{"name": "Commissaire", "hp": 1.6, "dmg": 1.3, "rate": 1.15, "medals": 1.6, "desc": "Ennemis +60 % PV, +30 % dégâts, plus nombreux. Médailles x1.6."},
+	{"name": "Héros de l'Union", "hp": 2.5, "dmg": 1.6, "rate": 1.3, "medals": 2.4, "desc": "Ennemis x2.5 PV, +60 % dégâts, encore plus nombreux. Médailles x2.4."},
+]
+
+func tier_unlocked(t: int) -> bool:
+	return t <= int(data.get("tier_max", 1))
+
+func zone_unlocked(z: int) -> bool:
+	return z <= 1 or int(data.get("bosses", {}).get(str(z - 1), 0)) > 0
+
+func endless_unlocked() -> bool:
+	return int(data.get("wins", 0)) > 0
 
 # ---------------------------------------------------------------- characters
 const CHARACTERS := {
@@ -56,7 +75,64 @@ const CHARACTERS := {
 			["Grand-mère", [["aimant", 30], ["propagande", 8], ["heal_pickup", 50], ["propagande", 8], ["chance", 8]]],
 		],
 	},
+	"barbudo": {
+		"name": "Comandante Barbudo", "model": "", "acc": [], "cost": 450, "weapon": "cigare",
+		"passive": "Révolution permanente : +3 % de dégâts par élite ou boss abattu (max +30 %).",
+		"ult": "¡Viva la Revolución!", "ult_desc": "Pendant 8 s, chaque ennemi tué explose et blesse ses voisins.",
+		"base": {"chance": 5},
+		"tree": [
+			["Guérilla", [["vitesse", 5], ["dodge", 5], ["productivite", 6], ["dodge_cd", 15], ["ult_power", 30]]],
+			["Sierra", [["endurance", 20], ["regen", 0.3], ["armure", 1], ["endurance", 25], ["revive", 1]]],
+			["Discours de 7 heures", [["ult_charge", 15], ["propagande", 8], ["chance", 6], ["ult_charge", 15], ["rubles_pct", 20]]],
+		],
+	},
+	"youri": {
+		"name": "Youri l'Orbital", "model": "", "acc": [], "cost": 550, "weapon": "spoutnik",
+		"passive": "Apesanteur : sauts plus hauts, chute ralentie, +10 % de vitesse.",
+		"ult": "Retour sur Terre", "ult_desc": "Une capsule s'écrase sur le plus gros groupe d'ennemis proche : énormes dégâts et étourdissement.",
+		"base": {"vitesse": 10},
+		"tree": [
+			["Cosmonaute", [["expansion", 8], ["duree", 10], ["expansion", 8], ["slam_bonus", 50], ["ult_power", 30]]],
+			["Entraînement", [["endurance", 20], ["vitesse", 5], ["dodge_cd", 15], ["endurance", 25], ["armure", 1.5]]],
+			["Héros national", [["chance", 6], ["aimant", 25], ["ult_charge", 15], ["propagande", 8], ["start_level", 2]]],
+		],
+	},
 }
+
+# skins: bought in the Caserne with medals; tint of the KayKit body + extra accessories
+const SKINS := {
+	"stakhanov": [["Bleu de travail", Color(1, 1, 1), [], 0], ["Héros du Travail (doré)", Color(1.25, 1.05, 0.55), ["medal"], 250], ["Mineur de nuit", Color(0.45, 0.45, 0.55), [], 150]],
+	"ilitch": [["Costume trois-pièces", Color(1, 1, 1), [], 0], ["Momie du Mausolée", Color(1.2, 1.15, 0.95), [], 250], ["Exil en Suisse", Color(0.7, 0.85, 1.1), ["sunglasses"], 150]],
+	"moustache": [["Uniforme", Color(1, 1, 1), [], 0], ["Généralissime blanc", Color(1.4, 1.4, 1.35), ["medal"], 250], ["Camouflage d'hiver", Color(0.85, 0.95, 1.05), [], 150]],
+	"babouchka": [["Tablier fleuri", Color(1, 1, 1), [], 0], ["Babouchka de combat", Color(0.6, 0.75, 0.5), ["sunglasses"], 200], ["Reine de la datcha", Color(1.3, 0.8, 0.9), [], 150]],
+	"barbudo": [["Treillis", Color(0.72, 0.85, 0.55), [], 0], ["Guérillero de la plage", Color(1.2, 1.1, 0.75), ["sunglasses"], 200], ["Tenue de parade", Color(0.55, 0.65, 0.45), ["medal"], 250]],
+	"youri": [["Combinaison", Color(1, 1, 1), [], 0], ["Combinaison dorée", Color(1.25, 1.05, 0.55), ["medal"], 250], ["Mission martienne", Color(1.3, 0.6, 0.45), [], 200]],
+}
+
+func skin_owned(c: String, i: int) -> bool:
+	return i == 0 or (data.get("skins", {}).get(c, []) as Array).has(i)
+
+func buy_skin(c: String, i: int) -> bool:
+	var cost: int = SKINS[c][i][3]
+	if skin_owned(c, i) or int(data["medals"]) < cost: return false
+	data["medals"] = int(data["medals"]) - cost
+	if not data.has("skins"): data["skins"] = {}
+	if not data["skins"].has(c): data["skins"][c] = []
+	data["skins"][c].append(i)
+	data["skin_sel"] = data.get("skin_sel", {})
+	data["skin_sel"][c] = i
+	save()
+	return true
+
+func skin_sel(c: String) -> int:
+	var i := int(data.get("skin_sel", {}).get(c, 0))
+	return i if skin_owned(c, i) else 0
+
+func set_skin(c: String, i: int):
+	if not skin_owned(c, i): return
+	if not data.has("skin_sel"): data["skin_sel"] = {}
+	data["skin_sel"][c] = i
+	save()
 
 const STAT_NAMES := {
 	"productivite": "+%s %% dégâts", "cadence": "+%s %% cadence", "expansion": "+%s %% zone", "duree": "+%s %% durée",
@@ -95,8 +171,9 @@ const BUREAU := {
 # ---------------------------------------------------------------- Grade au Parti (account level gating)
 const GRADE_NAMES := ["Sympathisant", "Militant", "Camarade", "Délégué", "Commissaire", "Secrétaire de cellule", "Membre du Comité", "Héros du Travail", "Héros de l'Union", "Père des Peuples"]
 const BUREAU_GRADE := {"blindage": 2, "regen": 3, "passer": 2, "relance": 3, "bannissement": 4, "seconde_chance": 7, "cinquieme_arme": 9}
-const WEAPON_GRADE := {"matriochka": 2, "samovar": 3, "hautparleur": 3, "spoutnik": 4}
-const CHAR_GRADE := {"stakhanov": 1, "ilitch": 2, "moustache": 4, "babouchka": 6}
+const WEAPON_GRADE := {"matriochka": 2, "samovar": 3, "hautparleur": 3, "spoutnik": 4, "vodka": 2, "piolet": 2, "tracts": 3, "cigare": 3,
+	"tracteur": 4, "balalaika": 4, "ours": 5, "t34": 5, "rideau": 6, "katioucha": 6, "goulag": 7, "etoile": 7}
+const CHAR_GRADE := {"stakhanov": 1, "ilitch": 2, "moustache": 4, "babouchka": 6, "barbudo": 7, "youri": 8}
 const DIRECTIVES_GRADE := 3
 
 static func grade_req(g: int) -> int:
@@ -118,7 +195,8 @@ static func bureau_cost(id: String, rank: int) -> int:
 	return int(round(BUREAU[id]["base"] * pow(1.7, rank)))
 
 # ---------------------------------------------------------------- Usine d'armement
-const WEAPON_UNLOCK := {"marteau": 0, "kalach": 0, "faucille": 0, "molotov": 0, "matriochka": 80, "spoutnik": 100, "samovar": 90, "hautparleur": 90}
+const WEAPON_UNLOCK := {"marteau": 0, "kalach": 0, "faucille": 0, "molotov": 0, "matriochka": 80, "spoutnik": 100, "samovar": 90, "hautparleur": 90,
+	"vodka": 90, "piolet": 90, "tracts": 110, "cigare": 110, "tracteur": 130, "balalaika": 130, "ours": 150, "t34": 150, "rideau": 170, "katioucha": 170, "goulag": 190, "etoile": 190}
 const MASTERY_XP := [0, 400, 1500, 4000, 9000, 16000]   # cumulative kills with the weapon for levels 0..5
 # modules: id -> [weapon, mastery level required, name, description]
 const MODULES := {
@@ -201,7 +279,7 @@ func load_save():
 
 func opt(k: String) -> float:
 	var o: Dictionary = data.get("options", {})
-	return float(o.get(k, {"numbers": 2, "fx": 100, "shake": 100}[k]))
+	return float(o.get(k, {"numbers": 2, "fx": 100, "shake": 100, "minimap": 1}.get(k, 0)))
 
 func set_opt(k: String, v: float):
 	if not data.has("options"): data["options"] = {}
@@ -368,10 +446,24 @@ func new_plan():
 func end_run(r: Dictionary) -> Dictionary:
 	var out := {"lines": [], "medals": 0}
 	var f: int = r["ferveur"]
-	var base := int(r["kills"] / 45.0 + r["time"] / 60.0 * 5.0 + r["elites"] * 3 + (50 if r["boss"] else 0))
-	var mult := 1.0 + 0.15 * f
+	var bosses: Array = r.get("bosses", [])
+	var base := int(r["kills"] / 45.0 + r["time"] / 60.0 * 5.0 + r["elites"] * 3 + 50 * bosses.size() + (60 if r["win"] else 0))
+	var tier: int = r.get("tier", 1)
+	var mult := (1.0 + 0.15 * f) * float(TIERS[tier - 1]["medals"])
 	var medals := int(base * mult)
-	out["lines"].append("Médailles de la run : %d%s" % [medals, (" (ferveur %d : x%.2f)" % [f, mult]) if f > 0 else ""])
+	out["lines"].append("Médailles de la run : %d%s" % [medals, (" (x%.2f)" % mult) if mult != 1.0 else ""])
+	if not data.has("bosses"): data["bosses"] = {}
+	for z in bosses:
+		var first := int(data["bosses"].get(str(z), 0)) == 0
+		data["bosses"][str(z)] = int(data["bosses"].get(str(z), 0)) + 1
+		if first and z < 3: out["lines"].append("NOUVELLE ZONE DÉBLOQUÉE : %s (départ possible depuis le Kolkhoze)" % Levels.zone(z + 1)["name"])
+	if r["win"] and tier < 3 and tier >= int(data.get("tier_max", 1)):
+		data["tier_max"] = tier + 1
+		out["lines"].append("NOUVELLE DIFFICULTÉ : %s" % TIERS[tier]["name"])
+	if r["win"] and int(data.get("wins", 0)) == 0:
+		out["lines"].append("MODE SANS FIN DÉBLOQUÉ")
+	if r.get("endless", false):
+		data["endless_best"] = maxi(int(data.get("endless_best", 0)), int(r.get("zone", 1)))
 	# weapon mastery
 	for w in r["kills_by_weapon"]:
 		var before := weapon_mastery(w)

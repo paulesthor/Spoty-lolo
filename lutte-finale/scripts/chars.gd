@@ -13,6 +13,8 @@ const HEROES := {
 	"ilitch": {"body": "Mage", "acc": ["chapka", "goatee"], "weapon_hand": true},
 	"moustache": {"body": "Rogue", "acc": ["kepi", "big_moustache"], "weapon_hand": true},
 	"babouchka": {"body": "Knight", "acc": ["fichu"], "weapon_hand": true},
+	"barbudo": {"body": "Rogue", "acc": ["beret", "beard", "cigar"], "weapon_hand": true},
+	"youri": {"body": "Knight", "acc": ["space_helmet"], "weapon_hand": true},
 }
 
 # hero animation names (KayKit)
@@ -22,15 +24,28 @@ const HERO_ANIMS := {
 	"hit": "Hit_A", "death": "Death_A", "cheer": "Cheer", "attack": "2H_Melee_Attack_Chop", "throw": "Throw",
 }
 
-const KK_YAW := PI   # KayKit models face -Z
+const KK_YAW := 0.0   # KayKit models face +Z (glTF forward), like our facing convention
 
-static func build_hero(parent: Node, char_id: String) -> Node3D:
+static func build_hero(parent: Node, char_id: String, skin := 0) -> Node3D:
 	var def: Dictionary = HEROES.get(char_id, HEROES["stakhanov"])
 	var n := U.place(parent, KK + def["body"] + ".glb", Vector3.ZERO, 1.9, 0.0)
+	var sk: Array = Meta.SKINS.get(char_id, [["", Color(1, 1, 1), [], 0]])[clampi(skin, 0, 2)]
+	var tint: Color = sk[1]
 	for m in n.find_children("*", "MeshInstance3D", true, false):
 		for w in HIDE:
 			if w in str(m.name): (m as MeshInstance3D).visible = false
-	attach(n, def["acc"])
+		if tint != Color(1, 1, 1) and not "Head" in str(m.name) and (m as MeshInstance3D).visible:
+			var mi: MeshInstance3D = m
+			for i in mi.mesh.get_surface_count():
+				var src = mi.get_active_material(i)
+				if src is StandardMaterial3D:
+					var d: StandardMaterial3D = src.duplicate()
+					d.albedo_color = tint
+					if tint.r > 1.15 and tint.g > 0.95: d.metallic = 0.5; d.roughness = 0.35
+					mi.set_surface_override_material(i, d)
+	var acc: Array = def["acc"].duplicate()
+	acc.append_array(sk[2])
+	attach(n, acc)
 	hammer(n)
 	return n
 
@@ -51,6 +66,8 @@ const ENEMY_LOOKS := {
 	"actionnaire": [["King", "M"]],
 	"golden": [["Suit", "M"]],
 	"boss": [["King", "M"]],
+	"boss2": [["Suit", "M"]],
+	"boss3": [["Suit", "M"]],
 	"fisc": [["Swat", "M"]],
 }
 
@@ -69,6 +86,8 @@ const ENEMY_COLORS := {
 	"actionnaire": {"Blue": Color(0.15, 0.15, 0.2)},
 	"golden": {"Suit": Color(1.0, 0.75, 0.25), "Tie": Color(0.1, 0.1, 0.1)},
 	"boss": {"Blue": Color(0.6, 0.08, 0.1)},
+	"boss2": {"Suit": Color(0.08, 0.1, 0.2), "Tie": Color(0.85, 0.85, 0.9)},
+	"boss3": {"Suit": Color(0.92, 0.92, 0.95), "Tie": Color(1.0, 0.75, 0.25)},
 	"fisc": {},
 }
 
@@ -134,7 +153,6 @@ static func attach(n: Node3D, kinds: Array):
 	var root := Node3D.new()
 	ba.add_child(root)
 	if kk:
-		root.rotation.y = PI    # accessories are modelled facing +Z
 		root.position.y = w * 0.12
 	U._build_accessories(root, kinds, w, hh, 0.0, w * 0.5)
 

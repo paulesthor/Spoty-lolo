@@ -289,6 +289,30 @@ static func _build_accessories(root: Node3D, kinds: Array, w: float, top: float,
 				knot.rotation = Vector3(0, 0, PI / 4)
 				for dk in 5:
 					sphere(root, w * 0.05, Vector3((dk - 2) * w * 0.2, top + w * 0.05, cz + w * 0.45), solid(Color(1, 1, 1)))
+			"beret":
+				var bc := solid(Color(0.12, 0.12, 0.1), 0.0, 0.9)
+				var bm := sphere(root, w * 0.55, Vector3(-w * 0.08, top + w * 0.02, cz - w * 0.02), bc, w * 0.32)
+				bm.rotation = Vector3(0, 0, 0.18)
+				var bst := Label3D.new(); bst.text = "★"; bst.font = _sym_font; bst.font_size = 64; bst.pixel_size = w * 0.003
+				bst.modulate = Color(0.9, 0.15, 0.1); bst.outline_size = 0; bst.position = Vector3(w * 0.18, top + w * 0.05, cz + w * 0.5); bst.shaded = false
+				root.add_child(bst)
+			"beard":
+				var bd := solid(Color(0.1, 0.08, 0.06), 0.0, 1.0)
+				sphere(root, w * 0.42, Vector3(0, top - w * 0.95, front - w * 0.05), bd, w * 0.55)
+				for sx in [-1.0, 1.0]:
+					box(root, Vector3(w * 0.12, w * 0.5, w * 0.3), Vector3(sx * w * 0.42, top - w * 0.6, front - w * 0.22), bd)
+			"space_helmet":
+				var gl := solid(Color(0.75, 0.88, 1.0, 0.28), 0.4, 0.05, 0.3)
+				sphere(root, w * 0.82, Vector3(0, top - w * 0.42, cz), gl)
+				var ring := MeshInstance3D.new(); var tr := TorusMesh.new(); tr.inner_radius = w * 0.62; tr.outer_radius = w * 0.78
+				ring.mesh = tr; ring.material_override = solid(Color(0.92, 0.92, 0.95), 0.0, 0.4, 0.5); ring.position = Vector3(0, top - w * 1.12, cz); root.add_child(ring)
+				var cccp := Label3D.new(); cccp.text = "CCCP"; cccp.font = font_main; cccp.font_size = 64; cccp.pixel_size = w * 0.0035
+				cccp.modulate = Color(0.85, 0.1, 0.1); cccp.outline_size = 0; cccp.position = Vector3(0, top - w * 1.12, cz + w * 0.79); cccp.shaded = false
+				root.add_child(cccp)
+			"medal":
+				var md := cyl(root, w * 0.14, w * 0.04, Vector3(-w * 0.25, top - w * 1.55, front + w * 0.02), solid(Color(1.0, 0.78, 0.25), 0.5, 0.3, 1.0))
+				md.rotation = Vector3(PI / 2, 0, 0)
+				box(root, Vector3(w * 0.12, w * 0.16, w * 0.03), Vector3(-w * 0.25, top - w * 1.4, front + w * 0.02), solid(Color(0.8, 0.1, 0.1)))
 			"cap":
 				var cc := solid(Color(0.15, 0.2, 0.35), 0.0, 0.8)
 				cyl(root, w * 0.5, w * 0.18, Vector3(0, top + w * 0.02, cz), cc)

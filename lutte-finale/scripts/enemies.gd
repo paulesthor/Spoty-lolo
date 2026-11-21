@@ -49,7 +49,6 @@ var _tint_mats := {}
 var heal_t := 0.0
 var _next_idx := 0
 var _frame := 0
-var dying: Array = []
 var aura_t := 0.0
 
 func setup(g):
@@ -112,7 +111,7 @@ func spawn(kind: String, pos: Vector3, hp_mult := 1.0, dmg_mult := 1.0) -> Enemy
 	e.max_hp = e.hp
 	e.speed = def["speed"] * randf_range(0.92, 1.08)
 	e.dmg = def["dmg"] * dmg_mult
-	e.armor = def.get("armor", 0.0) * (1.0 + 0.12 * game.time / 60.0) + 2.0 * game.dirl("lutte")
+	e.armor = def.get("armor", 0.0) * (1.0 + 0.12 * game.dtime() / 60.0) + 2.0 * game.dirl("lutte")
 	e.last_w = ""
 	e.vuln_t = 0.0
 	e.level = -1
@@ -124,9 +123,10 @@ func spawn(kind: String, pos: Vector3, hp_mult := 1.0, dmg_mult := 1.0) -> Enemy
 	e.invincible = def.get("invincible", false)
 	e.alive = true
 	e.affix = ""
+	e.tp_t = 8.0 if e.boss else 0.0
 	if e.affix_fx: e.affix_fx.queue_free(); e.affix_fx = null
-	if not e.elite and not e.boss and not e.invincible and game.time > 180.0 and not game.warming:
-		var ch := clampf(0.03 + (game.time - 180.0) / 360.0 * 0.12, 0.0, 0.2)
+	if not e.elite and not e.boss and not e.invincible and game.dtime() > 180.0 and not game.warming:
+		var ch := clampf(0.03 + (game.dtime() - 180.0) / 360.0 * 0.12, 0.0, 0.2)
 		if randf() < ch: _give_affix(e, ["blinde", "rapide", "diviseur", "vampire", "teleporteur"][randi() % 5])
 	e.knock = Vector3.ZERO
 	e.t_act = randf_range(1.0, 3.0)
@@ -169,6 +169,7 @@ func _give_affix(e: Enemy, a: String):
 	var l := U.label(fx, info[0], Vector3(0, (e.def["h"] + 0.35) / sc, 0), 40, info[1], Color(0, 0, 0, 1))
 	l.fixed_size = true
 	l.pixel_size = 0.0006
+	l.visibility_range_end = 19.0     # only near the player: the coloured ring is enough at a distance
 	e.affix_fx = fx
 
 func _process(d: float):
@@ -179,7 +180,6 @@ func _process(d: float):
 		if e.alive: _alive_cache.append(e)
 	if game.state != "play": return
 	_frame += 1
-	_update_dying(d)
 	var pp: Vector3 = game.player.global_position
 	var grid := {}
 	const CELL := 1.6
@@ -290,7 +290,7 @@ func _process(d: float):
 		if not grid.has(key): grid[key] = []
 		grid[key].append(e)
 		var py: float = game.player.global_position.y
-		if dist < e.r + 0.45 and absf(py - p.y) < 1.4 and e.stun_t <= 0.0:
+		if dist < e.r + 0.45 and absf(py - p.y) < 1.4 and e.stun_t <= 0.0 and e.node.visible:
 			if game.player.take_damage(e.dmg, false, p, ("un " + AFFIX_INFO[e.affix][0].to_lower() + " · " if e.affix != "" else "") + e.def["name"]):
 				if e.affix == "vampire": e.hp = minf(e.max_hp, e.hp + e.max_hp * 0.3)
 				var eff: String = e.def.get("on_hit", "")
@@ -380,13 +380,48 @@ func _ai_slammer(e: Enemy, dir: Vector3, dist: float, d: float) -> Vector3:
 
 func _ai_boss(e: Enemy, dir: Vector3, dist: float, d: float) -> Vector3:
 	e.t_act -= d
+	e.tp_t -= d
+	# zone 2 boss: calls emergency meetings (summons executives) and jumps on you
+	if e.kind == "boss2" and e.tp_t <= 0.0 and e.phase == "":
+		e.tp_t = 11.0
+		game.toast("RÉUNION D'URGENCE ! Le PDG convoque ses cadres", 1.5)
+		var m: Array = game.mults()
+		for i in 8:
+			var a := TAU * i / 8.0
+			spawn("cadre" if i % 2 == 0 else "trader", game.world.resolve(e.node.position + Vector3(cos(a), 0, sin(a)) * 4.0, 0.5), m[0], m[1])
+		var target: Vector3 = game.player.global_position
+		_telegraph_circle(target, 5.0, 1.3)
+		get_tree().create_timer(1.3, false).timeout.connect(func():
+			if not e.alive: return
+			e.node.position = game.world.resolve(Vector3(target.x, 0, target.z), e.r)
+			_slam(target, 5.0, e.dmg * 1.2, "l'atterrissage du PDG Vertical"))
+	# final boss: vanishes, reappears next to you and slaps the market
+	if e.kind == "boss3" and e.phase == "":
+		if e.tp_t <= 0.0 and e.node.visible:
+			e.tp_t = 9.0
+			e.node.visible = false
+			e.t_act = 2.4
+			game.toast("LA MAIN INVISIBLE DISPARAÎT…", 1.2)
+			var a2 := randf() * TAU
+			var dest: Vector3 = game.world.resolve(game.player.global_position + Vector3(cos(a2), 0, sin(a2)) * 6.0, e.r)
+			_telegraph_circle(dest, 4.5, 2.2)
+			get_tree().create_timer(2.2, false).timeout.connect(func():
+				if not e.alive: return
+				e.node.position = dest
+				e.node.visible = true
+				_slam(dest, 4.5, e.dmg * 1.3, "la gifle de la Main Invisible")
+				for k in 8:
+					var b := TAU * k / 8.0
+					_shoot(dest + Vector3(0, 1.5, 0), Vector3(cos(b), 0, sin(b)), e.dmg * 0.35, ""))
+		if not e.node.visible:
+			return Vector3.ZERO
 	match e.phase:
 		"":
 			if e.t_act <= 0.0:
 				if dist < 22.0 and randf() < 0.6:
 					e.phase = "aim"; e.t_act = 0.9; e.dash_dir = dir
 					_telegraph_line(e.node.position, dir, 18.0, 0.9)
-					game.toast("Le Directeur charge !", 1.0)
+					game.toast("%s charge !" % e.def["name"], 1.0)
 				else:
 					e.t_act = randf_range(3.0, 5.0)
 					for i in 6:
@@ -447,11 +482,11 @@ func _telegraph_line(p: Vector3, dir: Vector3, length: float, dur: float):
 	tw.tween_interval(dur)
 	tw.tween_callback(m.queue_free)
 
-func _slam(p: Vector3, r: float, dmg: float):
+func _slam(p: Vector3, r: float, dmg: float, cause := "le coup de zone d'un Actionnaire"):
 	var v: Vector3 = game.player.global_position - p
 	v.y = 0
 	if v.length() < r and game.player.global_position.y < 1.5:
-		game.player.take_damage(dmg, false, p, "le coup de zone d'un Actionnaire")
+		game.player.take_damage(dmg, false, p, cause)
 		game.player.velocity += v.normalized() * 12.0 + Vector3(0, 6, 0)
 	var s := U.sprite(self, "circle_05.png", Vector3(p.x, 0.07, p.z), r * 2.2, Color(1, 0.5, 0.2, 0.7), 2.5, false, Vector3(-PI / 2, 0, 0))
 	var tw := s.create_tween()
@@ -518,6 +553,7 @@ func _update_hazards(d: float):
 
 # ---------------------------------------------------------------- damage
 func damage(e: Enemy, amount: float, knock_from := Vector3.INF, knock_force := 0.0, src := "", show_num := true, ignore_armor := false, crit_chance := 0.05, wid := ""):
+	if not e.alive or not e.node.visible: return
 	if not e.alive: return
 	if src != "":
 		var now := Time.get_ticks_msec() / 1000.0
@@ -572,36 +608,13 @@ func kill(e: Enemy):
 	if e.def.has("explode"):
 		_explode(e.node.position, e.def["explode"] * game.mults()[1])
 	game.on_enemy_killed(e)
-	if e.ap and e.ap.has_animation(Chars.ENEMY_ANIMS["death"]) and dying.size() < 50 and not game.warming:
-		e.ap.play(Chars.ENEMY_ANIMS["death"], 0.05)
-		e.ap.speed_scale = 1.8
-		dying.append({"e": e, "t": 0.0})
-	else:
-		_pool(e)
+	_pool(e)
 
+# killed enemies vanish at once (creator's choice: no corpses cluttering the horde)
 func _pool(e: Enemy):
-	var n := e.node
-	var tw := create_tween()
-	tw.tween_property(n, "scale", n.scale * 0.05, 0.14)
-	tw.tween_callback(func():
-		n.visible = false
-		if not pools.has(e.kind): pools[e.kind] = []
-		pools[e.kind].append(e))
-
-# dead enemies play their death animation, stay a moment, then sink into the ground
-func _update_dying(d: float):
-	for dd in dying.duplicate():
-		var e: Enemy = dd["e"]
-		dd["t"] += d
-		if e.ap: e.ap.advance(d)
-		if dd["t"] > 0.9:
-			e.node.position.y -= d * 2.5
-		if dd["t"] > 1.5:
-			dying.erase(dd)
-			e.node.visible = false
-			e.node.scale = e.node.get_meta("base_scale")
-			if not pools.has(e.kind): pools[e.kind] = []
-			pools[e.kind].append(e)
+	e.node.visible = false
+	if not pools.has(e.kind): pools[e.kind] = []
+	pools[e.kind].append(e)
 
 func nearest(pos: Vector3, max_d: float, exclude: Array = []) -> Enemy:
 	var best: Enemy = null

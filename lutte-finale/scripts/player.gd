@@ -59,7 +59,7 @@ func _build_model(c: String):
 		cur_anim = ""
 	var keep := global_position
 	global_position = Vector3.ZERO
-	model = Chars.build_hero(self, c)
+	model = Chars.build_hero(self, c, Meta.skin_sel(c))
 	ap = U.anim_player(model)
 	if ap: ap.playback_default_blend_time = 0.12
 	_anim("idle")
@@ -175,12 +175,13 @@ func _physics_process(d: float):
 	velocity.z = hv.z
 	if is_on_floor():
 		jumps_left = 1
-	velocity.y -= GRAVITY * d
+	var low_g := char_id == "youri"
+	velocity.y -= GRAVITY * d * (0.72 if low_g and velocity.y < 0.0 else 1.0)
 	if want_jump:
 		if is_on_floor():
-			velocity.y = JUMP_V
+			velocity.y = JUMP_V * (1.15 if char_id == "youri" else 1.0)
 		elif jumps_left > 0:
-			velocity.y = DOUBLE_JUMP_V
+			velocity.y = DOUBLE_JUMP_V * (1.15 if char_id == "youri" else 1.0)
 			jumps_left -= 1
 	last_vy = velocity.y
 	move_and_slide()
@@ -208,7 +209,7 @@ func _physics_process(d: float):
 
 var last_cause := ""
 func take_damage(amount: float, dot := false, from := Vector3.INF, cause := "") -> bool:
-	if hp <= 0.0 or (invuln > 0.0 and not dot): return false
+	if hp <= 0.0 or (invuln > 0.0 and not dot) or game.test_god: return false
 	if cause != "": last_cause = cause
 	if not dot and oneshot_t <= 0.0 and slide_t <= 0.0: oneshot("hit", 0.25, 1.6)
 	if from != Vector3.INF and not dot: game.hud.hit_from(from)
@@ -229,7 +230,7 @@ func heal(amount: float):
 # simple automated player used for headless tests
 func _bot_input(d: float) -> Array:
 	bot_angle += d * 0.22
-	var center := Vector3(0, 0, -12)
+	var center: Vector3 = game.world.player_start
 	var target := center + Vector3(cos(bot_angle), 0, sin(bot_angle)) * 20.0
 	var want := target - global_position
 	want.y = 0
@@ -251,6 +252,9 @@ func _bot_input(d: float) -> Array:
 	var g = game.nearest_gem(global_position, 14.0)
 	if g != null:
 		want = want * 0.3 + (g - global_position) * 1.5
+	if game.door != null:
+		want = game.door.global_position - global_position
+		want.y = 0
 	var mv := want.normalized() * 0.7 + flee * 0.6
 	mv = Basis(Vector3.UP, -cam_yaw) * mv
 	bot_jump_t -= d

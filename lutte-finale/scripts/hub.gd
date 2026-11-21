@@ -253,7 +253,49 @@ func _tab_lancer():
 		for id in Meta.run_directives:
 			dv.add_child(_lbl("• %s %d" % [Meta.DIRECTIVES[id]["name"], Meta.run_directives[id]], 18, C_BAD))
 		dv.add_child(_lbl("Ferveur %d · médailles x%.2f" % [f, 1.0 + 0.15 * f], 20, C_GOLD))
-	var go := _btn("LANCER LA RUN  ·  ZONE 1 : L'HYPERMARCHÉ", 34)
+	# run settings: start zone, difficulty, mode
+	var ls: Dictionary = Meta.data.get("launch", {"zone": 1, "tier": 1, "endless": false})
+	if not Meta.zone_unlocked(int(ls["zone"])): ls["zone"] = 1
+	if not Meta.tier_unlocked(int(ls["tier"])): ls["tier"] = 1
+	if not Meta.endless_unlocked(): ls["endless"] = false
+	Meta.data["launch"] = ls
+	var srow := HBoxContainer.new()
+	srow.add_theme_constant_override("separation", 14)
+	content.add_child(srow)
+	var zc := _card(srow, C_PANEL)
+	zc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	zc.add_child(_lbl("ZONE DE DÉPART", 20, C_GOLD))
+	var zr := HBoxContainer.new(); zc.add_child(zr)
+	for z in [1, 2, 3]:
+		var ok := Meta.zone_unlocked(z)
+		var b := _btn(("%d · %s" % [z, Levels.zone(z)["name"]]) if ok else "%d · verrouillée" % z, 16, ok)
+		if int(ls["zone"]) == z: b.add_theme_stylebox_override("normal", _sb(C_RED, C_GOLD, 2))
+		b.pressed.connect(func(): ls["zone"] = z; _refresh())
+		zr.add_child(b)
+	zc.add_child(_lbl("Partir d'une zone plus loin donne des niveaux de rattrapage." if Meta.zone_unlocked(2) else "Bats le boss d'une zone pour pouvoir partir de la suivante.", 15, C_DIM))
+	var tc := _card(srow, C_PANEL)
+	tc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tc.add_child(_lbl("DIFFICULTÉ", 20, C_GOLD))
+	var tr := HBoxContainer.new(); tc.add_child(tr)
+	for t in [1, 2, 3]:
+		var ok := Meta.tier_unlocked(t)
+		var b := _btn(Meta.TIERS[t - 1]["name"] if ok else "verrouillée", 16, ok)
+		if int(ls["tier"]) == t: b.add_theme_stylebox_override("normal", _sb(C_RED, C_GOLD, 2))
+		b.pressed.connect(func(): ls["tier"] = t; _refresh())
+		tr.add_child(b)
+	tc.add_child(_lbl(Meta.TIERS[int(ls["tier"]) - 1]["desc"] + ("" if Meta.tier_unlocked(3) else "\nGagne une run complète pour débloquer la suivante."), 15, C_DIM))
+	var mc := _card(srow, C_PANEL)
+	mc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	mc.add_child(_lbl("MODE", 20, C_GOLD))
+	var mr := HBoxContainer.new(); mc.add_child(mr)
+	for e in [false, true]:
+		var ok: bool = (not e) or Meta.endless_unlocked()
+		var b := _btn(("Sans fin" if e else "Normal (3 zones)") if ok else "Sans fin · verrouillé", 16, ok)
+		if bool(ls["endless"]) == e: b.add_theme_stylebox_override("normal", _sb(C_RED, C_GOLD, 2))
+		b.pressed.connect(func(): ls["endless"] = e; _refresh())
+		mr.add_child(b)
+	mc.add_child(_lbl(("Les zones bouclent sans fin, de plus en plus dures. Record : zone %d." % int(Meta.data.get("endless_best", 0))) if Meta.endless_unlocked() else "Débloqué après ta première victoire.", 15, C_DIM))
+	var go := _btn("LANCER LA RUN  ·  ZONE %d : %s" % [int(ls["zone"]), (Levels.zone(int(ls["zone"]))["name"] as String).to_upper()], 34)
 	go.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	go.custom_minimum_size = Vector2(0, 80)
 	go.add_theme_stylebox_override("normal", _sb(C_RED, C_GOLD, 2))
@@ -337,6 +379,23 @@ func _tab_caserne():
 			var tb := _btn("APPRENDRE" if have < 5 else "COMPLET", 18, can)
 			tb.pressed.connect(func(): Meta.buy_talent(c, bi); _refresh())
 			bv.add_child(tb)
+		v.add_child(_lbl("Arme de départ : %s · %s · Ultime (E) : %s — %s" % [Data.WEAPONS[def["weapon"]]["name"], def["passive"], def["ult"], def["ult_desc"]], 15, C_DIM))
+		var sr := HBoxContainer.new()
+		sr.add_theme_constant_override("separation", 10)
+		v.add_child(sr)
+		sr.add_child(_lbl("TENUES :", 18, Color.WHITE, false))
+		for si in Meta.SKINS[c].size():
+			var sk: Array = Meta.SKINS[c][si]
+			var owned: bool = Meta.skin_owned(c, si)
+			var sel: bool = Meta.skin_sel(c) == si
+			var label: String = ("● " if sel else "○ ") + sk[0] + ("" if owned else "  · %d médailles" % sk[3])
+			var sb := _btn(label, 16, owned or int(Meta.data["medals"]) >= int(sk[3]))
+			if sel: sb.add_theme_stylebox_override("normal", _sb(C_RED, C_GOLD, 2))
+			sb.pressed.connect(func():
+				if Meta.skin_owned(c, si): Meta.set_skin(c, si)
+				else: Meta.buy_skin(c, si)
+				_refresh())
+			sr.add_child(sb)
 
 # ---------------------------------------------------------------- USINE
 func _tab_usine():
@@ -356,6 +415,13 @@ func _tab_usine():
 		var dmg := float(Meta.data["mastery"].get(w, 0.0))
 		var ml := Meta.weapon_mastery(w)
 		v.add_child(_lbl("%s · MAÎTRISE %s" % [name.to_upper(), _pips(ml, 5)], 24, C_GOLD))
+		v.add_child(_lbl(Data.WEAPONS[w]["desc"], 15, C_DIM))
+		var evl := "Évolution : %s (niv %d + décret %s)" % [Data.WEAPONS[w]["evo_name"], Data.EVO_MIN_LV, Data.DECRETS[Data.WEAPONS[w]["evo"]]["name"]]
+		var fid := Data.fusion_of(w)
+		if fid != "":
+			var fd: Dictionary = Data.FUSIONS[fid]
+			evl += "\nFusion : %s (avec %s)" % [fd["name"], Data.WEAPONS[fd["b"] if fd["a"] == w else fd["a"]]["name"]]
+		v.add_child(_lbl(evl, 15, Color(0.85, 0.75, 0.5)))
 		if ml < 5:
 			var lo: float = Meta.MASTERY_XP[ml]
 			var hi: float = Meta.MASTERY_XP[ml + 1]
@@ -433,10 +499,21 @@ func _tab_options():
 		var b := _btn(("● " if int(Meta.opt("shake")) == o else "○ ") + "%d %%" % o, 20)
 		b.pressed.connect(func(): Meta.set_opt("shake", o); _refresh())
 		row3.add_child(b)
+	v.add_child(_lbl("MINI-CARTE", 24, C_GOLD))
+	var row4 := HBoxContainer.new(); row4.add_theme_constant_override("separation", 10); v.add_child(row4)
+	for o in [1, 0]:
+		var b := _btn(("● " if int(Meta.opt("minimap")) == o else "○ ") + ("Activée" if o == 1 else "Désactivée"), 20)
+		b.pressed.connect(func(): Meta.set_opt("minimap", o); _refresh())
+		row4.add_child(b)
 	var dv := _card(content, Color(0.22, 0.07, 0.06), C_BAD, 1)
-	dv.add_child(_lbl("Contrôles : ZQSD · souris · Espace saut · Maj glissade (traînée de feu) · clic droit / C esquive · F interagir · E ultime · Échap pause\nCartes : 1/2/3 choisir · T relancer · B bannir · X passer", 18, C_TEXT))
+	dv.add_child(_lbl("Contrôles : ZQSD · souris · Espace saut · Maj glissade (traînée de feu) · clic droit / C esquive · F interagir · E ultime · Échap pause · M mini-carte · Tab grande carte\nCartes : 1/2/3 choisir · T relancer · B bannir · X passer", 18, C_TEXT))
 
 func _launch():
+	var ls: Dictionary = Meta.data.get("launch", {"zone": 1, "tier": 1, "endless": false})
+	Meta.run_zone = int(ls["zone"])
+	Meta.run_tier = int(ls["tier"])
+	Meta.run_endless = bool(ls["endless"])
+	Meta.carry = {}
 	Meta.save()
 	get_tree().change_scene_to_file("res://scenes/main.tscn")
 
