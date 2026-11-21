@@ -32,7 +32,8 @@ class Enemy:
 	var affix_fx: Node3D
 	var tp_t := 0.0
 	var vuln_t := 0.0
-	var level := -1           # -1 ground, otherwise index of the plateau it stands on
+	var level := -1
+	var stun_imm := 0.0       # diminishing returns: immune to new stuns while > 0           # -1 ground, otherwise index of the plateau it stands on
 	var hit_from := {}
 
 var game
@@ -130,6 +131,7 @@ func spawn(kind: String, pos: Vector3, hp_mult := 1.0, dmg_mult := 1.0) -> Enemy
 	e.t_act = randf_range(1.0, 3.0)
 	e.phase = ""
 	e.stun_t = 0.0
+	e.stun_imm = 0.0
 	e.slow_t = 0.0
 	e.hit_from.clear()
 	if e.ap:
@@ -201,6 +203,7 @@ func _process(d: float):
 		var dist := to.length()
 		var dir := to / maxf(dist, 0.001)
 		e.stun_t = maxf(0.0, e.stun_t - d)
+		e.stun_imm = maxf(0.0, e.stun_imm - d)
 		e.slow_t = maxf(0.0, e.slow_t - d)
 		e.vuln_t = maxf(0.0, e.vuln_t - d)
 		var spd: float = e.speed * slow_world * (0.6 if e.slow_t > 0.0 else 1.0)
@@ -235,7 +238,7 @@ func _process(d: float):
 		# and walk back down when the player leaves it
 		var on_ramp: Array = w.ramp_at(p)
 		if e.phase != "dash" and not e.invincible and e.stun_t <= 0.0 and (pl_player != e.level or not on_ramp.is_empty()):
-			var target_pl := pl_player if pl_player >= 0 else e.level
+			var target_pl: int = pl_player if pl_player >= 0 else e.level
 			if target_pl >= 0 and target_pl < w.plateaus.size():
 				var best_v := Vector3.ZERO
 				var best_d := 1e9
@@ -525,9 +528,19 @@ func damage(e: Enemy, amount: float, knock_from := Vector3.INF, knock_force := 0
 	if knock_from != Vector3.INF and not e.boss and e.ai != "slammer":
 		var kv: Vector3 = e.node.position - knock_from
 		kv.y = 0
-		e.knock = kv.normalized() * knock_force * (0.35 if e.elite else 1.0)
+		e.knock = kv.normalized() * knock_force * (0.35 if e.elite else (0.5 if e.affix != "" or e.ai == "slammer" else 1.0))
 	if e.hp <= 0.0:
 		kill(e)
+
+# stun with diminishing returns; big enemies are stunned less and recover immunity longer
+func stun(e: Enemy, dur: float, force := false):
+	if not e.alive or e.invincible: return
+	if e.boss and not force: return
+	if e.stun_imm > 0.0 and not force: return
+	var big: bool = e.elite or e.boss or e.ai == "slammer" or e.affix != ""
+	var dd := dur * (0.4 if big else 1.0)
+	e.stun_t = maxf(e.stun_t, dd)
+	e.stun_imm = dd + (4.0 if big else 1.5)
 
 func set_hit_cd(e: Enemy, src: String, cd: float):
 	e.hit_from[src] = Time.get_ticks_msec() / 1000.0 + cd

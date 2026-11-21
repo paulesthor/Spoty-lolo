@@ -46,7 +46,7 @@ func stats(id: String) -> Dictionary:
 	var s := {}
 	s["dmg"] = base["dmg"] * (1.0 + m.get("dmg", 0.0)) * (1.0 + game.dv("productivite") / 100.0)
 	s["cd"] = base["cd"] / ((1.0 + m.get("cd", 0.0)) * (1.0 + game.dv("cadence") / 100.0))
-	s["area"] = base.get("area", 0.0) * (1.0 + m.get("area", 0.0)) * (1.0 + game.dv("expansion") / 100.0)
+	s["area"] = base.get("area", 0.0) * minf(1.0 + m.get("area", 0.0), 1.8) * minf(1.0 + game.dv("expansion") / 100.0, 1.6)
 	s["range"] = base.get("range", 0.0) * (1.0 + m.get("range", 0.0))
 	s["duration"] = base.get("duration", 0.0) * (1.0 + m.get("duration", 0.0)) * (1.0 + game.dv("duree") / 100.0)
 	var extra := int(game.dv("collectivisation")) if id in ["kalach", "faucille", "matriochka", "molotov"] else 0
@@ -79,7 +79,7 @@ func stats(id: String) -> Dictionary:
 		"hautparleur_larsen": s["cd"] *= 0.65; s["dmg"] *= 0.75
 	if evo:
 		match id:
-			"marteau": s["area"] *= 1.35; s["dmg"] *= 1.4
+			"marteau": s["area"] *= 1.15; s["dmg"] *= 1.35
 			"kalach": s["count"] += 2; s["pierce"] += 3; s["cd"] *= 0.6
 			"faucille": s["count"] += 3; s["range"] *= 1.3
 			"molotov": s["area"] *= 1.5; s["duration"] *= 1.6; s["dmg"] *= 1.3
@@ -178,7 +178,7 @@ func _fire(id: String, s: Dictionary) -> bool:
 				v.y = 0
 				if not full and v.length() > 0.5 and dir.angle_to(v.normalized()) > deg_to_rad(38): continue
 				_hit(e, s["dmg"], s, pp, 16.0)
-				e.stun_t = 0.6
+				game.enemies.stun(e, 0.6)
 			_cone_fx(pp, dir, s["area"], full)
 			return true
 	return false
@@ -192,8 +192,8 @@ func on_landed(fall_speed: float):
 
 func _shockwave(center: Vector3, area: float, dmg: float, col: Color, s: Dictionary, stun := false):
 	for e in game.enemies.in_radius(center, area):
-		_hit(e, dmg, s, center, 14.0)
-		if stun: e.stun_t = 0.8
+		_hit(e, dmg, s, center, 8.0)
+		if stun: game.enemies.stun(e, 0.6)
 	game.break_in_radius(center, area)
 	_ring_fx(center, area, col)
 	game.shake(0.12 if dmg < 150.0 else 0.22)

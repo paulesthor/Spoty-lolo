@@ -77,7 +77,7 @@ const DECRETS := {
 	"cadence": {"name": "Cadence", "fmt": "+%d %% de vitesse d'attaque", "base": 8.0, "pct": true},
 	"collectivisation": {"name": "Collectivisation", "fmt": "+%d projectile(s) (Kalach, Faucille, Matriochka, Molotov)", "base": 1.0, "int": true},
 	"perforation": {"name": "Perforation", "fmt": "Les projectiles traversent +%d ennemi(s)", "base": 1.0, "int": true},
-	"expansion": {"name": "Expansion", "fmt": "+%d %% de taille des zones", "base": 12.0, "pct": true},
+	"expansion": {"name": "Expansion", "fmt": "+%d %% de taille des zones (max +60 %%)", "base": 9.0, "pct": true},
 	"duree": {"name": "Plan Quinquennal", "fmt": "+%d %% de durée des effets", "base": 15.0, "pct": true},
 	"critique": {"name": "Zèle", "fmt": "+%d %% de chances de coup critique", "base": 6.0, "pct": true},
 	"endurance": {"name": "Endurance", "fmt": "+%d PV max", "base": 20.0},
@@ -136,7 +136,7 @@ static func weapon_up_value(stat: String, rarity: int) -> float:
 	match stat:
 		"dmg": return 0.15 * m
 		"cd": return 0.07 * m
-		"area": return 0.10 * m
+		"area": return 0.07 * m
 		"range": return 0.12 * m
 		"duration": return 0.15 * m
 		"count", "pierce", "split": return float(int_bonus(rarity))

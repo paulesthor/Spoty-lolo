@@ -514,6 +514,7 @@ func _unhandled_input(ev: InputEvent):
 		player.cam_yaw -= clampf(ev.relative.x, -60.0, 60.0) * 0.0025
 
 func _process(d: float):
+	if cam_rig == null or player == null or hud == null: return
 	var rd := minf(d, 0.05)
 	match state:
 		"loading":
@@ -649,7 +650,7 @@ func spawn_point(min_d: float, max_d: float) -> Vector3:
 
 func mults() -> Array:
 	var tm := time / 60.0
-	var hp := (1.0 + 0.3 * tm + 0.1 * tm * tm + 0.012 * tm * tm * tm) * (1.0 + 0.2 * bets) * (1.0 + 0.25 * dirl("productivisme"))
+	var hp := (1.0 + 0.36 * tm + 0.12 * tm * tm + 0.014 * tm * tm * tm) * (1.0 + 0.2 * bets) * (1.0 + 0.25 * dirl("productivisme"))
 	return [hp, (1.0 + 0.1 * tm) * (1.0 + 0.25 * dirl("sans_pitie"))]
 
 func enemy_speed_mult() -> float:
@@ -672,8 +673,8 @@ func _pick_kind() -> String:
 func _director(d: float):
 	var tm := time / 60.0
 	var m := mults()
-	var cap := 240 if not krach else 300
-	var rate := (0.9 + 0.75 * tm + 0.16 * tm * tm) * (1.0 + 0.15 * bets) * (1.0 + 0.25 * dirl("cadence"))
+	var cap := 260 if not krach else 320
+	var rate := (1.1 + 0.9 * tm + 0.19 * tm * tm) * (1.0 + 0.15 * bets) * (1.0 + 0.25 * dirl("cadence"))
 	if krach: rate *= 2.2
 	spawn_acc += rate * d
 	while spawn_acc >= 1.0:
@@ -1056,10 +1057,12 @@ func _roll_options(n: int, min_r := 0, bonus := 0, exclude: Array = []) -> Array
 		var total := 0.0
 		for o in pool: total += o["w"]
 		var r := rng.randf() * total
+		var chosen = pool[pool.size() - 1]     # fallback: float rounding must never leave the loop without a pick
 		for o in pool:
 			r -= o["w"]
 			if r <= 0.0:
-				out.append(o); pool.erase(o); break
+				chosen = o; break
+		out.append(chosen); pool.erase(chosen)
 	for o in out:
 		o["rarity"] = roll_rarity(min_r, bonus) if o["kind"] != "evo" else 3
 		_describe(o)
@@ -1195,7 +1198,7 @@ func _try_ultimate():
 		"ilitch":
 			var dur: float = (3.0 + mods.get("ult_stun", 0.0)) * pw
 			for e in enemies.in_radius(pp, 22.0):
-				e.stun_t = dur
+				enemies.stun(e, dur, true)
 				e.vuln_t = dur
 			hud.toast("DISCOURS AU PEUPLE !", 1.5)
 			weapons._ring_fx(pp, 22.0, Color(1, 0.8, 0.3))
