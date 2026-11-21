@@ -1,9 +1,9 @@
 extends Node3D
 # Look-dev scene: "Hypermarché" zone, same layout rendered in several art styles.
-# Usage: godot --path . -- style=A out=res://shots/a.png
+# Usage: godot --path . -- style=A out=res://lookdev/shots/a.png
 
 var style := "A"
-var out_path := "res://shots/out.png"
+var out_path := "res://lookdev/shots/out.png"
 var frame := 0
 var rng := RandomNumberGenerator.new()
 var toon_shader: Shader = preload("res://shaders/toon.gdshader")
@@ -51,7 +51,7 @@ func _process(_d):
 	frame += 1
 	if frame == 45:
 		var img := get_viewport().get_texture().get_image()
-		DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://shots"))
+		DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://lookdev/shots"))
 		img.save_png(out_path)
 		print("saved ", out_path)
 		get_tree().quit()
@@ -85,7 +85,7 @@ func spawn(path: String, pos: Vector3, height := -1.0, rot := 0.0, sc := 1.0) ->
 		roughen(n)
 	if serious and "mini-characters" in path:
 		for sk in n.find_children("*", "Skeleton3D", true, false):
-			var hm = load("res://head_scale.gd").new()
+			var hm = load("res://scripts/head_scale.gd").new()
 			hm.head_scale = 0.78
 			hm.body_scale = 1.12
 			sk.add_child(hm)
