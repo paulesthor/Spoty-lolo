@@ -27,6 +27,8 @@ class Enemy:
 	var stun_t := 0.0
 	var slow_t := 0.0
 	var shielded := false
+	var last_w := ""
+	var vuln_t := 0.0
 	var hit_from := {}
 
 var game
@@ -103,7 +105,9 @@ func spawn(kind: String, pos: Vector3, hp_mult := 1.0, dmg_mult := 1.0) -> Enemy
 	e.max_hp = e.hp
 	e.speed = def["speed"] * randf_range(0.92, 1.08)
 	e.dmg = def["dmg"] * dmg_mult
-	e.armor = def.get("armor", 0.0) * (1.0 + 0.12 * game.time / 60.0)
+	e.armor = def.get("armor", 0.0) * (1.0 + 0.12 * game.time / 60.0) + 2.0 * game.dirl("lutte")
+	e.last_w = ""
+	e.vuln_t = 0.0
 	e.r = def["r"]
 	e.xp = def["xp"]
 	e.ai = def.get("ai", "chase")
@@ -154,6 +158,7 @@ func _process(d: float):
 		var dir := to / maxf(dist, 0.001)
 		e.stun_t = maxf(0.0, e.stun_t - d)
 		e.slow_t = maxf(0.0, e.slow_t - d)
+		e.vuln_t = maxf(0.0, e.vuln_t - d)
 		var spd: float = e.speed * slow_world * (0.6 if e.slow_t > 0.0 else 1.0)
 		var move := dir
 		if e.stun_t > 0.0:
@@ -412,7 +417,7 @@ func _update_hazards(d: float):
 					hazards.erase(h); n.queue_free()
 
 # ---------------------------------------------------------------- damage
-func damage(e: Enemy, amount: float, knock_from := Vector3.INF, knock_force := 0.0, src := "", show_num := true, ignore_armor := false, crit_chance := 0.05):
+func damage(e: Enemy, amount: float, knock_from := Vector3.INF, knock_force := 0.0, src := "", show_num := true, ignore_armor := false, crit_chance := 0.05, wid := ""):
 	if not e.alive: return
 	if src != "":
 		var now := Time.get_ticks_msec() / 1000.0
@@ -423,7 +428,9 @@ func damage(e: Enemy, amount: float, knock_from := Vector3.INF, knock_force := 0
 			e.knock = kv0.normalized() * knock_force * 0.3
 		return
 	var crit := randf() < crit_chance
-	var amt := amount * (2.0 if crit else 1.0)
+	var amt: float = amount * ((2.0 + game.mods.get("crit_dmg", 0.0) / 100.0) if crit else 1.0)
+	if e.vuln_t > 0.0: amt *= 1.5
+	if wid != "": e.last_w = wid
 	if not ignore_armor:
 		amt = maxf(amt - e.armor, amt * 0.15)
 	if e.shielded: amt *= 0.6

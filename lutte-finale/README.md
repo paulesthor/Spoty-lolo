@@ -30,15 +30,29 @@ Survivor-like 3D satirique (Godot 4.5, renderer Compatibilité par défaut pour 
 - **Événements aléatoires** : Black Friday, pluie de billets, grève générale, OPA hostile, livraison express, soldes.
 - Cartons et consignes à casser, coffres payants (prix croissant), tartines.
 
-Pas encore : sons et musique, familiers et gacha, autres personnages, zones 2 et 3, progression entre les runs.
+## Progression entre les runs (le Kolkhoze)
+
+Le jeu démarre sur **le Kolkhoze**, un écran de menus entre les runs. Chaque run (victoire ou mort) rapporte des **médailles**.
+
+- **Bureau du Plan** : 13 bonus permanents à plusieurs rangs (PV, dégâts, cadence, zone, XP, chance, armure, régénération, roubles, relances, résurrection, 5e arme).
+- **Caserne** : 4 camarades (Stakhanov, Ilitch le Chauve, Petit Père Moustache, Babouchka Olga). Chacun a son arme de départ, un passif, une **capacité ultime** (touche E, se charge en bonkant des ennemis) et un **arbre de talents** à 3 branches de 5 talents. Le camarade gagne de l'XP quand on le joue.
+- **Usine d'armement** : déblocage des armes. La **maîtrise** monte avec les dégâts infligés par chaque arme et débloque des **modules** qui changent son comportement (17 au total, un équipé par arme).
+- **Plan quinquennal** : 3 quotas à remplir en 5 runs. Chaque quota rapporte des médailles, le plan complet un bonus et un camarade. Un plan raté déclenche une **purge** : un bonus du Bureau est désactivé pendant tout le plan suivant.
+- **Directives du Parti** : 10 contraintes optionnelles (jusqu'à 18 points de ferveur). Chaque point donne +15 % de médailles.
+
+Sauvegarde : `%APPDATA%/Godot/app_userdata/Lutte Finale/lutte_finale_save.json` sous Windows.
+
+Pas encore : sons et musique, familiers et gacha, zones 2 et 3.
 
 ## Tests automatiques
 
-Un bot peut jouer seul (utile pour l'équilibrage) :
+Un bot (qui joue comme un très mauvais joueur) peut enchaîner des runs avec toute la progression :
 
 ```
-godot --headless --path . -- bot speed=6 dur=700 seed=1
+godot --headless --path . -- bot multirun speed=8 runs=30 save=/tmp/sim.json
 ```
+
+Une seule run : `godot --headless --path . -- bot speed=6 dur=700`. Option `botdirs` : le bot active des directives après ses victoires.
 
 Options : `bot`, `speed=` (accélère le temps), `dur=` (secondes de jeu), `seed=`, `warp=` (saute à un moment de la zone avec un build plausible), `shots=` + `shotdir=` (captures d'écran, nécessite un rendu).
 

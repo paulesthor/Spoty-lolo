@@ -3,8 +3,12 @@ config_version=5
 [application]
 config/name="Lutte Finale"
 config/description="Survivor-like 3D satirique (prototype)"
-run/main_scene="res://scenes/main.tscn"
+run/main_scene="res://scenes/hub.tscn"
 config/features=PackedStringArray("4.5", "GL Compatibility")
+
+[autoload]
+
+Meta="*res://scripts/meta.gd"
 
 [display]
 window/size/viewport_width=1920

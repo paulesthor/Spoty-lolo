@@ -35,7 +35,7 @@ func evolve(id: String):
 
 func can_evolve(id: String) -> bool:
 	if not owned.has(id) or owned[id]["evo"]: return false
-	return owned[id]["lv"] >= Data.EVO_MIN_LV and game.dv(Data.WEAPONS[id]["evo"]) > 0.0
+	return owned[id]["lv"] >= Data.EVO_MIN_LV and game.decret_lv(Data.WEAPONS[id]["evo"]) > 0
 
 func stats(id: String) -> Dictionary:
 	var base: Dictionary = Data.WEAPONS[id]
@@ -55,6 +55,27 @@ func stats(id: String) -> Dictionary:
 	s["depth"] = int(base.get("depth", 0))
 	s["speed"] = base.get("speed", 0.0)
 	s["crit"] = 0.05 + game.dv("critique") / 100.0
+	s["id"] = id
+	s["mastery"] = Meta.weapon_mastery(id)
+	s["dmg"] *= 1.0 + 0.04 * s["mastery"]
+	s["module"] = Meta.data["modules"].get(id, "")
+	match s["module"]:
+		"kalach_eventail": s["count"] += 2; s["dmg"] *= 0.7
+		"kalach_sniper": s["count"] = 1 + int(m.get("count", 0.0)) / 2; s["dmg"] *= 3.5; s["pierce"] += 5; s["cd"] *= 2.0
+		"kalach_incendiaire": s["dmg"] *= 1.15
+		"marteau_seisme": s["area"] *= 1.45; s["cd"] *= 1.3
+		"faucille_lourde": s["dmg"] *= 1.7; s["count"] = maxi(1, s["count"] - 1)
+		"faucille_rafale": s["count"] += 2; s["range"] *= 0.7
+		"molotov_napalm": s["duration"] *= 2.0; s["dmg"] *= 0.8
+		"molotov_grappe": s["count"] += 2; s["area"] *= 0.65
+		"matriochka_essaim": s["split"] += 2; s["dmg"] *= 0.75
+		"matriochka_mere": s["depth"] += 1; s["cd"] *= 1.4
+		"spoutnik_large": s["area"] *= 1.6
+		"spoutnik_tueur": s["dmg"] *= 1.7; s["count"] = maxi(1, s["count"] - 1)
+		"samovar_glace": s["area"] *= 1.2; s["dmg"] *= 0.8
+		"samovar_bouilloire": s["dmg"] *= 1.7; s["area"] *= 0.75
+		"hautparleur_megaphone": s["area"] *= 1.5
+		"hautparleur_larsen": s["cd"] *= 0.65; s["dmg"] *= 0.75
 	if evo:
 		match id:
 			"marteau": s["area"] *= 1.35; s["dmg"] *= 1.4
@@ -83,7 +104,12 @@ func _process(d: float):
 	_update_fires(d)
 
 func _hit(e, dmg: float, s: Dictionary, from := Vector3.INF, knock := 0.0, src := "", show := true, ignore_armor := false):
-	game.enemies.damage(e, dmg, from, knock, src, show, ignore_armor, s["crit"])
+	var mod: String = s.get("module", "")
+	if mod == "kalach_incendiaire": ignore_armor = true
+	if mod == "marteau_gel": e.slow_t = 2.0
+	if mod == "samovar_glace": e.slow_t = 1.2
+	game.track_damage(s.get("id", ""), dmg)
+	game.enemies.damage(e, dmg, from, knock, src, show, ignore_armor, s["crit"], s.get("id", ""))
 
 func _fire(id: String, s: Dictionary) -> bool:
 	var pp: Vector3 = game.player.global_position
@@ -160,7 +186,7 @@ func on_landed(fall_speed: float):
 	if not owned.has("marteau") or fall_speed < 7.0 or slam_cd > 0.0: return
 	slam_cd = 0.6
 	var s := stats("marteau")
-	_shockwave(game.player.global_position, s["area"] * 1.15, s["dmg"] * 2.0, Color(1.0, 0.75, 0.2), s, owned["marteau"]["evo"])
+	_shockwave(game.player.global_position, s["area"] * 1.15, s["dmg"] * 2.0 * (1.0 + game.mods.get("slam_bonus", 0.0) / 100.0), Color(1.0, 0.75, 0.2), s, owned["marteau"]["evo"])
 
 func _shockwave(center: Vector3, area: float, dmg: float, col: Color, s: Dictionary, stun := false):
 	for e in game.enemies.in_radius(center, area):

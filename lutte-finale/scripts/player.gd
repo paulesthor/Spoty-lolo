@@ -39,9 +39,24 @@ func setup(g):
 	col.position = Vector3(0, 0.85, 0)
 	add_child(col)
 	floor_snap_length = 0.3
-	model = U.place(self, U.CH + "character-male-b.glb", Vector3.ZERO, 1.75, 0.0)
+	_build_model("character-male-b", ["chapka"])
+	ap = U.anim_player(model)
+	_anim("idle")
+
+func apply_character(c: String):
+	var def: Dictionary = Meta.CHARACTERS[c]
+	_build_model(def["model"], def["acc"])
+	if def["base"].has("vitesse"): pass
+
+func _build_model(model_name: String, acc: Array):
+	if model:
+		model.queue_free()
+		cur_anim = ""
+	var keep := global_position
+	global_position = Vector3.ZERO
+	model = U.place(self, U.CH + model_name + ".glb", Vector3.ZERO, 1.75, 0.0)
 	U.shrink_head(model)
-	U.attach_head(model, ["chapka"])
+	if not acc.is_empty(): U.attach_head(model, acc)
 	var arm := U.bone_attach(model, "arm-right")
 	if arm:
 		var ww: float = arm.get_meta("w")
@@ -58,6 +73,7 @@ func setup(g):
 		hammer.rotation_degrees = Vector3(-60, 0, 0)
 	ap = U.anim_player(model)
 	_anim("idle")
+	global_position = keep
 
 func _anim(a: String, speed := 1.0):
 	if ap == null: return
@@ -98,7 +114,8 @@ func _physics_process(d: float):
 	if game == null or game.state != "play": return
 	invuln = maxf(0.0, invuln - d)
 	_tick_status(d)
-	hp = minf(max_hp, hp + 0.4 * d)
+	if game.dirl("rationnement") == 0:
+		hp = minf(max_hp, hp + (0.4 + game.mods.get("regen", 0.0)) * d)
 	slide_cd = maxf(0.0, slide_cd - d)
 	var input := Vector2.ZERO
 	var want_jump := false
@@ -158,6 +175,9 @@ func _physics_process(d: float):
 
 func take_damage(amount: float, dot := false) -> bool:
 	if hp <= 0.0 or (invuln > 0.0 and not dot): return false
+	if not dot and randf() * 100.0 < game.mods.get("dodge", 0.0):
+		invuln = 0.3
+		return false
 	hp -= maxf(amount - game.dv("armure"), amount * 0.25)
 	if not dot: invuln = 0.6
 	game.on_player_hit(amount)

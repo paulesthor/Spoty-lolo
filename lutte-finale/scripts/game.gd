@@ -20,6 +20,22 @@ var boss_spawned := false
 var pending_levels := 0
 var choice_source := ""
 var choice_ctx = null
+var char_id := "stakhanov"
+var mods := {}            # permanent bonuses (talents, bureau, character)
+var dirs := {}            # active directives
+var rerolls := 0
+var revives := 0
+var ult_kills := 0
+var ult_t := 0.0          # active ultimate remaining
+var kills_by_kind := {}
+var kills_by_weapon := {}
+var dmg_by_weapon := {}
+var elites_killed := 0
+var chests_opened := 0
+var shrines_used := 0
+var got_evo := false
+var report_done := false
+var multi_run := false
 var bets := 0              # Bourse aux paris accepted
 var world
 var player
@@ -61,7 +77,7 @@ var choice_wait := 0.0
 var shot_choice_done := false
 
 func _ready():
-	var seed_v := 1917
+	var seed_v := 1917 + int(Meta.data.get("runs", 0)) * 7919 + randi() % 1000
 	for a in OS.get_cmdline_user_args():
 		if a == "bot": bot = true
 		elif a.begins_with("speed="): Engine.time_scale = float(a.substr(6))
@@ -92,7 +108,8 @@ func _ready():
 	weapons = load("res://scripts/weapons.gd").new()
 	add_child(weapons)
 	weapons.setup(self)
-	weapons.add_weapon("marteau")
+	_load_meta()
+	weapons.add_weapon(Meta.CHARACTERS[char_id]["weapon"])
 	for n in [world, player, enemies, weapons]:
 		n.process_mode = Node.PROCESS_MODE_PAUSABLE
 	_setup_camera()
@@ -114,10 +131,45 @@ func _ready():
 			player.bot = false
 			cam_rig.global_position = test_pos
 	else:
-		_show_menu()
+		start()
 
+func _load_meta():
+	char_id = Meta.run_char
+	if not Meta.data["chars"].has(char_id) or not Meta.data["chars"][char_id]["unlocked"]: char_id = "stakhanov"
+	dirs = Meta.run_directives.duplicate()
+	mods = Meta.run_modifiers(char_id)
+	rerolls = int(mods.get("reroll", 0.0))
+	revives = int(mods.get("revive", 0.0))
+	player.apply_character(char_id)
+	player.max_hp = 120.0 + mods.get("endurance", 0.0)
+	player.hp = player.max_hp
+	if dirs.has("surveillance"): pass
+	if dirs.has("opa"):
+		elite_times = [90.0, 150.0, 240.0, 300.0, 360.0, 420.0, 480.0, 540.0]
+	for a in OS.get_cmdline_user_args():
+		if a == "multirun": multi_run = true
+
+func dirl(id: String) -> int:
+	return int(dirs.get(id, 0))
+
+func ultimate_cost() -> int:
+	return int(140.0 * (1.0 - mods.get("ult_charge", 0.0) / 100.0))
+
+# effective stat: in-run décrets + permanent bonuses (+ Stakhanov's passive)
 func dv(id: String) -> float:
-	return decrets[id]["v"] if decrets.has(id) else 0.0
+	var v: float = (decrets[id]["v"] if decrets.has(id) else 0.0)
+	if id == "endurance": return v
+	v += mods.get(id, 0.0)
+	if id == "cadence":
+		if char_id == "stakhanov": v += minf(30.0, floorf(kills / 100.0) * 3.0)
+		if ult_t > 0.0 and char_id == "stakhanov": v = (1.0 + v / 100.0) * (3.0 * (1.0 + mods.get("ult_power", 0.0) / 100.0)) * 100.0 - 100.0
+	return v
+
+func weapon_slots() -> int:
+	return Data.WEAPON_SLOTS + int(mods.get("weapon_slot", 0.0))
+
+func chest_price() -> int:
+	return int(chest_cost * (1.5 if dirl("penurie") > 0 else 1.0) * (1.0 - mods.get("chest_discount", 0.0) / 100.0))
 
 func decret_lv(id: String) -> int:
 	return decrets[id]["n"] if decrets.has(id) else 0
@@ -146,7 +198,7 @@ func _setup_input():
 	var acts := {
 		"move_left": [KEY_A, KEY_LEFT], "move_right": [KEY_D, KEY_RIGHT],
 		"move_forward": [KEY_W, KEY_UP], "move_back": [KEY_S, KEY_DOWN],
-		"jump": [KEY_SPACE], "slide": [KEY_SHIFT, KEY_CTRL], "interact": [KEY_F, KEY_E],
+		"jump": [KEY_SPACE], "slide": [KEY_SHIFT, KEY_CTRL], "interact": [KEY_F], "ultimate": [KEY_E], "reroll": [KEY_T],
 		"cam_left": [KEY_Q], "cam_right": [KEY_R],
 		"pause": [KEY_ESCAPE, KEY_P], "confirm": [KEY_ENTER, KEY_KP_ENTER],
 		"choose_1": [KEY_1, KEY_KP_1], "choose_2": [KEY_2, KEY_KP_2], "choose_3": [KEY_3, KEY_KP_3], "choose_4": [KEY_4, KEY_KP_4],
@@ -158,7 +210,7 @@ func _setup_input():
 			var ev := InputEventKey.new()
 			ev.physical_keycode = k
 			InputMap.action_add_event(a, ev)
-	var pads := {"jump": JOY_BUTTON_A, "slide": JOY_BUTTON_B, "interact": JOY_BUTTON_X, "pause": JOY_BUTTON_START, "confirm": JOY_BUTTON_A, "restart": JOY_BUTTON_BACK, "choose_4": JOY_BUTTON_Y}
+	var pads := {"jump": JOY_BUTTON_A, "slide": JOY_BUTTON_B, "interact": JOY_BUTTON_X, "pause": JOY_BUTTON_START, "confirm": JOY_BUTTON_A, "restart": JOY_BUTTON_BACK, "choose_4": JOY_BUTTON_Y, "ultimate": JOY_BUTTON_RIGHT_SHOULDER, "reroll": JOY_BUTTON_LEFT_SHOULDER}
 	for a in pads:
 		var ev := InputEventJoypadButton.new(); ev.button_index = pads[a]
 		InputMap.action_add_event(a, ev)
@@ -341,7 +393,12 @@ func start():
 	hud.hide_screen()
 	hud.set_hud_visible(true)
 	if not bot: Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-	hud.toast("ZONE 1 · L'HYPERMARCHÉ", 2.5)
+	hud.toast("ZONE 1 · L'HYPERMARCHÉ · %s" % Meta.CHARACTERS[char_id]["name"].to_upper(), 2.5)
+	var sl := int(mods.get("start_level", 0.0))
+	if sl > 0:
+		level += sl
+		pending_levels += sl
+		_open_levelup()
 
 func _unhandled_input(ev: InputEvent):
 	if ev is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and state == "play":
@@ -357,17 +414,21 @@ func _process(d: float):
 			return
 		"over", "win":
 			if Input.is_action_just_pressed("confirm") or Input.is_action_just_pressed("restart"):
-				get_tree().paused = false
-				get_tree().reload_current_scene()
+				_back_to_hub()
 			_bot_tick(d)
 			return
 		"paused":
 			if Input.is_action_just_pressed("pause") or Input.is_action_just_pressed("confirm"): _unpause()
 			elif Input.is_action_just_pressed("restart"):
-				get_tree().paused = false
-				get_tree().reload_current_scene()
+				game_over(true)
 			return
 		"choice":
+			if Input.is_action_just_pressed("reroll") and rerolls > 0 and choice_source in ["level", "shrine"]:
+				rerolls -= 1
+				var n: int = hud.options.size()
+				var mr := 1 if hud.options.size() > 0 and choice_source == "shrine" else 0
+				var opts := _roll_options(n, mr)
+				if not opts.is_empty(): hud.show_choices(hud.choice_title.text, opts, "")
 			if bot:
 				choice_wait -= d / maxf(Engine.time_scale, 0.001)
 				if choice_wait <= 0.0: _on_chosen(_bot_pick())
@@ -375,6 +436,9 @@ func _process(d: float):
 			return
 	if Input.is_action_just_pressed("pause"):
 		_pause(); return
+	if Input.is_action_just_pressed("ultimate") or (bot and ult_kills >= ultimate_cost() and enemies.count() > 25):
+		_try_ultimate()
+	ult_t = maxf(0.0, ult_t - rd)
 	time += rd
 	var yaw_in := Input.get_axis("cam_left", "cam_right")
 	player.cam_yaw -= yaw_in * 2.2 * rd
@@ -423,7 +487,7 @@ func _pause():
 	var dl := []
 	for id in decrets:
 		dl.append("%s (%s)" % [Data.DECRETS[id]["name"], Data.decret_text(id, dv(id))])
-	hud.show_screen("PAUSE", "Niveau %d · %d KO · %s\n\nArmes : %s\nDécrets : %s" % [level, kills, _fmt(time), ", ".join(lines), ", ".join(dl) if not dl.is_empty() else "aucun"], "ÉCHAP pour reprendre · RETOUR ARRIÈRE pour recommencer")
+	hud.show_screen("PAUSE", "Niveau %d · %d KO · %s\n\nArmes : %s\nDécrets : %s" % [level, kills, _fmt(time), ", ".join(lines), ", ".join(dl) if not dl.is_empty() else "aucun"], "ÉCHAP pour reprendre · RETOUR ARRIÈRE pour abandonner (retour au Kolkhoze)")
 
 func _unpause():
 	state = "play"
@@ -447,8 +511,8 @@ func spawn_point(min_d: float, max_d: float) -> Vector3:
 
 func mults() -> Array:
 	var tm := time / 60.0
-	var hp := (1.0 + 0.22 * tm + 0.08 * tm * tm) * (1.0 + 0.2 * bets)
-	return [hp, 1.0 + 0.07 * tm]
+	var hp := (1.0 + 0.25 * tm + 0.09 * tm * tm) * (1.0 + 0.2 * bets) * (1.0 + 0.25 * dirl("productivisme"))
+	return [hp, (1.0 + 0.07 * tm) * (1.0 + 0.25 * dirl("sans_pitie"))]
 
 func enemy_speed_mult() -> float:
 	return 0.55 if event_name == "greve" else 1.0
@@ -471,7 +535,7 @@ func _director(d: float):
 	var tm := time / 60.0
 	var m := mults()
 	var cap := 240 if not krach else 300
-	var rate := (0.7 + 0.6 * tm + 0.13 * tm * tm) * (1.0 + 0.15 * bets)
+	var rate := (0.8 + 0.65 * tm + 0.14 * tm * tm) * (1.0 + 0.15 * bets) * (1.0 + 0.25 * dirl("cadence"))
 	if krach: rate *= 2.2
 	spawn_acc += rate * d
 	while spawn_acc >= 1.0:
@@ -489,14 +553,14 @@ func _director(d: float):
 			enemies.spawn("stagiaire", world.resolve(p, 0.5), m[0], m[1])
 	if not elite_times.is_empty() and time >= elite_times[0]:
 		elite_times.pop_front()
-		enemies.spawn("golden", spawn_point(18.0, 22.0), m[0] * 0.7, m[1])
+		enemies.spawn("golden", spawn_point(18.0, 22.0), m[0] * (1.05 if dirl("opa") > 0 else 0.7), m[1])
 		hud.toast("UN GOLDEN BOY APPROCHE · IL TRANSPORTE UN COFFRE", 2.5)
 	if not boss_spawned and time >= BOSS_TIME:
 		boss_spawned = true
 		boss = enemies.spawn("boss", spawn_point(20.0, 24.0), 1.0 + 0.2 * bets, 1.0)
 		hud.toast("LE DIRECTEUR BLACK FRIDAY ARRIVE", 3.0)
 		shake(0.4)
-	if not krach and time >= ZONE_TIME:
+	if not krach and time >= (420.0 if dirl("surveillance") > 0 else ZONE_TIME):
 		krach = true
 		enemies.spawn("fisc", spawn_point(24.0, 28.0))
 		hud.toast("LE KRACH · LE CONTRÔLEUR FISCAL TE TROUVERA", 3.5)
@@ -546,10 +610,14 @@ func _events(d: float):
 # ---------------------------------------------------------------- kills, drops
 func on_enemy_killed(e):
 	kills += 1
+	ult_kills += 1
+	kills_by_kind[e.kind] = int(kills_by_kind.get(e.kind, 0)) + 1
+	if e.last_w != "": kills_by_weapon[e.last_w] = int(kills_by_weapon.get(e.last_w, 0)) + 1
+	if e.elite: elites_killed += 1
 	spark(e.node.position + Vector3(0, 1.0, 0), true)
 	_drop_gem(e.node.position, e.xp)
 	var luck := 1.0 + dv("chance") / 100.0
-	if rng.randf() < 0.012 * luck:
+	if rng.randf() < 0.012 * luck and dirl("rationnement") == 0:
 		_drop_heal(e.node.position + Vector3(-0.5, 0, 0.3))
 	if rng.randf() < 0.06 * luck or e.elite:
 		_drop_coin(e.node.position + Vector3(0.6, 0, 0), 30 if e.elite else rng.randi_range(2, 5))
@@ -652,10 +720,11 @@ func _update_pickups(d: float):
 					n.queue_free()
 					if arr == gems: add_xp(g["v"])
 					elif g.has("heal"):
-						player.heal(g["heal"])
-						hud.toast("TARTINE · +25 PV", 1.0)
+						var hh: float = g["heal"] * (1.0 + mods.get("heal_pickup", 0.0) / 100.0)
+						player.heal(hh)
+						hud.toast("TARTINE · +%d PV" % int(hh), 1.0)
 					else:
-						rubles += int(ceil(g["v"] * (1.0 + 0.35 * bets)))
+						rubles += int(ceil(g["v"] * (1.0 + 0.35 * bets) * (1.0 + mods.get("rubles_pct", 0.0) / 100.0) * (0.6 if dirl("inflation") > 0 else 1.0)))
 			else:
 				n.rotation.y = t * 2.0
 				n.position.y = 0.35 + sin(t * 3.0 + n.position.x) * 0.08
@@ -680,16 +749,17 @@ func _update_interactions(d: float):
 	var act := Input.is_action_just_pressed("interact") or (bot and rng.randf() < 0.3)
 	# chests
 	for c in chests:
-		if not c["free"]: c["label"].text = "%d RBL" % chest_cost
+		if not c["free"]: c["label"].text = "%d RBL" % chest_price()
 	for c in chests:
 		if c["n"].global_position.distance_to(pp) < 2.4:
-			var cost := 0 if c["free"] else chest_cost
+			var cost := 0 if c["free"] else chest_price()
 			prompt = "F / X : OUVRIR LE COFFRE" + ("" if cost == 0 else " (%d RBL)" % cost) + ("" if rubles >= cost else " · PAS ASSEZ DE ROUBLES")
 			if act and rubles >= cost:
 				rubles -= cost
 				if not c["free"]: chest_cost = int(chest_cost * 1.45) + 4
 				chests.erase(c)
 				c["n"].queue_free()
+				chests_opened += 1
 				_open_chest(c["bonus"])
 				act = false
 			break
@@ -745,6 +815,7 @@ func _update_interactions(d: float):
 	hud.prompt(prompt)
 
 func _use_shrine(s: Dictionary):
+	if not s["used"]: shrines_used += 1
 	s["used"] = true
 	s["active"] = false
 	if s["ring"]: s["ring"].visible = false
@@ -812,9 +883,9 @@ func _roll_options(n: int, min_r := 0, bonus := 0) -> Array:
 			pool.append({"kind": "evo", "id": id, "w": 4.0})
 		elif weapons.level(id) < Data.MAX_WEAPON_LV:
 			pool.append({"kind": "weapon_up", "id": id, "w": 1.3})
-	if weapons.owned.size() < Data.WEAPON_SLOTS:
+	if weapons.owned.size() < weapon_slots():
 		for id in Data.WEAPONS:
-			if not weapons.owned.has(id):
+			if not weapons.owned.has(id) and Meta.weapon_unlocked(id):
 				pool.append({"kind": "weapon_new", "id": id, "w": 0.7})
 	for id in decrets:
 		if decrets[id]["n"] < Data.DECRET_MAX_PICKS:
@@ -888,6 +959,7 @@ func _describe(o: Dictionary):
 func _apply(o: Dictionary):
 	match o["kind"]:
 		"evo":
+			got_evo = true
 			weapons.evolve(o["id"])
 			hud.toast("ÉVOLUTION : " + Data.WEAPONS[o["id"]]["evo_name"].to_upper(), 3.0)
 		"weapon_new":
@@ -905,7 +977,7 @@ func _apply(o: Dictionary):
 				player.heal(v)
 
 func _open_levelup():
-	var opts := _roll_options(3)
+	var opts := _roll_options(2 if dirl("bureaucratie") > 0 else 3)
 	if opts.is_empty():
 		pending_levels = 0
 		player.heal(30)
@@ -950,25 +1022,84 @@ func _on_chosen(i: int):
 	get_tree().paused = false
 	if not bot: Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
+# ---------------------------------------------------------------- ultimate
+func _try_ultimate():
+	if ult_kills < ultimate_cost(): return
+	ult_kills = 0
+	var pw: float = 1.0 + mods.get("ult_power", 0.0) / 100.0
+	var pp: Vector3 = player.global_position
+	match char_id:
+		"stakhanov":
+			ult_t = 8.0
+			hud.toast("SURPRODUCTION !", 1.5)
+		"ilitch":
+			var dur: float = (3.0 + mods.get("ult_stun", 0.0)) * pw
+			for e in enemies.in_radius(pp, 22.0):
+				e.stun_t = dur
+				e.vuln_t = dur
+			hud.toast("DISCOURS AU PEUPLE !", 1.5)
+			weapons._ring_fx(pp, 22.0, Color(1, 0.8, 0.3))
+		"moustache":
+			player.hp = maxf(1.0, player.hp * 0.85)
+			var n := 0
+			for e in enemies.in_radius(pp, 14.0 * pw):
+				if not e.elite and not e.boss and not e.invincible:
+					enemies.kill(e); n += 1
+			hud.toast("GRANDE PURGE · %d CAPITALISTES DISPARUS" % n, 2.0)
+			weapons._ring_fx(pp, 14.0 * pw, Color(0.8, 0.1, 0.1))
+		"babouchka":
+			player.hp = player.max_hp
+			player.invuln = 4.0 * pw
+			hud.toast("ELLE A CONNU PIRE !", 1.5)
+	shake(0.3)
+
 # ---------------------------------------------------------------- end
-func game_over():
+func game_over(abandon := false):
 	if state == "over": return
+	if revives > 0 and not abandon:
+		revives -= 1
+		player.hp = player.max_hp * 0.5
+		player.invuln = 3.0
+		for e in enemies.in_radius(player.global_position, 10.0):
+			if not e.boss and not e.invincible: enemies.kill(e)
+		hud.toast("SECONDE CHANCE · LE PARTI TE RESSUSCITE", 2.5)
+		return
 	state = "over"
 	get_tree().paused = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	var rep := _report(false)
 	hud.show_screen("TU ES MORT",
-		"Officiellement, tu n'as jamais existé.\n\nTemps : %s   ·   Niveau %d   ·   %d capitalistes bonkés   ·   %d roubles" % [_fmt(time), level, kills, rubles],
-		"ENTRÉE ou A pour recommencer", Color(0.85, 0.15, 0.15))
+		"Officiellement, tu n'as jamais existé.\nTemps : %s   ·   Niveau %d   ·   %d capitalistes bonkés\n\n%s" % [_fmt(time), level, kills, "\n".join(rep["lines"])],
+		"ENTRÉE ou A : retour au Kolkhoze", Color(0.85, 0.15, 0.15))
 	print("[game] GAME OVER t=%s level=%d kills=%d" % [_fmt(time), level, kills])
 
 func _win():
 	state = "win"
 	get_tree().paused = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	var rep := _report(true)
 	hud.show_screen("ZONE NETTOYÉE",
-		"Le Directeur Black Friday a été bonké. L'Hypermarché appartient au peuple.\n\nTemps : %s   ·   Niveau %d   ·   %d capitalistes bonkés\n\n(Prototype : les zones 2 et 3 arrivent ensuite.)" % [_fmt(time), level, kills],
-		"ENTRÉE ou A pour rejouer", Color(0.95, 0.75, 0.25))
+		"Le Directeur Black Friday a été bonké. L'Hypermarché appartient au peuple.\nTemps : %s   ·   Niveau %d   ·   %d capitalistes bonkés\n\n%s" % [_fmt(time), level, kills, "\n".join(rep["lines"])],
+		"ENTRÉE ou A : retour au Kolkhoze", Color(0.95, 0.75, 0.25))
 	print("[game] WIN t=%s level=%d kills=%d" % [_fmt(time), level, kills])
+
+func _report(win: bool) -> Dictionary:
+	if report_done: return {"lines": []}
+	report_done = true
+	var r := {"char": char_id, "time": time, "kills": kills, "kills_by_kind": kills_by_kind, "kills_by_weapon": kills_by_weapon,
+		"dmg_by_weapon": dmg_by_weapon, "boss": win, "elites": elites_killed, "level": level, "chests": chests_opened,
+		"shrines": shrines_used, "evo": got_evo, "ferveur": Meta.ferveur(dirs), "win": win}
+	var out: Dictionary = Meta.end_run(r)
+	print("[meta] run=%d char=%s time=%s win=%s lvl=%d kills=%d medals=%d total=%d" % [Meta.data["runs"], char_id, _fmt(time), win, level, kills, out["medals"], Meta.data["medals"]])
+	return out
+
+func _back_to_hub():
+	get_tree().paused = false
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	get_tree().change_scene_to_file("res://scenes/hub.tscn")
+
+func track_damage(wid: String, amt: float):
+	if wid != "": dmg_by_weapon[wid] = dmg_by_weapon.get(wid, 0.0) + amt
 
 # ---------------------------------------------------------------- automated test hooks
 func _bot_pick() -> int:
@@ -1003,6 +1134,12 @@ func _bot_tick(d: float):
 		if shot_t >= shot_every:
 			shot_t = 0.0
 			_screenshot()
+	if multi_run and state in ["over", "win"]:
+		_back_to_hub()
+		return
+	if multi_run and time >= 700.0:
+		game_over(true)
+		return
 	if test_dur > 0.0 and (time >= test_dur or state in ["over", "win"]):
 		if state in ["over", "win"]: _screenshot()
 		print("[bot] END state=%s t=%s lvl=%d kills=%d" % [state, _fmt(time), level, kills])

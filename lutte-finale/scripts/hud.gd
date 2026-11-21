@@ -41,6 +41,7 @@ var screen_title: Label
 var screen_body: Label
 var screen_hint: Label
 var fps_label: Label
+var ult_label: Label
 
 func setup(g):
 	game = g
@@ -137,6 +138,10 @@ func setup(g):
 	fps_label = _label(root, "", 14, Color(1, 1, 1, 0.5))
 	_at(fps_label, Control.PRESET_BOTTOM_RIGHT, Vector2(-260, -28), Vector2(240, 24))
 	fps_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	ult_label = _label(root, "", 24, Color(1, 0.85, 0.4))
+	_at(ult_label, Control.PRESET_CENTER_BOTTOM, Vector2(-400, -140), Vector2(800, 34))
+	ult_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	ult_label.add_theme_color_override("font_outline_color", Color.BLACK); ult_label.add_theme_constant_override("outline_size", 8)
 	_build_choices()
 	_build_screen()
 
@@ -223,6 +228,15 @@ func _process(d: float):
 	blind_a = maxf(0.0, blind_a - d * 0.6)
 	hurt_rect.color = Color(0.7, 0.0, 0.0, hurt_a) if blind_a <= 0.0 else Color(0.97, 0.95, 0.88, minf(blind_a, 0.85))
 	fps_label.text = "%d FPS · %d ennemis" % [Engine.get_frames_per_second(), game.enemies.count()]
+	var cost: int = game.ultimate_cost()
+	var uname: String = Meta.CHARACTERS[game.char_id]["ult"].to_upper()
+	if game.ult_t > 0.0:
+		ult_label.text = "%s · ACTIF" % uname
+	elif game.ult_kills >= cost:
+		ult_label.text = "E / RB : %s · PRÊT" % uname
+	else:
+		ult_label.text = "%s %d %%" % [uname, int(100.0 * game.ult_kills / cost)]
+	ult_label.modulate.a = 1.0 if game.ult_kills >= cost or game.ult_t > 0.0 else 0.55
 	if choice_root.visible:
 		_choice_input()
 
@@ -290,7 +304,7 @@ var leave_label := ""
 func show_choices(title: String, opts: Array, leave := ""):
 	options = opts
 	leave_label = leave
-	hint_label.text = "1 · 2 · 3, clic, ou manette (gauche/droite + A)" + ("   ·   4 / Y : " + leave if leave != "" else "")
+	hint_label.text = "1 · 2 · 3, clic, ou manette (gauche/droite + A)" + ("   ·   4 / Y : " + leave if leave != "" else "") + (("   ·   T / LB : relancer (%d)" % game.rerolls) if game.rerolls > 0 and game.choice_source in ["level", "shrine"] else "")
 	choice_title.text = title
 	sel = 0
 	for i in 3:
