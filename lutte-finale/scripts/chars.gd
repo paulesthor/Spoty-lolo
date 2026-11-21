@@ -171,3 +171,23 @@ static func hammer(n: Node3D):
 	U.cyl(h, 0.035, 1.0, Vector3(0, 0.45, 0), U.solid(Color(0.55, 0.33, 0.15)))
 	U.box(h, Vector3(0.42, 0.2, 0.2), Vector3(0, 0.95, 0), U.solid(Color(0.5, 0.52, 0.56), 0.0, 0.35, 0.9))
 	h.scale = Vector3.ONE / n.scale.x
+
+# ink outline on a character (inverted hull as a next pass on its own material copies)
+static var _ink: ShaderMaterial
+static func outline(n: Node, width := 0.025):
+	if _ink == null:
+		_ink = ShaderMaterial.new()
+		_ink.shader = load("res://shaders/ink_outline.gdshader")
+	var mat: ShaderMaterial = _ink
+	if width != 0.025:
+		mat = _ink.duplicate()
+		mat.set_shader_parameter("width", width)
+	for m in n.find_children("*", "MeshInstance3D", true, false):
+		var mi: MeshInstance3D = m
+		if not mi.visible or mi.mesh == null or not (mi.get_parent() is Skeleton3D): continue
+		for i in mi.mesh.get_surface_count():
+			var src = mi.get_active_material(i)
+			if not (src is BaseMaterial3D): continue
+			var d: BaseMaterial3D = src.duplicate()
+			d.next_pass = mat
+			mi.set_surface_override_material(i, d)

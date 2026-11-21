@@ -1,0 +1,11 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="PackedScene" path="res://assets/nature/sources/FBX/MapleTree_1.fbx" id="1_8g1c0"]
+[ext_resource type="Material" path="res://assets/nature/materials/MapleTree_Bark.tres" id="2_mf3k4"]
+[ext_resource type="Material" path="res://assets/nature/materials/MapleTree_Leaves.tres" id="3_37xu4"]
+
+[node name="MapleTree_1" instance=ExtResource("1_8g1c0")]
+
+[node name="MapleTree_1" parent="." index="0"]
+surface_material_override/0 = ExtResource("2_mf3k4")
+surface_material_override/1 = ExtResource("3_37xu4")

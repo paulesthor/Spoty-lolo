@@ -51,6 +51,18 @@ static func run(game) -> Array:
 				var a2 := U.world_aabb(n)
 				if a2.size.y > 7.0: continue          # buildings around the arena
 				if (n as Node3D).scene_file_path.contains("food-kit"): continue      # goods displayed on counters
+				var sp: String = (n as Node3D).scene_file_path
+				if sp.contains("electricity-pole") or sp.contains("light-square"):
+					var c4 := a2.get_center()
+					a2 = AABB(Vector3(c4.x - 0.3, a2.position.y, c4.z - 0.3), Vector3(0.6, a2.size.y, 0.6))    # the mast, not the overhead arm
+				if sp.contains("nature/"):
+					var nm := sp.get_file()
+					if nm.begins_with("grass") or nm.begins_with("flower") or nm.begins_with("plant") or nm.begins_with("petals"): continue   # undergrowth
+					if nm.contains("tree"):
+						var c3 := a2.get_center()
+						a2 = AABB(Vector3(c3.x - 0.4, a2.position.y, c3.z - 0.4), Vector3(0.8, a2.size.y, 0.8))     # trunk only: canopies overhang
+					else:
+						a2 = a2.grow(-a2.size.x * 0.2)
 				props.append([a2, n, _name(n)])
 	for c in game.chests: props.append([U.world_aabb(c["n"]), c["n"], "coffre"])
 	for bk in game.breakables: props.append([U.world_aabb(bk["n"]).grow(-0.05), bk["n"], "carton"])

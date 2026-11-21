@@ -90,6 +90,7 @@ func spawn(kind: String, pos: Vector3, hp_mult := 1.0, dmg_mult := 1.0) -> Enemy
 		if kind == "cadre" and randf() < 0.3: acc.append("cigar")
 		if kind == "stagiaire" and randf() < 0.15: acc = ["sunglasses"]
 		if not acc.is_empty(): Chars.attach(e.node, acc)
+		if def.get("elite", false) or def.get("boss", false): Chars.outline(e.node, 0.03)
 		var show_tag: bool = def.get("elite", false) or def.get("boss", false) or def.get("invincible", false) or kind in ["coach", "lobbyiste", "drh"]
 		if show_tag:
 			var col := Color(1, 0.82, 0.3)

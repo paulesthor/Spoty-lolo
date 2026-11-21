@@ -230,8 +230,8 @@ func _env():
 			sun.light_color = Color(1.0, 0.72, 0.45); sun.light_energy = 1.6; sun.rotation_degrees = Vector3(-17, -60, 0)
 		"couvert":
 			ps.sky_top_color = Color(0.42, 0.5, 0.6); ps.sky_horizon_color = Color(0.72, 0.74, 0.76); ps.ground_horizon_color = Color(0.72, 0.74, 0.76)
-			env.ambient_light_energy = 0.9; env.fog_light_color = Color(0.68, 0.7, 0.73); env.fog_density = 0.0045
-			env.adjustment_saturation = 0.82; env.adjustment_contrast = 1.08
+			env.ambient_light_energy = 0.75; env.fog_light_color = Color(0.62, 0.64, 0.7); env.fog_density = 0.0028
+			env.adjustment_saturation = 0.95; env.adjustment_contrast = 1.16
 			sun.light_color = Color(1.0, 0.96, 0.9); sun.light_energy = 1.1; sun.rotation_degrees = Vector3(-42, -30, 0)
 		"aube":
 			ps.sky_top_color = Color(0.25, 0.32, 0.55); ps.sky_horizon_color = Color(0.95, 0.6, 0.65); ps.ground_horizon_color = Color(0.95, 0.6, 0.65)
@@ -262,15 +262,14 @@ func _ground():
 	var g := MeshInstance3D.new()
 	var pm := PlaneMesh.new(); pm.size = Vector2(500, 500)
 	g.mesh = pm
-	var m := StandardMaterial3D.new()
-	m.albedo_color = template.get("ground", Color(0.42, 0.43, 0.46))
-	var nt := NoiseTexture2D.new()
-	var fn := FastNoiseLite.new(); fn.frequency = 0.02; fn.seed = rng.randi()
-	nt.noise = fn; nt.seamless = true; nt.width = 512; nt.height = 512
-	var gr := Gradient.new(); gr.set_color(0, Color(0.86, 0.86, 0.86)); gr.set_color(1, Color(1, 1, 1)); nt.color_ramp = gr
-	m.albedo_texture = nt
-	m.uv1_scale = Vector3(60, 60, 60)
-	m.roughness = 0.95
+	# textured asphalt (trading floor tiles in La Bourse), tinted per zone
+	var gc: Color = template.get("ground", Color(0.42, 0.43, 0.46))
+	var tint := Color(gc.r * 2.0, gc.g * 2.0, gc.b * 2.0)
+	var m: StandardMaterial3D
+	if template.get("id", "") == "bourse":
+		m = U.pbr("Marble012", 0.08, Color(0.42, 0.4, 0.48), 0.6)
+	else:
+		m = U.pbr("Asphalt031", 0.18, tint, 0.7)
 	g.material_override = m
 	add_child(g)
 	var body := StaticBody3D.new()
@@ -291,6 +290,7 @@ func _ground():
 # ---------------------------------------------------------------- buildings (border + cuts)
 func _bld(path: String, pos: Vector3, rot: float) -> Node3D:
 	var n := U.place(self, path, pos, -1, rot, _bscale)
+	U.detailize(n, ["Plaster001", "Bricks105", "Plaster001", "Concrete034"][rng.randi() % 4], 0.35)
 	var a := U.world_aabb(n)
 	var body := StaticBody3D.new()
 	body.collision_layer = 2
@@ -366,18 +366,11 @@ func _banner(pos: Vector3, rot_y: float, size: Vector2, text: String):
 	for sd in [-1.0, 1.0]:
 		var pp: Vector3 = pos + side * sd * (size.x * 0.5 - 0.15) - Vector3(sin(rot_y), 0, cos(rot_y)) * 0.1
 		U.box(self, Vector3(0.22, pos.y + size.y * 0.5, 0.22), Vector3(pp.x, (pos.y + size.y * 0.5) / 2.0, pp.z), U.solid(Color(0.3, 0.3, 0.32), 0.0, 0.4, 0.8))
-	U.box(self, Vector3(size.x, size.y, 0.08), pos, U.solid(Color(0.72, 0.05, 0.1), 0.0, 0.9), Vector3(0, rot_y, 0))
+	U.box(self, Vector3(size.x + 0.2, size.y + 0.2, 0.08), pos, U.solid(Color(0.25, 0.22, 0.2), 0.0, 0.9), Vector3(0, rot_y, 0))
 	var fwd := Vector3(sin(rot_y), 0, cos(rot_y))
-	var s := Label3D.new(); s.text = "☭"; s.font = load("res://fonts/Symbols.ttf"); s.font_size = 256
-	s.pixel_size = size.y * 0.55 / 256.0; s.modulate = Color(1, 0.8, 0.25); s.outline_size = 0; s.shaded = true
-	s.position = pos + fwd * 0.06 + Vector3(0, size.y * (0.14 if text != "" else 0.0), 0); s.rotation = Vector3(0, rot_y, 0)
-	add_child(s)
-	if text != "":
-		var t := Label3D.new(); t.text = text; t.font = U.font_main; t.font_size = 96
-		t.pixel_size = size.y * 0.12 / 96.0; t.modulate = Color(0.98, 0.92, 0.8); t.outline_size = 0; t.shaded = true
-		t.width = size.x / t.pixel_size * 0.92; t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		t.position = pos + fwd * 0.06 + Vector3(0, -size.y * 0.28, 0); t.rotation = Vector3(0, rot_y, 0)
-		add_child(t)
+	var idx := rng.randi()
+	U.poster(self, U.propaganda_tex(idx), pos + fwd * 0.05, size, rot_y)
+	U.poster(self, U.propaganda_tex(idx + 3), pos - fwd * 0.05, size, rot_y + PI)
 
 func add_obstacle(n: Node3D, collide := true, pad := 0.0) -> AABB:
 	var a := U.world_aabb(n).grow(pad)
@@ -399,6 +392,7 @@ func _static_box(center: Vector3, size: Vector3, rot := Vector3.ZERO):
 func _fill_lots():
 	for l in lots:
 		var r: Rect2 = l[0]
+		_lot_floor(r, l[1])
 		match l[1]:
 			"parking": _lot_parking(r)
 			"containers": _lot_containers(r)
@@ -451,6 +445,7 @@ func _lot_containers(r: Rect2):
 			if rng.randf() < 0.48:
 				var rot := 0.0 if rng.randf() < 0.6 else PI / 2
 				var c := U.place(self, U.IND + kinds[rng.randi() % 3] + ".glb", _v(cx, cz), 2.3, rot)
+				U.detailize(c, "CorrugatedSteel009", 0.6)
 				add_obstacle(c)
 				if rng.randf() < 0.25:
 					var top := U.place(self, U.IND + kinds[rng.randi() % 3] + ".glb", Vector3(cx, 2.3, cz), 2.3, rot)
@@ -483,7 +478,8 @@ func _lot_plaza(r: Rect2):
 		var a := TAU * i / 4.0 + PI / 4
 		var tp := c + Vector3(cos(a), 0, sin(a)) * clampf(minf(r.size.x, r.size.y) * 0.45, 9.5, 12.0)
 		if not r.grow(-1.0).has_point(Vector2(tp.x, tp.z)): continue
-		U.place(self, U.SUB + "tree-large.glb", tp, 5.0, rng.randf() * TAU)
+		U.nature(self, ["maple_tree_1", "maple_tree_2", "normal_tree_1", "normal_tree_3", "maple_tree_4", "normal_tree_4"][rng.randi() % 6], tp, rng.randf_range(5.5, 7.0), rng.randf() * TAU)
+		_undergrowth(tp)
 		obstacles.append(Rect2(tp.x - 0.5, tp.z - 0.5, 1.0, 1.0))      # trunk: nothing else gets placed on it
 
 func _lot_square(r: Rect2):
@@ -499,7 +495,12 @@ func _lot_square(r: Rect2):
 		var a := rng.randf() * TAU
 		var tp := c + Vector3(cos(a), 0, sin(a)) * rng.randf_range(7.0, minf(r.size.x, r.size.y) * 0.45)
 		if _blocked(tp, 1.5): continue
-		U.place(self, U.SUB + ("tree-large.glb" if i % 2 == 0 else "tree-small.glb"), tp, 4.5 if i % 2 == 0 else 2.5, rng.randf() * TAU)
+		if i % 2 == 0:
+			U.nature(self, ["birch_tree_1", "birch_tree_2", "normal_tree_2", "maple_tree_3"][rng.randi() % 4], tp, rng.randf_range(5.0, 6.5), rng.randf() * TAU)
+			_undergrowth(tp)
+		else:
+			U.nature(self, ["bush_large", "bush_large_flowers", "bush_flowers", "bush"][rng.randi() % 4], tp, rng.randf_range(1.2, 1.8), rng.randf() * TAU)
+			obstacles.append(Rect2(tp.x - 1.0, tp.z - 1.0, 2.0, 2.0))
 		obstacles.append(Rect2(tp.x - 0.5, tp.z - 0.5, 1.0, 1.0))
 
 func _matryoshka(mp: Vector3):
@@ -541,11 +542,11 @@ func _build_plateau(i: int):
 	var h: float = pl["h"]
 	var col: Color = {"quai": Color(0.55, 0.53, 0.5), "chantier": Color(0.75, 0.6, 0.25), "passerelle": Color(0.45, 0.55, 0.62), "estrade": Color(0.55, 0.12, 0.14)}.get(pl["kind"], Color(0.6, 0.6, 0.6))
 	var c := Vector3(r.get_center().x, h / 2.0, r.get_center().y)
-	var mi := U.box(self, Vector3(r.size.x, h, r.size.y), c, U.solid(col))
+	var mi := U.box(self, Vector3(r.size.x, h, r.size.y), c, U.pbr("Marble012" if pl["kind"] == "estrade" else "Concrete034", 0.3, Color(col.r * 1.6, col.g * 1.6, col.b * 1.6), 1.0))
 	_plateau_dress(r, h, pl["kind"], col)
 	_static_box(c, Vector3(r.size.x, h, r.size.y))
 	# railing posts and stripes so the edge reads clearly
-	U.box(self, Vector3(r.size.x, 0.12, r.size.y), Vector3(c.x, h + 0.06, c.z), U.solid(col.lightened(0.15)))
+	U.box(self, Vector3(r.size.x, 0.12, r.size.y), Vector3(c.x, h + 0.06, c.z), U.pbr("PavingStones138" if pl["kind"] != "estrade" else "Marble012", 0.45, Color(1, 1, 1) if pl["kind"] != "estrade" else Color(1.2, 0.5, 0.5), 0.9))
 	if pl["kind"] == "chantier":
 		for k in 4:
 			U.box(self, Vector3(0.2, 2.5, 0.2), Vector3(r.position.x + 0.5 + k * (r.size.x - 1.0) / 3.0, h + 1.25, r.position.y + 0.5), U.solid(Color(0.4, 0.4, 0.42), 0.0, 0.4, 0.8))
@@ -579,7 +580,7 @@ func _build_plateau(i: int):
 		else:
 			size = Vector3(slope, 0.3, width)
 			rot = Vector3(0, 0, -ang if dir.x < 0 else ang)
-		var ramp := U.box(self, size, rc, U.solid(Color(0.5, 0.5, 0.48)), rot)
+		var ramp := U.box(self, size, rc, U.pbr("Concrete034", 0.4, Color(0.9, 0.9, 0.88)), rot)
 		_static_box(rc, size, rot)
 	# ground enemies treat the plateau body as an obstacle (they use the ramps)
 	obstacles.append(r)
@@ -788,8 +789,8 @@ func _plateau_dress(r: Rect2, h: float, kind: String, col: Color):
 
 # sidewalks with a kerb around every lot: gives the ground a street structure
 func _sidewalks():
-	var walk := U.solid(template.get("ground", Color(0.42, 0.43, 0.46)).lightened(0.18), 0.0, 0.9)
-	var kerb := U.solid(Color(0.7, 0.7, 0.68), 0.0, 0.8)
+	var walk := U.pbr("PavingStones138", 0.45, Color(0.95, 0.93, 0.9) if template.get("id", "") != "bourse" else Color(0.7, 0.68, 0.75), 0.9)
+	var kerb := U.pbr("Concrete034", 0.5, Color(1.05, 1.05, 1.02), 0.8)
 	for l in lots:
 		var r: Rect2 = (l[0] as Rect2).grow(1.4)
 		for e in [[Vector3(r.get_center().x, 0, r.position.y + 0.7), Vector2(r.size.x, 1.4)], [Vector3(r.get_center().x, 0, r.end.y - 0.7), Vector2(r.size.x, 1.4)],
@@ -806,3 +807,29 @@ func _sidewalks():
 # small footprint that later placements (props, chests, shrines) must avoid; enemies slide around it
 func small_obstacle(p: Vector3, half: float):
 	obstacles.append(Rect2(p.x - half, p.z - half, half * 2.0, half * 2.0))
+
+# grass tufts and flowers at the foot of a tree (visual only, around the trunk)
+func _undergrowth(p: Vector3):
+	for k in rng.randi_range(2, 4):
+		var a := rng.randf() * TAU
+		var q := p + Vector3(cos(a), 0, sin(a)) * rng.randf_range(0.8, 1.8)
+		U.nature(self, ["grass_large", "grass_small", "flower_2_clump", "flower_4_clump", "plant_1"][rng.randi() % 5], q, rng.randf_range(0.35, 0.7), rng.randf() * TAU)
+
+# each lot gets its own floor: paving on squares and markets, concrete in yards, marble in the stock exchange
+func _lot_floor(r: Rect2, kind: String):
+	var bourse: bool = template.get("id", "") == "bourse"
+	var mat: Material = null
+	match kind:
+		"plaza", "square", "start", "market":
+			mat = U.pbr("PavingStones138", 0.5, Color(0.88, 0.85, 0.8) if not bourse else Color(0.62, 0.6, 0.7), 0.6)
+		"containers", "chantier", "quai", "station":
+			mat = U.pbr("Concrete034", 0.2, Color(0.95, 0.93, 0.9), 0.8)
+		"bureaux":
+			mat = U.pbr("Concrete034", 0.35, Color(0.58, 0.6, 0.64), 0.5)
+		"corbeille", "coffre", "ecrans", "estrade":
+			mat = U.pbr("Marble012", 0.2, Color(0.75, 0.62, 0.55), 0.6)
+		"passerelle":
+			mat = U.pbr("PavingStones138", 0.35, Color(0.85, 0.85, 0.9), 0.9)
+	if mat == null: return
+	var f := U.box(self, Vector3(r.size.x, 0.04, r.size.y), Vector3(r.get_center().x, 0.02, r.get_center().y), mat)
+	f.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF

@@ -28,6 +28,7 @@ func build(world):
 	_flags(10)
 	_pigeon_flocks(5)
 	_blimp(id)
+	_hoardings(id)
 	match id:
 		"hypermarche": _hypermarche()
 		"quartier": _quartier()
@@ -207,9 +208,11 @@ func _hypermarche():
 			goods.scale *= fit
 			goods.position += Vector3(p.x, 0, p.z) - Vector3(U.world_aabb(goods).get_center().x, 0, U.world_aabb(goods).get_center().z)
 		w.add_obstacle(goods, false, 0.4)
-		var sg := U.box(self, Vector3(1.0, 0.6, 0.05), p + Vector3(0, 1.7, 0), U.solid(Color(1, 0.85, 0.1)))
-		U.cyl(self, 0.03, 1.9, p + Vector3(0.0, 0.95, -0.06), U.solid(Color(0.3, 0.3, 0.3)))
-		var l := U.label(self, prices[i % prices.size()], p + Vector3(0, 1.7, 0.04), 90, Color(0.8, 0.05, 0.05), Color(0, 0, 0, 0), false)
+		var sg := U.box(self, Vector3(1.5, 0.7, 0.05), p + Vector3(0, 1.75, 0), U.solid(Color(1, 0.85, 0.1)))
+		U.cyl(self, 0.03, 1.45, p + Vector3(0.0, 0.72, -0.06), U.solid(Color(0.3, 0.3, 0.3)))
+		var l := U.label(self, prices[i % prices.size()], p + Vector3(0, 1.75, 0.04), 52, Color(0.8, 0.05, 0.05), Color(0, 0, 0, 0), false)
+		l.pixel_size = 0.006
+		l.width = 1.4 / l.pixel_size; l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		l.outline_size = 0
 		w.add_obstacle(pal, false, 0.3)
 	# café terraces under parasols
@@ -236,8 +239,8 @@ func _quartier():
 		var p := _spot(1.5)
 		if p == Vector3.INF: continue
 		_claim(p, 1.5)
-		var pl := U.box(self, Vector3(1.4, 0.6, 1.4), p + Vector3(0, 0.3, 0), U.solid(Color(0.55, 0.55, 0.58)))
-		U.place(self, U.SUB + "tree-small.glb", p + Vector3(0, 0.6, 0), 2.2, rng.randf() * TAU)
+		var pl := U.box(self, Vector3(1.4, 0.6, 1.4), p + Vector3(0, 0.3, 0), U.pbr("Concrete034", 0.6, Color(0.95, 0.95, 0.95)))
+		U.nature(self, ["bush_large", "bush_flowers", "plant_flowers", "bush_large_flowers"][rng.randi() % 4], p + Vector3(0, 0.6, 0), 1.3, rng.randf() * TAU)
 		w.add_obstacle(pl, true, 0.1)
 	for i in 3:
 		var p := _spot(3.0)
@@ -301,7 +304,7 @@ func _bourse():
 		var p := _spot(4.0)
 		if p == Vector3.INF: continue
 		_claim(p, 4.0)
-		var c := U.place(self, U.CAR + ["suv-luxury", "sedan-sports", "police", "suv-luxury", "race"][i % 5] + ".glb", p, 1.5, rng.randf() * TAU)
+		var c := U.place(self, U.CAR + ["suv-luxury", "sedan-sports", "police", "suv-luxury", "sedan"][i % 5] + ".glb", p, 1.5, rng.randf() * TAU)
 		w.add_obstacle(c)
 	_bull()
 	# piles of banknotes
@@ -456,3 +459,38 @@ func _bull():
 		var h := U.cyl(bull, 0.08, 0.8, Vector3(2.1, 4.5, hz), gold); h.rotation.x = hz * 1.5
 	U.label(bull, "TAUREAU DE LA SPÉCULATION", Vector3(0, 1.2, 0.82), 70, Color(1, 0.85, 0.3), Color(0, 0, 0, 0), false).outline_size = 0
 	w.add_obstacle(bull)
+
+# hoardings: wooden fences covered in posters (ours over theirs), along the edges of lots
+func _hoardings(id: String):
+	var ad_ratio: float = {"hypermarche": 0.3, "quartier": 0.5, "bourse": 0.6}.get(id, 0.3)
+	var wood := U.pbr("Concrete034", 0.5, Color(0.55, 0.42, 0.3), 0.6) if false else U.solid(Color(0.42, 0.32, 0.22), 0.0, 0.9)
+	var n := 0
+	for l in w.lots:
+		if n >= 9: break
+		if l[1] in ["start", "parking"] or rng.randf() < 0.45: continue
+		var r: Rect2 = l[0]
+		var g := r.grow(-1.2)       # middle of each side, just inside the lot, posters facing inwards
+		var e: Array = [[Vector3(g.get_center().x, 0, g.position.y), 0.0], [Vector3(g.get_center().x, 0, g.end.y), PI],
+			[Vector3(g.position.x, 0, g.get_center().y), PI / 2], [Vector3(g.end.x, 0, g.get_center().y), -PI / 2]]
+		e.shuffle()
+		for pick in e:
+			var p: Vector3 = pick[0]
+			var rot: float = pick[1]
+			var along := Vector3(cos(rot), 0, -sin(rot))
+			var ok := true
+			for k in [-3.0, 0.0, 3.0]:
+				var q: Vector3 = p + along * k
+				if not _free(q, 1.0) or _near_decor(q, 1.0): ok = false
+			if not ok: continue
+			var fence := Node3D.new(); add_child(fence); fence.position = p; fence.rotation.y = rot
+			U.box(fence, Vector3(7.4, 2.6, 0.12), Vector3(0, 1.3, -0.06), wood)
+			for k in 4: U.box(fence, Vector3(0.14, 2.7, 0.2), Vector3(-3.6 + k * 2.4, 1.35, -0.16), wood)
+			for k in 4:
+				var tex: String = U.ad_tex(rng.randi()) if rng.randf() < ad_ratio else U.propaganda_tex(rng.randi())
+				var pst := U.poster(fence, tex, Vector3(-2.7 + k * 1.8, 1.35 + rng.randf_range(-0.08, 0.08), 0.01), Vector2(1.5, 2.25), 0.0)
+				pst.rotation.z = rng.randf_range(-0.04, 0.04)
+			for k in [-3.0, 0.0, 3.0]:
+				w.small_obstacle(p + along * k, 0.6)
+				_claim(p + along * k, 1.2)
+			n += 1
+			break

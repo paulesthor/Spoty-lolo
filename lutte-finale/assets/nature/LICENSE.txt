@@ -1,0 +1,1 @@
+Quaternius - Ultimate Stylized Nature (CC0 1.0, quaternius.com). Godot port by Walter H. Palladino (MIT, see LICENSE-port-MIT.txt).

@@ -1,0 +1,10 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://assets/nature/sources/FBX/DeadTree_4.fbx" id="1_hfhkq"]
+[ext_resource type="Material" path="res://assets/nature/materials/MapleTree_Bark.tres" id="2_dmpy3"]
+
+[node name="DeadTree_4" instance=ExtResource("1_hfhkq")]
+
+[node name="DeadTree_4" parent="." index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+surface_material_override/0 = ExtResource("2_dmpy3")

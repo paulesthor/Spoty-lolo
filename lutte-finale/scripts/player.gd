@@ -60,6 +60,7 @@ func _build_model(c: String):
 	var keep := global_position
 	global_position = Vector3.ZERO
 	model = Chars.build_hero(self, c, Meta.skin_sel(c))
+	Chars.outline(model, 0.022)
 	ap = U.anim_player(model)
 	if ap: ap.playback_default_blend_time = 0.12
 	_anim("idle")

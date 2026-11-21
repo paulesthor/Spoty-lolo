@@ -163,6 +163,12 @@ func _ready():
 		var l := U.label(self, "", Vector3(0, -100, 0), 64, Color.WHITE, Color(0.08, 0.04, 0.02, 1))
 		l.visible = false
 		dmg_labels.append(l)
+	# poster grade under the HUD (HUD canvas layer is 5)
+	var post := CanvasLayer.new(); post.layer = 1; add_child(post)
+	var pr := ColorRect.new(); pr.set_anchors_preset(Control.PRESET_FULL_RECT); pr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var pm := ShaderMaterial.new(); pm.shader = load("res://shaders/poster.gdshader"); pr.material = pm
+	if tpl.get("id", "") == "bourse": pm.set_shader_parameter("light_tint", Vector3(1.0, 0.96, 1.0))
+	post.add_child(pr)
 	hud = load("res://scripts/hud.gd").new()
 	add_child(hud)
 	hud.setup(self)
@@ -195,13 +201,37 @@ func _warmup():
 	bg.color = Color(0.08, 0.065, 0.06)
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	cover.add_child(bg)
+	var art := TextureRect.new()
+	art.texture = load("res://assets/posters/" + U.propaganda_tex(randi()))
+	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	art.set_anchors_preset(Control.PRESET_FULL_RECT)
+	art.anchor_right = 0.42; art.offset_left = 60; art.offset_top = 60; art.offset_bottom = -60
+	cover.add_child(art)
+	var tips := ["Astuce du Parti : la glissade laisse une traînée de feu. Les capitalistes détestent la chaleur humaine.",
+		"Astuce du Parti : deux armes niveau 6 peuvent fusionner et libérer un emplacement.",
+		"Astuce du Parti : M active la mini-carte, Tab affiche la grande carte.",
+		"Astuce du Parti : un Golden Boy transporte toujours un coffre. Redistribue-le.",
+		"Astuce du Parti : l'esquive (clic droit) rend invulnérable un court instant.",
+		"Astuce du Parti : les quotas du Plan rapportent beaucoup de médailles. Le Plan a toujours raison."]
+	var tip := Label.new()
+	tip.text = tips[randi() % tips.size()]
+	tip.add_theme_font_override("font", load("res://fonts/Oswald.woff2"))
+	tip.add_theme_font_size_override("font_size", 26)
+	tip.add_theme_color_override("font_color", Color(0.93, 0.87, 0.74))
+	tip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	tip.set_anchors_preset(Control.PRESET_FULL_RECT)
+	tip.anchor_left = 0.48; tip.offset_right = -60; tip.anchor_top = 0.62
+	cover.add_child(tip)
 	var lab := Label.new()
-	lab.text = "COMMUNISTE LAND\nPréparation de la zone…"
+	lab.text = "COMMUNISTE LAND\n%s\nPréparation de la zone…" % (tpl["name"] as String).to_upper()
 	lab.add_theme_font_override("font", load("res://fonts/Oswald.woff2"))
 	lab.add_theme_font_size_override("font_size", 48)
-	lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	lab.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	lab.set_anchors_preset(Control.PRESET_FULL_RECT)
+	lab.anchor_left = 0.48; lab.anchor_bottom = 0.6
+	lab.add_theme_color_override("font_color", Color(0.85, 0.12, 0.14))
 	cover.add_child(lab)
 	_update_camera(0.016)
 	var front: Vector3 = player.global_position + Vector3(0, 0, -8)

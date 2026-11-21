@@ -1,0 +1,10 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://assets/nature/sources/FBX/Rock_3.fbx" id="1_udtbj"]
+[ext_resource type="Material" path="res://assets/nature/materials/Rocks.tres" id="2_vw078"]
+
+[node name="Rock_3" instance=ExtResource("1_udtbj")]
+
+[node name="Rock_3" parent="." index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+surface_material_override/0 = ExtResource("2_vw078")

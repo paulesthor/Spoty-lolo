@@ -3,8 +3,8 @@ extends CanvasLayer
 
 signal chosen(index: int)
 
-const C_BG := Color(0.06, 0.06, 0.07, 0.72)
-const C_FG := Color(0.92, 0.9, 0.86)
+const C_BG := Color(0.07, 0.055, 0.05, 0.78)
+const C_FG := Color(0.95, 0.9, 0.8)
 const C_ACC := Color(0.85, 0.2, 0.18)
 const C_XP := Color(0.85, 0.78, 0.55)
 const C_HP := Color(0.75, 0.15, 0.15)
@@ -174,10 +174,15 @@ func _panel(parent: Control, col: Color, radius: int, border: int) -> Panel:
 	var p := Panel.new()
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = col
-	sb.set_corner_radius_all(radius)
+	# constructivist look: slanted panels with a thick red edge (no rounded corners)
+	sb.set_corner_radius_all(0)
+	sb.skew = Vector2(0.12, 0.0)
 	if border > 0:
-		sb.set_border_width_all(border)
-		sb.border_color = C_BORDER
+		sb.border_color = C_ACC
+		sb.border_width_left = 5
+		sb.border_width_bottom = 2
+		sb.border_width_top = 0
+		sb.border_width_right = 0
 	p.add_theme_stylebox_override("panel", sb)
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	parent.add_child(p)

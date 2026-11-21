@@ -69,6 +69,91 @@ static func mute(n: Node):
 					_mats[key] = d
 				mi.set_surface_override_material(i, _mats[key])
 
+const TEX := "res://assets/textures/"
+const NATURE := "res://assets/nature/prefabs/"
+
+# textured PBR material (ambientCG): colour + normal + roughness, world-space triplanar so any box tiles correctly
+static func pbr(name: String, scale := 0.25, tint := Color(1, 1, 1), normal := 1.0) -> StandardMaterial3D:
+	var key := "pbr_%s_%f_%s" % [name, scale, tint.to_html()]
+	if _mats.has(key): return _mats[key]
+	var m := StandardMaterial3D.new()
+	m.albedo_texture = load(TEX + name + "_Color.jpg")
+	m.albedo_color = tint
+	m.normal_enabled = true
+	m.normal_texture = load(TEX + name + "_NormalGL.jpg")
+	m.normal_scale = normal
+	m.roughness_texture = load(TEX + name + "_Roughness.jpg")
+	m.roughness_texture_channel = BaseMaterial3D.TEXTURE_CHANNEL_RED
+	m.uv1_triplanar = true
+	m.uv1_world_triplanar = true
+	m.uv1_scale = Vector3.ONE * scale
+	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+	_mats[key] = m
+	return m
+
+# adds a tiling surface detail (plaster, bricks, corrugated steel...) over a flat-coloured model:
+# the model keeps its palette, but gains texture and relief (triplanar, world space)
+static func detailize(n: Node, name: String, scale := 0.5, brighten := 1.12):
+	for m in n.find_children("*", "MeshInstance3D", true, false):
+		var mi: MeshInstance3D = m
+		if mi.mesh == null: continue
+		for i in mi.mesh.get_surface_count():
+			var src = mi.get_active_material(i)
+			if not (src is StandardMaterial3D): continue
+			var key := "det_%d_%s_%f" % [src.get_instance_id(), name, scale]
+			if not _mats.has(key):
+				var d: StandardMaterial3D = src.duplicate()
+				d.detail_enabled = true
+				d.detail_blend_mode = BaseMaterial3D.BLEND_MODE_MUL
+				d.detail_albedo = load(TEX + name + "_Detail.jpg")
+				d.detail_normal = load(TEX + name + "_NormalGL.jpg")
+				d.detail_uv_layer = BaseMaterial3D.DETAIL_UV_2
+				d.normal_enabled = true
+				d.uv2_triplanar = true
+				d.uv2_world_triplanar = true
+				d.uv2_scale = Vector3.ONE * scale
+				d.albedo_color = d.albedo_color * brighten
+				d.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+				_mats[key] = d
+			mi.set_surface_override_material(i, _mats[key])
+
+const POSTERS := "res://assets/posters/"
+
+# a printed poster (texture on a quad), facing +Z of its rotation
+static func poster(parent: Node, tex: String, pos: Vector3, size: Vector2, rot_y: float) -> MeshInstance3D:
+	var key := "poster_" + tex
+	if not _mats.has(key):
+		var m := StandardMaterial3D.new()
+		m.albedo_texture = load(POSTERS + tex)
+		m.roughness = 0.85
+		m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+		_mats[key] = m
+	var mi := MeshInstance3D.new()
+	var q := QuadMesh.new(); q.size = size
+	mi.mesh = q
+	mi.material_override = _mats[key]
+	parent.add_child(mi)
+	mi.position = pos
+	mi.rotation.y = rot_y
+	return mi
+
+static func propaganda_tex(i: int) -> String:
+	return "propaganda_%d.jpg" % (posmod(i, 8))
+
+static func ad_tex(i: int) -> String:
+	return "ad_%d.jpg" % (posmod(i, 4))
+
+# stylised vegetation (Quaternius): instance a prefab scaled to a height, base on the ground
+static func nature(parent: Node, prefab: String, pos: Vector3, height: float, rot := 0.0) -> Node3D:
+	var n: Node3D = scene(NATURE + prefab + ".tscn").instantiate()
+	parent.add_child(n)
+	n.rotation.y = rot
+	var a := world_aabb(n)
+	n.scale = Vector3.ONE * (height / maxf(a.size.y, 0.001))
+	var b := world_aabb(n)
+	n.position += Vector3(pos.x - b.get_center().x, pos.y - b.position.y, pos.z - b.get_center().z)
+	return n
+
 static func solid(color: Color, emissive := 0.0, rough := 0.8, metal := 0.0) -> StandardMaterial3D:
 	var key := "%s_%f_%f_%f" % [color.to_html(), emissive, rough, metal]
 	if _mats.has(key): return _mats[key]
