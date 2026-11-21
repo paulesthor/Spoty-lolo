@@ -894,7 +894,11 @@ func _dress(n: Node3D, face: Vector3):
 		var mw := minf(mh / 1.5, half * 1.6)
 		mh = mw * 1.5
 		var tex: String = U.ad_tex(rng.randi()) if rng.randf() < ad_ratio else U.propaganda_tex(rng.randi())
-		U.poster(self, tex, front + Vector3(0, a.position.y + a.size.y * 0.55, 0), Vector2(mw, mh), rot)
+		var my := a.position.y + a.size.y * 0.55
+		var wp := _wall_plane(n, face, my - mh * 0.5, my + mh * 0.5)
+		if wp > -1e8:
+			var lat := Vector3(c.x, 0, c.z) - face * Vector3(c.x, 0, c.z).dot(face)
+			U.poster(self, tex, lat + face * (wp + 0.05) + Vector3(0, my, 0), Vector2(mw, mh), rot)
 	elif roll < 0.6:
 		# shop / office sign over the ground floor
 		var names := {"hypermarche": ["BOULANGERIE D'ÉTAT", "COOPÉRATIVE N°7", "LAVERIE DU PEUPLE", "KIOSQUE PRAVDA", "PHARMACIE CENTRALE"],
@@ -902,13 +906,29 @@ func _dress(n: Node3D, face: Vector3):
 			"bourse": ["COURTIER 24/7", "PARADIS FISCAL VOYAGES", "BIJOUTERIE", "CLUB PRIVÉ", "MONTRES DE LUXE"]}
 		var txt: String = names[bid][rng.randi() % 5]
 		var col: Color = [Color(0.72, 0.08, 0.1), Color(0.12, 0.25, 0.45), Color(0.15, 0.35, 0.22), Color(0.1, 0.1, 0.12)][rng.randi() % 4]
-		var sp := front + Vector3(0, a.position.y + 3.4, 0) + face * 0.08
+		# the wall plane at sign height: the furthest-out part of the building that spans 2.9-3.9 m
+		var wall := -1e9
+		for m in n.find_children("*", "MeshInstance3D", true, false):
+			var ma: AABB = (m as MeshInstance3D).global_transform * (m as MeshInstance3D).get_aabb()
+			if ma.position.y > a.position.y + 2.9 or ma.end.y < a.position.y + 3.9: continue
+			var ext: float = ma.get_center().dot(face) + absf((ma.size * 0.5).dot(face))
+			wall = maxf(wall, ext)
+		if wall < -1e8: return
+		var lateral := Vector3(c.x, 0, c.z) - face * Vector3(c.x, 0, c.z).dot(face)
+		var sp := lateral + face * (wall + 0.06) + Vector3(0, a.position.y + 3.4, 0)
 		U.box(self, Vector3(minf(half * 1.7, 8.0), 1.0, 0.16), sp, U.solid(col, 0.25 if ambiance == "nuit" else 0.0, 0.6), Vector3(0, rot, 0))
 		var l := U.label(self, txt, sp + face * 0.1, 64, Color(1, 0.95, 0.85), Color(0, 0, 0, 0), false, U.font_main)
 		l.rotation.y = rot; l.outline_size = 0; l.pixel_size = 0.009
 		l.width = minf(half * 1.6, 7.6) / l.pixel_size; l.autowrap_mode = TextServer.AUTOWRAP_OFF
-	# rooftop
+	# rooftop items stand on the highest roof part (setbacks would leave them hovering)
+	var best_top := -1.0
 	var top := Vector3(c.x, a.end.y, c.z)
+	for m in n.find_children("*", "MeshInstance3D", true, false):
+		var ma: AABB = (m as MeshInstance3D).global_transform * (m as MeshInstance3D).get_aabb()
+		if ma.end.y > best_top and ma.size.x > 2.0 and ma.size.z > 2.0:
+			best_top = ma.end.y
+			top = Vector3(ma.get_center().x, ma.end.y, ma.get_center().z)
+	depth = 0.0
 	var r2 := rng.randf()
 	if r2 < 0.25:
 		var st := Label3D.new(); st.text = "★"; st.font = load("res://fonts/Symbols.ttf"); st.font_size = 256; st.pixel_size = 0.012
@@ -922,3 +942,12 @@ func _dress(n: Node3D, face: Vector3):
 		U.cyl(self, 0.05, 4.0, top + Vector3(0, 2.0, 0), U.solid(Color(0.2, 0.2, 0.22), 0.0, 0.4, 0.8))
 		U.cyl(self, 0.04, 1.6, top + Vector3(0, 3.2, 0), U.solid(Color(0.2, 0.2, 0.22), 0.0, 0.4, 0.8)).rotation.z = PI / 2
 		if ambiance == "nuit": U.sphere(self, 0.15, top + Vector3(0, 4.05, 0), U.solid(Color(1, 0.1, 0.1), 5.0))
+
+# outermost wall plane (along `face`) of the building parts that cover the whole height range
+func _wall_plane(n: Node, face: Vector3, y0: float, y1: float) -> float:
+	var wall := -1e9
+	for m in n.find_children("*", "MeshInstance3D", true, false):
+		var ma: AABB = (m as MeshInstance3D).global_transform * (m as MeshInstance3D).get_aabb()
+		if ma.position.y > y0 + 0.05 or ma.end.y < y1 - 0.05: continue
+		wall = maxf(wall, ma.get_center().dot(face) + absf((ma.size * 0.5).dot(face)))
+	return wall
