@@ -14,8 +14,8 @@ var run_directives := {}     # id -> level
 const CHARACTERS := {
 	"stakhanov": {
 		"name": "Stakhanov", "model": "character-worker", "acc": [], "cost": 0, "weapon": "marteau",
-		"passive": "Dépasser les quotas : +3 % de cadence tous les 100 ennemis bonkés (max +30 %).",
-		"ult": "Surproduction", "ult_desc": "Cadence x3 pendant 8 s.",
+		"passive": "Dépasser les quotas : +2 % de cadence tous les 150 ennemis bonkés (max +20 %).",
+		"ult": "Surproduction", "ult_desc": "Cadence x2 pendant 6 s.",
 		"base": {},
 		"tree": [
 			["Ouvrier modèle", [["cadence", 5], ["productivite", 6], ["cadence", 5], ["productivite", 8], ["ult_power", 30]]],
@@ -117,7 +117,7 @@ static func bureau_cost(id: String, rank: int) -> int:
 
 # ---------------------------------------------------------------- Usine d'armement
 const WEAPON_UNLOCK := {"marteau": 0, "kalach": 0, "faucille": 0, "molotov": 0, "matriochka": 80, "spoutnik": 100, "samovar": 90, "hautparleur": 90}
-const MASTERY_XP := [0, 12000, 45000, 120000, 270000, 500000]   # cumulative damage for levels 0..5
+const MASTERY_XP := [0, 400, 1500, 4000, 9000, 16000]   # cumulative kills with the weapon for levels 0..5
 # modules: id -> [weapon, mastery level required, name, description]
 const MODULES := {
 	"kalach_eventail": ["kalach", 2, "Tir en éventail", "+2 balles en éventail, -30 % de dégâts."],
@@ -361,9 +361,9 @@ func end_run(r: Dictionary) -> Dictionary:
 	var medals := int(base * mult)
 	out["lines"].append("Médailles de la run : %d%s" % [medals, (" (ferveur %d : x%.2f)" % [f, mult]) if f > 0 else ""])
 	# weapon mastery
-	for w in r["dmg_by_weapon"]:
+	for w in r["kills_by_weapon"]:
 		var before := weapon_mastery(w)
-		data["mastery"][w] = float(data["mastery"].get(w, 0.0)) + r["dmg_by_weapon"][w]
+		data["mastery"][w] = float(data["mastery"].get(w, 0.0)) + r["kills_by_weapon"][w]
 		var after := weapon_mastery(w)
 		if after > before:
 			out["lines"].append("Maîtrise %s : niveau %d !" % [Data.WEAPONS[w]["name"], after])

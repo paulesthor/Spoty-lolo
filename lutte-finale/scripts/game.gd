@@ -1,5 +1,5 @@
 extends Node3D
-# Lutte Finale — prototype. Game loop for one zone ("Hypermarché").
+# Communiste Land — prototype. Game loop for one zone ("Hypermarché").
 # Test flags (after "--"): bot  speed=4  dur=600  shots=60  shotdir=res://proto_shots  seed=1  warp=300  pos=x,z yaw=deg
 
 const ZONE_TIME := 600.0      # 10:00, then the Krach
@@ -122,7 +122,10 @@ func _ready():
 	add_child(hud)
 	hud.setup(self)
 	hud.chosen.connect(_on_chosen)
-	if bot:
+	if bot and multi_run == false and warp == 0.0 and test_pos == Vector3.INF and shot_every == 0.0:
+		start()
+	elif bot:
+		await _warmup()
 		start()
 		if warp > 0.0: _do_warp()
 		if test_pos != Vector3.INF:
@@ -131,7 +134,96 @@ func _ready():
 			player.bot = false
 			cam_rig.global_position = test_pos
 	else:
+		await _warmup()
 		start()
+
+# Pre-render every enemy, weapon effect, pickup and UI panel once behind a loading screen,
+# so that shaders, meshes and font glyphs are ready before they are needed (avoids hitches).
+var warming := false
+func _warmup():
+	warming = true
+	state = "loading"
+	var cover := CanvasLayer.new()
+	cover.layer = 20
+	add_child(cover)
+	var bg := ColorRect.new()
+	bg.color = Color(0.08, 0.065, 0.06)
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	cover.add_child(bg)
+	var lab := Label.new()
+	lab.text = "COMMUNISTE LAND\nPréparation de la zone…"
+	lab.add_theme_font_override("font", load("res://fonts/Oswald.woff2"))
+	lab.add_theme_font_size_override("font_size", 48)
+	lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lab.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lab.set_anchors_preset(Control.PRESET_FULL_RECT)
+	cover.add_child(lab)
+	_update_camera(0.016)
+	var front: Vector3 = player.global_position + Vector3(0, 0, -8)
+	# enemies (also fills the pools)
+	var spawned := []
+	var kinds := ["stagiaire", "stagiaire", "stagiaire", "cadre", "cadre", "trader", "influenceur", "crypto", "avocat", "banquier", "huissier", "coach", "lobbyiste", "drh", "actionnaire", "golden"]
+	for i in kinds.size():
+		spawned.append(enemies.spawn(kinds[i], front + Vector3((i % 6) * 1.5 - 4.0, 0, -(i / 6) * 2.0)))
+	# weapons: fire each once
+	var temp := []
+	for id in Data.WEAPONS:
+		if not weapons.owned.has(id):
+			weapons.add_weapon(id); temp.append(id)
+	for id in Data.WEAPONS:
+		weapons._fire(id, weapons.stats(id))
+	if weapons.owned.has("spoutnik"): weapons._update_sats(0.016)
+	weapons._ring_fx(front, 3.0, Color(1, 0.3, 0.2))
+	weapons._beam(front + Vector3(0, 2, 0), front + Vector3(2, 1, 0))
+	weapons._doll_burst(front, weapons.stats("matriochka"), 0, 1.0)
+	weapons._spawn_fire(front, weapons.stats("molotov"))
+	weapons._cone_fx(player.global_position, Vector3.FORWARD, 6.0, false)
+	# enemy hazards and pickups
+	enemies._shoot(front + Vector3(0, 1, 0), Vector3.BACK, 1.0, "")
+	enemies._lob(front + Vector3(0, 2, 0), front + Vector3(2, 0, 0), 1.0)
+	enemies._debt_zone(front + Vector3(-2, 0, 0), 0.0)
+	enemies._telegraph_line(front, Vector3.FORWARD, 6.0, 0.2)
+	enemies._heal_fx(front)
+	_drop_gem(front, 1); _drop_gem(front, 6); _drop_coin(front, 1); _drop_heal(front)
+	spark(front + Vector3(0, 1, 0), true); spark(front + Vector3(0, 1, 0))
+	damage_number(front + Vector3(0, 2, 0), 123, false); damage_number(front + Vector3(1, 2, 0), 456, true)
+	# UI glyphs
+	var dummy := [{"kind": "decret", "id": "productivite", "rarity": 3, "tag": "ÉVOLUTION · ARME · DÉCRET · COMMUN RARE ÉPIQUE LÉGENDAIRE", "title": "Marteau-Pilon Révolution", "lv": "Niveau 10 / 6", "desc": "0123456789 %+-.,:'() abcdefghijklmnopqrstuvwxyz ÀÂÉÈÊËÎÏÔÙÛÇéèêàùç", "cost": 99},
+		{"kind": "decret", "id": "cadence", "rarity": 1, "tag": "x", "title": "x", "lv": "x", "desc": "x"}, {"kind": "decret", "id": "aimant", "rarity": 2, "tag": "x", "title": "x", "lv": "x", "desc": "x"}]
+	hud.show_choices("NIVEAU 0123456789 · LE PARTI TE RÉCOMPENSE", dummy, "PARTIR")
+	hud.toast("ÉVÉNEMENT · ABCDEFGHIJKLMNOPQRSTUVWXYZ 0123456789", 0.01)
+	hud.prompt("F / X : OUVRIR LE COFFRE (12 RBL)")
+	for i in 6: await get_tree().process_frame
+	hud.hide_choices()
+	hud.prompt("")
+	# cleanup
+	for e in spawned:
+		if e.alive:
+			e.alive = false
+			enemies.list.erase(e)
+			e.node.visible = false
+			if not enemies.pools.has(e.kind): enemies.pools[e.kind] = []
+			enemies.pools[e.kind].append(e)
+	for p in weapons.projectiles: p["n"].queue_free()
+	weapons.projectiles.clear()
+	for f in weapons.fires: f["n"].queue_free()
+	weapons.fires.clear()
+	for id in temp:
+		weapons.owned.erase(id); weapons.timers.erase(id)
+		if id == "spoutnik":
+			for sp in weapons.sats: sp.queue_free()
+			weapons.sats.clear()
+		if id == "samovar" and weapons.aura_fx:
+			weapons.aura_fx.queue_free(); weapons.aura_fx = null
+	for h in enemies.hazards: h["n"].queue_free()
+	enemies.hazards.clear()
+	for arr in [gems, coins]:
+		for g in arr: g["n"].queue_free()
+		arr.clear()
+	kills = 0; ult_kills = 0
+	kills_by_kind.clear(); kills_by_weapon.clear(); dmg_by_weapon.clear()
+	cover.queue_free()
+	warming = false
 
 func _load_meta():
 	char_id = Meta.run_char
@@ -385,7 +477,7 @@ func _break(b: Dictionary):
 func _show_menu():
 	state = "menu"
 	hud.set_hud_visible(false)
-	hud.show_screen("LUTTE FINALE",
+	hud.show_screen("COMMUNISTE LAND",
 		"Le capitalisme a gagné. Pas pour longtemps.\n\nDéplacement : ZQSD / flèches / stick gauche     Caméra : souris / A et R / stick droit\nSaut (double saut) : Espace / A     Glissade : Maj / B     Interagir : F / X\n\nTes armes tirent toutes seules. Casse les cartons, ouvre les coffres, active les sanctuaires.\nBats le Directeur à 08:00. À 10:00, c'est le Krach.",
 		"ENTRÉE ou A pour commencer", Color(0.9, 0.15, 0.15))
 
@@ -408,6 +500,8 @@ func _unhandled_input(ev: InputEvent):
 func _process(d: float):
 	var rd := minf(d, 0.05)
 	match state:
+		"loading":
+			return
 		"menu":
 			cam_rig.rotation.y += rd * 0.1
 			cam_rig.global_position = player.global_position
@@ -512,8 +606,8 @@ func spawn_point(min_d: float, max_d: float) -> Vector3:
 
 func mults() -> Array:
 	var tm := time / 60.0
-	var hp := (1.0 + 0.33 * tm + 0.12 * tm * tm) * (1.0 + 0.2 * bets) * (1.0 + 0.25 * dirl("productivisme"))
-	return [hp, (1.0 + 0.07 * tm) * (1.0 + 0.25 * dirl("sans_pitie"))]
+	var hp := (1.0 + 0.3 * tm + 0.1 * tm * tm + 0.012 * tm * tm * tm) * (1.0 + 0.2 * bets) * (1.0 + 0.25 * dirl("productivisme"))
+	return [hp, (1.0 + 0.1 * tm) * (1.0 + 0.25 * dirl("sans_pitie"))]
 
 func enemy_speed_mult() -> float:
 	return 0.55 if event_name == "greve" else 1.0
@@ -610,6 +704,7 @@ func _events(d: float):
 
 # ---------------------------------------------------------------- kills, drops
 func on_enemy_killed(e):
+	if warming: return
 	kills += 1
 	ult_kills += 1
 	kills_by_kind[e.kind] = int(kills_by_kind.get(e.kind, 0)) + 1
@@ -1101,6 +1196,7 @@ func _back_to_hub():
 	get_tree().change_scene_to_file("res://scenes/hub.tscn")
 
 func track_damage(wid: String, amt: float):
+	if warming: return
 	if wid != "": dmg_by_weapon[wid] = dmg_by_weapon.get(wid, 0.0) + amt
 
 # ---------------------------------------------------------------- automated test hooks

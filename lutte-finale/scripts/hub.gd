@@ -1,16 +1,31 @@
 extends Control
-# LE KOLKHOZE — minimal hub between runs: choose comrade & directives, spend medals,
+# LE KOLKHOZE — hub between runs: choose comrade & directives, spend medals,
 # talents, weapon modules, Plan quinquennal. Also drives multi-run bot simulations.
+
+const C_BG := Color(0.08, 0.065, 0.06)
+const C_PANEL := Color(0.14, 0.115, 0.1)
+const C_PANEL2 := Color(0.19, 0.155, 0.13)
+const C_RED := Color(0.78, 0.09, 0.12)
+const C_GOLD := Color(1.0, 0.8, 0.3)
+const C_TEXT := Color(0.93, 0.9, 0.85)
+const C_DIM := Color(0.62, 0.58, 0.53)
+const C_OK := Color(0.45, 0.9, 0.45)
+const C_BAD := Color(1.0, 0.45, 0.35)
 
 var font: Font
 var content: VBoxContainer
-var header: Label
+var header_medals: Label
+var header_grade: Label
+var header_stats: Label
+var grade_bar: ProgressBar
 var tab := "lancer"
+var nav_buttons := {}
 var bot := false
 var runs_target := 0
 var bot_dirs := false
 var bot_char := ""
 var bot_nospend := false
+var shots_dir := ""
 
 func _ready():
 	font = load("res://fonts/Oswald.woff2")
@@ -20,77 +35,174 @@ func _ready():
 		elif a == "botdirs": bot_dirs = true
 		elif a.begins_with("char="): bot_char = a.substr(5)
 		elif a == "nospend": bot_nospend = true
+		elif a.begins_with("hubshots="): shots_dir = a.substr(9)
+	theme = _make_theme()
 	var bg := ColorRect.new()
-	bg.color = Color(0.09, 0.07, 0.06)
+	bg.color = C_BG
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
+	var band := ColorRect.new()
+	band.color = C_RED
+	band.set_anchors_preset(Control.PRESET_LEFT_WIDE)
+	band.offset_right = 8
+	add_child(band)
 	var root := HBoxContainer.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
-	root.offset_left = 40; root.offset_top = 30; root.offset_right = -40; root.offset_bottom = -30
-	root.add_theme_constant_override("separation", 30)
+	root.offset_left = 44; root.offset_top = 28; root.offset_right = -36; root.offset_bottom = -28
+	root.add_theme_constant_override("separation", 28)
 	add_child(root)
+	# ---- left column
 	var nav := VBoxContainer.new()
-	nav.custom_minimum_size = Vector2(340, 0)
-	nav.add_theme_constant_override("separation", 10)
+	nav.custom_minimum_size = Vector2(360, 0)
+	nav.add_theme_constant_override("separation", 8)
 	root.add_child(nav)
-	var title := _lbl("LE KOLKHOZE", 54, Color(0.9, 0.15, 0.15))
-	nav.add_child(title)
-	header = _lbl("", 26, Color(1, 0.85, 0.35))
-	nav.add_child(header)
-	nav.add_child(_lbl(" ", 10, Color.WHITE))
-	var tabs := [["lancer", "LANCER UNE RUN"], ["bureau", "BUREAU DU PLAN"], ["caserne", "CASERNE (camarades)"], ["usine", "USINE D'ARMEMENT"], ["plan", "PLAN QUINQUENNAL"], ["directives", "DIRECTIVES DU PARTI"]]
+	nav.add_child(_lbl("COMMUNISTE LAND", 24, C_DIM))
+	nav.add_child(_lbl("LE KOLKHOZE", 58, C_RED))
+	var hb := _card(nav, C_PANEL, C_RED, 2)
+	header_medals = _lbl("", 34, C_GOLD); hb.add_child(header_medals)
+	header_grade = _lbl("", 22, C_TEXT); hb.add_child(header_grade)
+	grade_bar = _bar(hb, 0.0, C_GOLD)
+	header_stats = _lbl("", 18, C_DIM); hb.add_child(header_stats)
+	nav.add_child(_space(6))
+	var tabs := [["lancer", "▶  LANCER UNE RUN"], ["bureau", "BUREAU DU PLAN"], ["caserne", "CASERNE"], ["usine", "USINE D'ARMEMENT"], ["plan", "PLAN QUINQUENNAL"], ["directives", "DIRECTIVES DU PARTI"]]
 	for t in tabs:
-		var b := _btn(t[1], 26)
+		var b := _btn(t[1], 24)
+		b.custom_minimum_size = Vector2(0, 52)
 		b.pressed.connect(func(): tab = t[0]; _refresh())
 		nav.add_child(b)
-	nav.add_child(_lbl(" ", 10, Color.WHITE))
-	var quit := _btn("QUITTER LE JEU", 20)
+		nav_buttons[t[0]] = b
+	var spacer := Control.new(); spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	nav.add_child(spacer)
+	var quit := _btn("QUITTER LE JEU", 18)
 	quit.pressed.connect(func(): get_tree().quit())
 	nav.add_child(quit)
+	# ---- content
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	root.add_child(scroll)
 	content = VBoxContainer.new()
 	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	content.add_theme_constant_override("separation", 8)
+	content.add_theme_constant_override("separation", 14)
 	scroll.add_child(content)
 	_refresh()
-	if bot: call_deferred("_bot_step")
+	if shots_dir != "": call_deferred("_take_shots")
+	elif bot: call_deferred("_bot_step")
 
-func _lbl(t: String, size: int, col := Color(0.92, 0.9, 0.86)) -> Label:
+# ---------------------------------------------------------------- ui helpers
+func _sb(col: Color, border := Color(0, 0, 0, 0), bw := 0, radius := 6) -> StyleBoxFlat:
+	var s := StyleBoxFlat.new()
+	s.bg_color = col
+	s.set_corner_radius_all(radius)
+	if bw > 0:
+		s.set_border_width_all(bw)
+		s.border_color = border
+	s.content_margin_left = 14; s.content_margin_right = 14; s.content_margin_top = 8; s.content_margin_bottom = 8
+	return s
+
+func _make_theme() -> Theme:
+	var t := Theme.new()
+	t.default_font = font
+	t.set_stylebox("normal", "Button", _sb(C_PANEL2, Color(1, 1, 1, 0.08), 1))
+	t.set_stylebox("hover", "Button", _sb(Color(0.3, 0.12, 0.1), C_RED, 2))
+	t.set_stylebox("pressed", "Button", _sb(C_RED, C_GOLD, 2))
+	t.set_stylebox("focus", "Button", _sb(Color(0, 0, 0, 0), C_GOLD, 2))
+	t.set_stylebox("disabled", "Button", _sb(Color(0.12, 0.1, 0.09), Color(1, 1, 1, 0.04), 1))
+	t.set_color("font_color", "Button", C_TEXT)
+	t.set_color("font_hover_color", "Button", Color.WHITE)
+	t.set_color("font_pressed_color", "Button", Color.WHITE)
+	t.set_color("font_disabled_color", "Button", Color(0.45, 0.42, 0.4))
+	var bgs := StyleBoxFlat.new(); bgs.bg_color = Color(0, 0, 0, 0.45); bgs.set_corner_radius_all(4)
+	var fgs := StyleBoxFlat.new(); fgs.bg_color = C_GOLD; fgs.set_corner_radius_all(4)
+	t.set_stylebox("background", "ProgressBar", bgs)
+	t.set_stylebox("fill", "ProgressBar", fgs)
+	return t
+
+func _lbl(t: String, size: int, col := C_TEXT, wrap := true) -> Label:
 	var l := Label.new()
 	l.text = t
-	l.add_theme_font_override("font", font)
 	l.add_theme_font_size_override("font_size", size)
 	l.add_theme_color_override("font_color", col)
-	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	if wrap:
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		l.custom_minimum_size = Vector2(80, 0)
 	return l
 
-func _btn(t: String, size := 22, enabled := true) -> Button:
+func _btn(t: String, size := 20, enabled := true) -> Button:
 	var b := Button.new()
 	b.text = t
-	b.add_theme_font_override("font", font)
 	b.add_theme_font_size_override("font_size", size)
 	b.disabled = not enabled
 	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	b.focus_mode = Control.FOCUS_ALL
 	return b
 
-func _row(parts: Array) -> HBoxContainer:
-	var h := HBoxContainer.new()
-	h.add_theme_constant_override("separation", 14)
-	for p in parts:
-		h.add_child(p)
-	return h
+func _space(h: int) -> Control:
+	var c := Control.new(); c.custom_minimum_size = Vector2(0, h)
+	return c
+
+# a styled panel; returns the inner VBox to fill
+func _card(parent: Node, col := C_PANEL, border := Color(1, 1, 1, 0.06), bw := 1, min_w := 0) -> VBoxContainer:
+	var p := PanelContainer.new()
+	p.add_theme_stylebox_override("panel", _sb(col, border, bw, 8))
+	p.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	if min_w > 0: p.custom_minimum_size = Vector2(min_w, 0)
+	parent.add_child(p)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	p.add_child(v)
+	return v
+
+func _grid(cols: int) -> GridContainer:
+	var g := GridContainer.new()
+	g.columns = cols
+	g.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	g.add_theme_constant_override("h_separation", 14)
+	g.add_theme_constant_override("v_separation", 14)
+	content.add_child(g)
+	return g
+
+func _bar(parent: Node, v: float, col: Color) -> ProgressBar:
+	var b := ProgressBar.new()
+	b.min_value = 0.0; b.max_value = 1.0; b.value = clampf(v, 0.0, 1.0)
+	b.show_percentage = false
+	b.custom_minimum_size = Vector2(0, 10)
+	var fg := StyleBoxFlat.new(); fg.bg_color = col; fg.set_corner_radius_all(4)
+	b.add_theme_stylebox_override("fill", fg)
+	parent.add_child(b)
+	return b
+
+func _pips(n: int, mx: int) -> String:
+	return "●".repeat(n) + "○".repeat(maxi(0, mx - n))
+
+func _title(t: String, sub := ""):
+	content.add_child(_lbl(t, 40, Color.WHITE))
+	if sub != "": content.add_child(_lbl(sub, 19, C_DIM))
 
 func _clear():
-	for c in content.get_children(): c.queue_free()
+	for c in content.get_children():
+		content.remove_child(c)
+		c.queue_free()
 
 func _refresh():
 	var d: Dictionary = Meta.data
 	var g := Meta.grade()
-	var gnext: String = ("\nProchain grade : %d médailles gagnées au total (%d)" % [Meta.grade_req(g + 1), int(d.get("lifetime", 0))]) if g < 10 else ""
-	header.text = "%d MÉDAILLES\nGrade %d : %s%s\nRuns : %d · Victoires : %d · Record : %02d:%02d" % [d["medals"], g, Meta.GRADE_NAMES[g - 1], gnext, d["runs"], d["wins"], int(d["best_time"]) / 60, int(d["best_time"]) % 60]
+	header_medals.text = "%d MÉDAILLES" % d["medals"]
+	header_grade.text = "Grade %d · %s" % [g, Meta.GRADE_NAMES[g - 1]]
+	if g < 10:
+		var lo := Meta.grade_req(g)
+		var hi := Meta.grade_req(g + 1)
+		grade_bar.value = clampf(float(int(d.get("lifetime", 0)) - lo) / maxf(1.0, hi - lo), 0.0, 1.0)
+	else:
+		grade_bar.value = 1.0
+	header_stats.text = "Prochain grade : %d médailles gagnées au total (%d)\nRuns %d · Victoires %d · Record %02d:%02d" % [Meta.grade_req(mini(g + 1, 10)), int(d.get("lifetime", 0)), d["runs"], d["wins"], int(d["best_time"]) / 60, int(d["best_time"]) % 60]
+	for k in nav_buttons:
+		var b: Button = nav_buttons[k]
+		if k == tab:
+			b.add_theme_stylebox_override("normal", _sb(C_RED, C_GOLD, 2))
+		else:
+			b.remove_theme_stylebox_override("normal")
 	_clear()
 	match tab:
 		"lancer": _tab_lancer()
@@ -100,145 +212,217 @@ func _refresh():
 		"plan": _tab_plan()
 		"directives": _tab_directives()
 
-# ---------------------------------------------------------------- tabs
+# ---------------------------------------------------------------- LANCER
 func _tab_lancer():
-	content.add_child(_lbl("CHOISIS TON CAMARADE", 34, Color.WHITE))
+	_title("CHOISIS TON CAMARADE", "Clique sur une carte pour la sélectionner. Les camarades se recrutent à la Caserne.")
+	var g := _grid(4)
 	for c in Meta.CHARACTERS:
 		var def: Dictionary = Meta.CHARACTERS[c]
 		var cd: Dictionary = Meta.data["chars"][c]
-		if not cd["unlocked"]:
-			content.add_child(_lbl("🔒 %s · à recruter à la Caserne (%d médailles)" % [def["name"], def["cost"]], 22, Color(0.6, 0.58, 0.55)))
-			continue
 		var sel: bool = c == Meta.run_char
-		var b := _btn(("▶ " if sel else "   ") + "%s · niveau %d · arme : %s" % [def["name"], Meta.char_level(c), Data.WEAPONS[def["weapon"]]["name"]], 26)
-		b.pressed.connect(func(): Meta.run_char = c; Meta.data["last_char"] = c; _refresh())
-		content.add_child(b)
-		if sel:
-			content.add_child(_lbl("     Passif : %s\n     Ultime (E) : %s · %s" % [def["passive"], def["ult"], def["ult_desc"]], 20, Color(0.8, 0.78, 0.72)))
-	var f := Meta.ferveur(Meta.run_directives)
-	content.add_child(_lbl(" ", 10))
-	content.add_child(_lbl("Directives actives : ferveur %d (médailles x%.2f)" % [f, 1.0 + 0.15 * f], 22, Color(1, 0.6, 0.4) if f > 0 else Color(0.7, 0.7, 0.7)))
-	if Meta.data["bureau_purged"] != "":
-		content.add_child(_lbl("PURGE EN COURS : « %s » est désactivé jusqu'au prochain plan." % Meta.BUREAU[Meta.data["bureau_purged"]]["name"], 22, Color(1, 0.4, 0.3)))
+		var unlocked: bool = cd["unlocked"]
+		var v := _card(g, C_PANEL2 if sel else C_PANEL, C_GOLD if sel else Color(1, 1, 1, 0.06), 3 if sel else 1, 250)
+		v.add_child(_lbl(def["name"].to_upper(), 26, C_GOLD if sel else (C_TEXT if unlocked else C_DIM)))
+		if unlocked:
+			v.add_child(_lbl("Niveau %d · arme : %s" % [Meta.char_level(c), Data.WEAPONS[def["weapon"]]["name"]], 18, C_DIM))
+			v.add_child(_lbl(def["passive"], 17, C_TEXT))
+			v.add_child(_lbl("Ultime (E) : %s. %s" % [def["ult"], def["ult_desc"]], 17, Color(1, 0.75, 0.5)))
+			var b := _btn("SÉLECTIONNÉ" if sel else "CHOISIR", 20, not sel)
+			b.pressed.connect(func(): Meta.run_char = c; Meta.data["last_char"] = c; _refresh())
+			v.add_child(b)
+		else:
+			v.add_child(_lbl("🔒 À recruter à la Caserne\n%d médailles · grade %d" % [def["cost"], Meta.CHAR_GRADE.get(c, 1)], 18, C_DIM))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 14)
+	content.add_child(row)
+	var qv := _card(row, C_PANEL)
 	var plan: Dictionary = Meta.data["plan"]
-	content.add_child(_lbl("Plan quinquennal : %d run(s) restante(s)" % plan["runs_left"], 22))
+	qv.add_child(_lbl("PLAN QUINQUENNAL N°%d · %d RUN(S) RESTANTE(S)" % [Meta.data["plan_no"], plan["runs_left"]], 22, C_GOLD))
 	for q in plan["quotas"]:
-		content.add_child(_lbl("   %s %s (%s)" % ["✔" if q["done"] else "•", q["text"], _qprog(q)], 20, Color(0.5, 1, 0.5) if q["done"] else Color(0.85, 0.83, 0.8)))
-	content.add_child(_lbl(" ", 10))
+		qv.add_child(_lbl(("✔ " if q["done"] else "• ") + q["text"] + "  (" + _qprog(q) + ")", 18, C_OK if q["done"] else C_TEXT))
+		_bar(qv, _qfrac(q), C_OK if q["done"] else C_GOLD)
+	if Meta.data["bureau_purged"] != "":
+		qv.add_child(_lbl("PURGE EN COURS : « %s » désactivé." % Meta.BUREAU[Meta.data["bureau_purged"]]["name"], 18, C_BAD))
+	var dv := _card(row, C_PANEL)
+	var f := Meta.ferveur(Meta.run_directives)
+	dv.add_child(_lbl("DIRECTIVES ACTIVES", 22, C_GOLD))
+	if f == 0:
+		dv.add_child(_lbl("Aucune. Ferveur 0." + ("" if Meta.grade() >= Meta.DIRECTIVES_GRADE else "\nDébloquées au grade %d." % Meta.DIRECTIVES_GRADE), 18, C_DIM))
+	else:
+		for id in Meta.run_directives:
+			dv.add_child(_lbl("• %s %d" % [Meta.DIRECTIVES[id]["name"], Meta.run_directives[id]], 18, C_BAD))
+		dv.add_child(_lbl("Ferveur %d · médailles x%.2f" % [f, 1.0 + 0.15 * f], 20, C_GOLD))
 	var go := _btn("LANCER LA RUN  ·  ZONE 1 : L'HYPERMARCHÉ", 34)
+	go.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	go.custom_minimum_size = Vector2(0, 80)
+	go.add_theme_stylebox_override("normal", _sb(C_RED, C_GOLD, 2))
 	go.pressed.connect(_launch)
 	content.add_child(go)
 	go.grab_focus()
-	content.add_child(_lbl("Contrôles : ZQSD déplacement · souris caméra · Espace saut · Maj glissade · F interagir · E ultime · T relancer les cartes · Échap pause", 18, Color(0.6, 0.6, 0.6)))
+	content.add_child(_lbl("ZQSD déplacement · souris caméra · Espace saut · Maj glissade · F interagir · E ultime · T relancer les cartes · Échap pause", 17, C_DIM))
 
 func _qprog(q: Dictionary) -> String:
 	if q["kind"] in ["survive", "no_chest", "char_time"]:
-		return "record %02d:%02d" % [int(q["progress"]) / 60, int(q["progress"]) % 60]
+		return "record %02d:%02d / %02d:%02d" % [int(q["progress"]) / 60, int(q["progress"]) % 60, int(q["target"]) / 60, int(q["target"]) % 60]
 	return "%d / %d" % [int(q["progress"]), int(q["target"])]
 
+func _qfrac(q: Dictionary) -> float:
+	return 1.0 if q["done"] else clampf(float(q["progress"]) / maxf(1.0, float(q["target"])), 0.0, 1.0)
+
+# ---------------------------------------------------------------- BUREAU
 func _tab_bureau():
-	content.add_child(_lbl("BUREAU DU PLAN · bonus permanents pour tous les camarades", 30, Color.WHITE))
+	_title("BUREAU DU PLAN", "Bonus permanents pour tous les camarades. Chaque rang suivant demande un grade plus élevé.")
+	var g := _grid(3)
 	for id in Meta.BUREAU:
 		var b: Dictionary = Meta.BUREAU[id]
 		var r := Meta.bureau_rank(id)
 		var maxed: bool = r >= b["max"]
 		var cost := Meta.bureau_cost(id, r)
 		var purged: bool = Meta.data["bureau_purged"] == id
-		var txt := "%s · rang %d/%d · %s par rang" % [b["name"], r, b["max"], Meta.stat_text(b["stat"], b["per"])]
-		if purged: txt += " · PURGÉ"
 		var greq := Meta.bureau_grade_req(id, r)
 		var locked := Meta.grade() < greq
-		var btn := _btn(("GRADE %d REQUIS" % greq) if (locked and not maxed) else ("ACHETER (%d)" % cost if not maxed else "MAX"), 20, not maxed and not locked and Meta.data["medals"] >= cost)
+		var v := _card(g, C_PANEL, C_BAD if purged else Color(1, 1, 1, 0.06), 2 if purged else 1, 300)
+		v.add_child(_lbl(b["name"].to_upper(), 22, C_BAD if purged else C_GOLD))
+		v.add_child(_lbl(Meta.stat_text(b["stat"], b["per"]) + " par rang", 17, C_TEXT))
+		v.add_child(_lbl(_pips(r, b["max"]) + ("   PURGÉ" if purged else ""), 20, C_BAD if purged else C_GOLD))
+		var txt := "MAX"
+		if not maxed: txt = ("GRADE %d REQUIS" % greq) if locked else "ACHETER · %d" % cost
+		var btn := _btn(txt, 18, not maxed and not locked and Meta.data["medals"] >= cost)
 		btn.pressed.connect(func(): Meta.buy_bureau(id); _refresh())
-		content.add_child(_row([btn, _lbl(txt, 22, Color(1, 0.5, 0.4) if purged else Color(0.9, 0.88, 0.84))]))
+		v.add_child(btn)
 
+# ---------------------------------------------------------------- CASERNE
 func _tab_caserne():
-	content.add_child(_lbl("CASERNE · camarades et arbres de talents", 30, Color.WHITE))
-	content.add_child(_lbl("Chaque run rapporte de l'XP au camarade joué (autant que de médailles gagnées). 1 niveau = 1 point de talent. Les talents d'une branche s'achètent dans l'ordre.", 18, Color(0.7, 0.7, 0.7)))
+	_title("CASERNE", "Chaque run rapporte de l'XP au camarade joué. 1 niveau = 1 point de talent. Les talents d'une branche s'achètent dans l'ordre, et chacun demande un niveau minimum.")
 	for c in Meta.CHARACTERS:
 		var def: Dictionary = Meta.CHARACTERS[c]
 		var cd: Dictionary = Meta.data["chars"][c]
-		content.add_child(_lbl(" ", 6))
+		var v := _card(content, C_PANEL)
 		if not cd["unlocked"]:
 			var cg: int = Meta.CHAR_GRADE.get(c, 1)
-			var ub := _btn("RECRUTER %s (%d médailles%s)" % [def["name"].to_upper(), def["cost"], (", grade %d requis" % cg) if Meta.grade() < cg else ""], 24, Meta.data["medals"] >= def["cost"] and Meta.grade() >= cg)
+			v.add_child(_lbl(def["name"].to_upper() + "  🔒", 26, C_DIM))
+			v.add_child(_lbl("Arme : %s · %s" % [Data.WEAPONS[def["weapon"]]["name"], def["passive"]], 17, C_DIM))
+			var ub := _btn("RECRUTER · %d médailles%s" % [def["cost"], (" · grade %d requis" % cg) if Meta.grade() < cg else ""], 20, Meta.data["medals"] >= def["cost"] and Meta.grade() >= cg)
 			ub.pressed.connect(func(): Meta.unlock_char(c); _refresh())
-			content.add_child(ub)
-			content.add_child(_lbl("     Arme : %s · %s · Ultime : %s" % [Data.WEAPONS[def["weapon"]]["name"], def["passive"], def["ult_desc"]], 18, Color(0.7, 0.7, 0.7)))
+			v.add_child(ub)
 			continue
 		var lv := Meta.char_level(c)
-		var nxt := Meta.char_level_xp(lv + 1) if lv < 15 else 0
-		content.add_child(_lbl("%s · niveau %d%s · %d point(s) libre(s)" % [def["name"].to_upper(), lv, (" (XP %d / %d)" % [cd["xp"], nxt]) if lv < 15 else " (max)", Meta.talent_points_free(c)], 26, Color(1, 0.85, 0.35)))
+		var head := HBoxContainer.new()
+		head.add_theme_constant_override("separation", 20)
+		v.add_child(head)
+		var hl := _lbl("%s · NIVEAU %d" % [def["name"].to_upper(), lv], 26, C_GOLD)
+		head.add_child(hl)
+		var fp := Meta.talent_points_free(c)
+		head.add_child(_lbl("%d point(s) libre(s)" % fp, 22, C_OK if fp > 0 else C_DIM))
+		if lv < 15:
+			var lo := Meta.char_level_xp(lv)
+			var hi := Meta.char_level_xp(lv + 1)
+			_bar(v, float(int(cd["xp"]) - lo) / maxf(1.0, hi - lo), Color(0.5, 0.75, 1.0))
+		var cols := HBoxContainer.new()
+		cols.add_theme_constant_override("separation", 12)
+		v.add_child(cols)
 		for bi in 3:
 			var br: Array = def["tree"][bi]
 			var have: int = int(cd["talents"][bi])
-			var parts := []
+			var bv := _card(cols, C_PANEL2)
+			bv.add_child(_lbl(br[0].to_upper(), 20, Color.WHITE))
 			for i in 5:
 				var node: Array = br[1][i]
-				parts.append(("✔ " if i < have else "· ") + Meta.stat_text(node[0], node[1]))
-			var can := have < 5 and Meta.talent_points_free(c) > 0 and lv >= Meta.talent_level_req(have)
-			if have < 5 and lv < Meta.talent_level_req(have): parts[have] += " (niv %d)" % Meta.talent_level_req(have)
-			var tb := _btn("+", 22, can)
+				var col := C_OK if i < have else (C_TEXT if i == have else C_DIM)
+				var pre := "✔ " if i < have else ("▸ " if i == have else "· ")
+				var req := "" if i < have else "  (niv %d)" % Meta.talent_level_req(i)
+				bv.add_child(_lbl(pre + Meta.stat_text(node[0], node[1]) + req, 16, col))
+			var can := have < 5 and fp > 0 and lv >= Meta.talent_level_req(have)
+			var tb := _btn("APPRENDRE" if have < 5 else "COMPLET", 18, can)
 			tb.pressed.connect(func(): Meta.buy_talent(c, bi); _refresh())
-			content.add_child(_row([tb, _lbl("%s : %s" % [br[0], "  →  ".join(parts)], 18)]))
+			bv.add_child(tb)
 
+# ---------------------------------------------------------------- USINE
 func _tab_usine():
-	content.add_child(_lbl("USINE D'ARMEMENT · déblocage, maîtrise et modules", 30, Color.WHITE))
-	content.add_child(_lbl("La maîtrise monte avec les dégâts infligés par l'arme, toutes runs confondues : +4 % de dégâts par niveau et des modules à équiper (un par arme).", 18, Color(0.7, 0.7, 0.7)))
+	_title("USINE D'ARMEMENT", "La maîtrise monte avec les ennemis éliminés par l'arme, toutes runs confondues : +4 % de dégâts par niveau, et des modules à équiper (un par arme).")
+	var g := _grid(2)
 	for w in Data.WEAPONS:
-		content.add_child(_lbl(" ", 4))
 		var name: String = Data.WEAPONS[w]["name"]
+		var v := _card(g, C_PANEL, Color(1, 1, 1, 0.06), 1, 420)
 		if not Meta.weapon_unlocked(w):
 			var wg: int = Meta.WEAPON_GRADE.get(w, 1)
-			var ub := _btn("DÉBLOQUER %s (%d médailles%s)" % [name.to_upper(), Meta.WEAPON_UNLOCK[w], (", grade %d requis" % wg) if Meta.grade() < wg else ""], 22, Meta.data["medals"] >= Meta.WEAPON_UNLOCK[w] and Meta.grade() >= wg)
+			v.add_child(_lbl(name.to_upper() + "  🔒", 24, C_DIM))
+			v.add_child(_lbl(Data.WEAPONS[w]["desc"], 16, C_DIM))
+			var ub := _btn("DÉBLOQUER · %d médailles%s" % [Meta.WEAPON_UNLOCK[w], (" · grade %d requis" % wg) if Meta.grade() < wg else ""], 18, Meta.data["medals"] >= Meta.WEAPON_UNLOCK[w] and Meta.grade() >= wg)
 			ub.pressed.connect(func(): Meta.unlock_weapon(w); _refresh())
-			content.add_child(ub)
+			v.add_child(ub)
 			continue
 		var dmg := float(Meta.data["mastery"].get(w, 0.0))
 		var ml := Meta.weapon_mastery(w)
-		var nxt: String = (" · prochain niveau à %d dégâts" % Meta.MASTERY_XP[ml + 1]) if ml < 5 else " · max"
-		content.add_child(_lbl("%s · maîtrise %d/5 (%d dégâts%s)" % [name.to_upper(), ml, int(dmg), nxt], 24, Color(1, 0.85, 0.35)))
+		v.add_child(_lbl("%s · MAÎTRISE %s" % [name.to_upper(), _pips(ml, 5)], 24, C_GOLD))
+		if ml < 5:
+			var lo: float = Meta.MASTERY_XP[ml]
+			var hi: float = Meta.MASTERY_XP[ml + 1]
+			_bar(v, (dmg - lo) / maxf(1.0, hi - lo), Color(1, 0.55, 0.25))
+			v.add_child(_lbl("%d / %d éliminations" % [int(dmg), int(hi)], 15, C_DIM))
 		var cur: String = Meta.data["modules"].get(w, "")
-		var none := _btn(("▶ " if cur == "" else "   ") + "Aucun module", 18)
+		var none := _btn(("● " if cur == "" else "○ ") + "Aucun module", 17)
 		none.pressed.connect(func(): Meta.equip_module(w, ""); _refresh())
-		content.add_child(none)
+		v.add_child(none)
 		for m in Meta.MODULES:
 			if Meta.MODULES[m][0] != w: continue
 			var av := Meta.module_available(m)
-			var mb := _btn(("▶ " if cur == m else "   ") + "%s : %s%s" % [Meta.MODULES[m][2], Meta.MODULES[m][3], "" if av else " (maîtrise %d requise)" % Meta.MODULES[m][1]], 18, av)
+			var mb := _btn(("● " if cur == m else "○ ") + "%s%s" % [Meta.MODULES[m][2], "" if av else "  (maîtrise %d)" % Meta.MODULES[m][1]], 17, av)
+			mb.tooltip_text = Meta.MODULES[m][3]
 			mb.pressed.connect(func(): Meta.equip_module(w, m); _refresh())
-			content.add_child(mb)
+			v.add_child(mb)
+			v.add_child(_lbl("     " + Meta.MODULES[m][3], 15, C_DIM if not av else Color(0.8, 0.77, 0.72)))
 
+# ---------------------------------------------------------------- PLAN
 func _tab_plan():
 	var plan: Dictionary = Meta.data["plan"]
-	content.add_child(_lbl("PLAN QUINQUENNAL N°%d · %d run(s) restante(s)" % [Meta.data["plan_no"], plan["runs_left"]], 30, Color.WHITE))
-	content.add_child(_lbl("Remplis les 3 quotas avant la fin du plan : chaque quota rapporte des médailles, et le plan complet offre un bonus et un nouveau camarade. Si un quota n'est pas rempli, le Parti PURGE une de tes améliorations du Bureau pendant tout le plan suivant.", 20, Color(0.75, 0.75, 0.75)))
+	_title("PLAN QUINQUENNAL N°%d" % Meta.data["plan_no"], "Remplis les 3 quotas en %d run(s). Chaque quota rapporte des médailles, le plan complet un bonus et un camarade. Un plan raté : le Parti PURGE une amélioration du Bureau pendant tout le plan suivant." % plan["runs_left"])
 	for q in plan["quotas"]:
-		content.add_child(_lbl("%s %s · %s" % ["✔" if q["done"] else "•", q["text"], _qprog(q)], 26, Color(0.5, 1, 0.5) if q["done"] else Color(0.92, 0.9, 0.86)))
+		var v := _card(content, C_PANEL, C_OK if q["done"] else Color(1, 1, 1, 0.06), 2 if q["done"] else 1)
+		v.add_child(_lbl(("✔  " if q["done"] else "") + q["text"], 26, C_OK if q["done"] else C_TEXT))
+		_bar(v, _qfrac(q), C_OK if q["done"] else C_GOLD)
+		v.add_child(_lbl(_qprog(q), 18, C_DIM))
 	if Meta.data["bureau_purged"] != "":
-		content.add_child(_lbl("Purge en cours : « %s » est désactivé." % Meta.BUREAU[Meta.data["bureau_purged"]]["name"], 22, Color(1, 0.4, 0.3)))
+		var pv := _card(content, Color(0.25, 0.07, 0.06), C_BAD, 2)
+		pv.add_child(_lbl("PURGE EN COURS : « %s » est désactivé jusqu'au prochain plan." % Meta.BUREAU[Meta.data["bureau_purged"]]["name"], 22, C_BAD))
 
+# ---------------------------------------------------------------- DIRECTIVES
 func _tab_directives():
-	content.add_child(_lbl("DIRECTIVES DU PARTI · rends la run plus dure, gagne plus", 30, Color.WHITE))
+	_title("DIRECTIVES DU PARTI", "Rends la run plus dure pour gagner plus : chaque point de ferveur donne +15 %% de médailles. Meilleure victoire : ferveur %d." % Meta.data["directives_best"])
 	if Meta.grade() < Meta.DIRECTIVES_GRADE:
-		content.add_child(_lbl("Accessible au grade %d." % Meta.DIRECTIVES_GRADE, 24, Color(1, 0.5, 0.4)))
+		var lv0 := _card(content, C_PANEL, C_BAD, 2)
+		lv0.add_child(_lbl("Accessible au grade %d." % Meta.DIRECTIVES_GRADE, 26, C_BAD))
 		return
-	content.add_child(_lbl("Chaque niveau de directive ajoute de la ferveur : +15 % de médailles par point. Meilleure victoire : ferveur %d." % Meta.data["directives_best"], 20, Color(0.75, 0.75, 0.75)))
+	var g := _grid(2)
 	for id in Meta.DIRECTIVES:
 		var dd: Dictionary = Meta.DIRECTIVES[id]
 		var lv := int(Meta.run_directives.get(id, 0))
-		var b := _btn("%s %d/%d" % ["ACTIVE" if lv > 0 else "inactive", lv, dd["max"]], 20)
+		var v := _card(g, C_PANEL2 if lv > 0 else C_PANEL, C_BAD if lv > 0 else Color(1, 1, 1, 0.06), 2 if lv > 0 else 1, 420)
+		v.add_child(_lbl("%s  %s" % [dd["name"].to_upper(), _pips(lv, dd["max"])], 22, C_BAD if lv > 0 else C_TEXT))
+		v.add_child(_lbl("%s (+%d ferveur par niveau)" % [dd["desc"], dd["ferveur"]], 17, C_DIM))
+		var b := _btn("NIVEAU SUIVANT" if lv < dd["max"] else "DÉSACTIVER", 18)
 		b.pressed.connect(func():
 			var n := (int(Meta.run_directives.get(id, 0)) + 1) % (int(dd["max"]) + 1)
 			if n == 0: Meta.run_directives.erase(id)
 			else: Meta.run_directives[id] = n
 			_refresh())
-		content.add_child(_row([b, _lbl("%s (+%d ferveur) : %s" % [dd["name"], dd["ferveur"], dd["desc"]], 22, Color(1, 0.6, 0.4) if lv > 0 else Color(0.9, 0.88, 0.84))]))
-	content.add_child(_lbl("Ferveur totale : %d" % Meta.ferveur(Meta.run_directives), 26, Color(1, 0.85, 0.35)))
+		v.add_child(b)
+	var f := Meta.ferveur(Meta.run_directives)
+	content.add_child(_lbl("FERVEUR TOTALE : %d  ·  médailles x%.2f" % [f, 1.0 + 0.15 * f], 30, C_GOLD))
 
 func _launch():
 	Meta.save()
 	get_tree().change_scene_to_file("res://scenes/main.tscn")
+
+# ---------------------------------------------------------------- screenshots (tests)
+func _take_shots():
+	for t in ["lancer", "bureau", "caserne", "usine", "plan", "directives"]:
+		tab = t
+		_refresh()
+		for i in 4: await get_tree().process_frame
+		DirAccess.make_dir_recursive_absolute(shots_dir)
+		get_viewport().get_texture().get_image().save_png("%s/hub_%s.png" % [shots_dir, t])
+	get_tree().quit()
 
 # ---------------------------------------------------------------- bot (simulation of many runs)
 func _bot_step():

@@ -1,10 +1,10 @@
-# Lutte Finale — prototype
+# Communiste Land — prototype
 
 Survivor-like 3D satirique (Godot 4.5, renderer Compatibilité par défaut pour marcher sur un maximum de PC). Des camarades en chapka contre des hordes de capitalistes en haut-de-forme.
 
 ## Lancer le jeu
 
-- **Windows** : télécharge `LutteFinale.exe` (dossier `export/` ou release) et double-clique.
+- **Windows** : télécharge `CommunisteLand.exe` (dossier `export/` ou release) et double-clique.
 - **Depuis les sources** : installe [Godot 4.5.1](https://godotengine.org/download), ouvre ce dossier (`project.godot`), puis F5.
 
 ## Contrôles
@@ -40,7 +40,7 @@ Le jeu démarre sur **le Kolkhoze**, un écran de menus entre les runs. Chaque r
 - **Plan quinquennal** : 3 quotas à remplir en 5 runs. Chaque quota rapporte des médailles, le plan complet un bonus et un camarade. Un plan raté déclenche une **purge** : un bonus du Bureau est désactivé pendant tout le plan suivant.
 - **Directives du Parti** : 10 contraintes optionnelles (jusqu'à 18 points de ferveur). Chaque point donne +15 % de médailles.
 
-Sauvegarde : `%APPDATA%/Godot/app_userdata/Lutte Finale/lutte_finale_save.json` sous Windows.
+Sauvegarde : `%APPDATA%/Godot/app_userdata/Communiste Land/lutte_finale_save.json` sous Windows.
 
 Pas encore : sons et musique, familiers et gacha, zones 2 et 3.
 

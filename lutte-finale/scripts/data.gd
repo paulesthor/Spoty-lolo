@@ -104,7 +104,7 @@ const ENEMIES := {
 	"drh": {"name": "DRH", "models": ["character-female-f"], "h": 1.75, "hp": 60.0, "speed": 2.4, "dmg": 8.0, "xp": 6, "r": 0.5, "armor": 2.0, "acc": ["sunglasses"], "ai": "summoner"},
 	"actionnaire": {"name": "Actionnaire", "models": ["character-male-d"], "h": 2.6, "hp": 240.0, "speed": 2.2, "dmg": 22.0, "xp": 12, "r": 0.85, "armor": 5.0, "acc": ["tophat", "cigar"], "ai": "slammer"},
 	"golden": {"name": "Golden Boy", "models": ["character-male-d"], "h": 3.2, "hp": 420.0, "speed": 2.8, "dmg": 18.0, "xp": 30, "r": 1.0, "armor": 3.0, "acc": ["tophat", "cigar", "monocle"], "elite": true},
-	"boss": {"name": "Le Directeur Black Friday", "models": ["character-male-d"], "h": 5.6, "hp": 16000.0, "speed": 3.1, "dmg": 30.0, "xp": 150, "r": 1.7, "armor": 6.0, "acc": ["tophat", "cigar"], "boss": true},
+	"boss": {"name": "Le Directeur Black Friday", "models": ["character-male-d"], "h": 5.6, "hp": 32000.0, "speed": 3.1, "dmg": 30.0, "xp": 150, "r": 1.7, "armor": 6.0, "acc": ["tophat", "cigar"], "boss": true},
 	"fisc": {"name": "Contrôleur Fiscal", "models": ["character-male-c"], "h": 2.2, "hp": 1.0, "speed": 6.4, "dmg": 45.0, "xp": 0, "r": 0.6, "armor": 0.0, "acc": ["cap", "sunglasses"], "invincible": true},
 }
 
