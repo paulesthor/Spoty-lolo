@@ -23,6 +23,11 @@ var was_on_floor := true
 var last_vy := 0.0
 var facing := Vector3.FORWARD
 var cur_anim := ""
+var dodge_t := 0.0
+var dodge_cd := 0.0
+var dodge_dir := Vector3.FORWARD
+var trail_t := 0.0
+const DODGE_CD := 1.6
 var status := {}      # name -> remaining seconds (slow, debt, blind, seize)
 var seized_weapon := ""
 # bot (automated test) state
@@ -117,31 +122,51 @@ func _physics_process(d: float):
 	if game.dirl("rationnement") == 0:
 		hp = minf(max_hp, hp + (0.4 + game.mods.get("regen", 0.0)) * d)
 	slide_cd = maxf(0.0, slide_cd - d)
+	dodge_cd = maxf(0.0, dodge_cd - d)
 	var input := Vector2.ZERO
 	var want_jump := false
 	var want_slide := false
+	var want_dodge := false
 	if bot:
 		var r := _bot_input(d)
 		input = r[0]; want_jump = r[1]; want_slide = r[2]
+		want_dodge = r.size() > 3 and r[3]
 	else:
 		input = Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 		want_jump = Input.is_action_just_pressed("jump")
 		want_slide = Input.is_action_just_pressed("slide")
+		want_dodge = Input.is_action_just_pressed("dodge")
 	var dir := Basis(Vector3.UP, cam_yaw) * Vector3(input.x, 0, input.y)
 	if dir.length() > 1.0: dir = dir.normalized()
 	var spd := stat_speed()
 	if want_slide and slide_cd <= 0.0 and is_on_floor():
 		slide_t = 0.55
 		slide_cd = 0.9
+		invuln = maxf(invuln, 0.2)
 		slide_dir = dir.normalized() if dir.length() > 0.1 else facing
 	if slide_t > 0.0:
 		slide_t -= d
 		var k := clampf(slide_t / 0.55, 0.0, 1.0)
 		dir = slide_dir.lerp(dir if dir.length() > 0.1 else slide_dir, 0.25).normalized()
 		spd *= 1.0 + 1.1 * k
+		# the slide leaves a burning trail that hurts enemies
+		trail_t -= d
+		if trail_t <= 0.0:
+			trail_t = 0.05
+			game.weapons.add_trail(global_position)
+	# dodge: short invulnerable dash, usable in the air
+	if want_dodge and dodge_cd <= 0.0:
+		dodge_t = 0.22
+		dodge_cd = DODGE_CD * (1.0 - game.mods.get("dodge_cd", 0.0) / 100.0)
+		dodge_dir = dir.normalized() if dir.length() > 0.1 else facing
+		invuln = maxf(invuln, 0.38)
+		game.weapons.dodge_fx(global_position, dodge_dir)
 	var hv := Vector3(velocity.x, 0, velocity.z)
 	var accel := 70.0 if is_on_floor() else 30.0
 	hv = hv.move_toward(dir * spd, accel * d)
+	if dodge_t > 0.0:
+		dodge_t -= d
+		hv = dodge_dir * 22.0
 	velocity.x = hv.x
 	velocity.z = hv.z
 	if is_on_floor():
@@ -173,8 +198,11 @@ func _physics_process(d: float):
 	if global_position.y < -5.0:
 		global_position = Vector3(0, 1, 0)
 
-func take_damage(amount: float, dot := false) -> bool:
+var last_cause := ""
+func take_damage(amount: float, dot := false, from := Vector3.INF, cause := "") -> bool:
 	if hp <= 0.0 or (invuln > 0.0 and not dot): return false
+	if cause != "": last_cause = cause
+	if from != Vector3.INF and not dot: game.hud.hit_from(from)
 	if not dot and randf() * 100.0 < game.mods.get("dodge", 0.0):
 		invuln = 0.3
 		return false
@@ -224,4 +252,5 @@ func _bot_input(d: float) -> Array:
 	if bot_slide_t <= 0.0: s = true; bot_slide_t = randf_range(3.0, 6.0)
 	var v2 := Vector2(mv.x, mv.z)
 	if v2.length() > 1.0: v2 = v2.normalized()
-	return [v2, j, s]
+	var dg := flee.length() > 3.0 and randf() < 0.05
+	return [v2, j, s, dg]

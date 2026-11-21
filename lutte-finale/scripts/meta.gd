@@ -64,7 +64,7 @@ const STAT_NAMES := {
 	"aimant": "+%s %% ramassage", "propagande": "+%s %% XP", "chance": "+%s %% chance", "regen": "+%s PV/s",
 	"ult_charge": "ultime %s %% plus vite", "ult_power": "ultime +%s %% plus fort", "ult_stun": "+%s s d'étourdissement (ultime)",
 	"slam_bonus": "+%s %% dégâts d'atterrissage", "rubles_pct": "+%s %% roubles", "reroll": "+%s relance",
-	"revive": "+%s résurrection", "crit_dmg": "+%s %% dégâts critiques", "dodge": "%s %% d'esquive",
+	"revive": "+%s résurrection", "banish": "+%s bannissement", "skip": "+%s « passer »", "dodge_cd": "esquive %s %% plus fréquente", "crit_dmg": "+%s %% dégâts critiques", "dodge": "%s %% d'esquive",
 	"chest_discount": "coffres -%s %%", "start_level": "commence avec %s niveaux", "heal_pickup": "tartines +%s %%",
 	"weapon_slot": "+%s emplacement d'arme",
 }
@@ -86,13 +86,15 @@ const BUREAU := {
 	"regen": {"name": "Soupe au chou", "stat": "regen", "per": 0.15, "max": 3, "base": 38},
 	"tresor": {"name": "Caisse noire", "stat": "rubles_pct", "per": 10.0, "max": 3, "base": 22},
 	"relance": {"name": "Recours administratif", "stat": "reroll", "per": 1.0, "max": 3, "base": 60},
+	"bannissement": {"name": "Liste noire", "stat": "banish", "per": 1.0, "max": 3, "base": 60},
+	"passer": {"name": "Dispense", "stat": "skip", "per": 1.0, "max": 3, "base": 30},
 	"seconde_chance": {"name": "Seconde chance", "stat": "revive", "per": 1.0, "max": 1, "base": 450},
 	"cinquieme_arme": {"name": "Cinquième arme", "stat": "weapon_slot", "per": 1.0, "max": 1, "base": 600},
 }
 
 # ---------------------------------------------------------------- Grade au Parti (account level gating)
 const GRADE_NAMES := ["Sympathisant", "Militant", "Camarade", "Délégué", "Commissaire", "Secrétaire de cellule", "Membre du Comité", "Héros du Travail", "Héros de l'Union", "Père des Peuples"]
-const BUREAU_GRADE := {"blindage": 2, "regen": 3, "relance": 4, "seconde_chance": 7, "cinquieme_arme": 9}
+const BUREAU_GRADE := {"blindage": 2, "regen": 3, "passer": 2, "relance": 3, "bannissement": 4, "seconde_chance": 7, "cinquieme_arme": 9}
 const WEAPON_GRADE := {"matriochka": 2, "samovar": 3, "hautparleur": 3, "spoutnik": 4}
 const CHAR_GRADE := {"stakhanov": 1, "ilitch": 2, "moustache": 4, "babouchka": 6}
 const DIRECTIVES_GRADE := 3
@@ -182,6 +184,7 @@ func default_save() -> Dictionary:
 		"weapons": {"marteau": true, "kalach": true, "faucille": true, "molotov": true},
 		"mastery": {}, "modules": {}, "kills": {},
 		"plan": {}, "plan_no": 0, "directives_best": 0, "last_char": "stakhanov", "lifetime": 0,
+		"options": {"numbers": 2, "fx": 100, "shake": 100},
 	}
 
 func load_save():
@@ -195,6 +198,15 @@ func load_save():
 		if not data["chars"].has(c): data["chars"][c] = {"unlocked": CHARACTERS[c]["cost"] == 0, "xp": 0, "talents": [0, 0, 0]}
 	if data["plan"].is_empty(): new_plan()
 	run_char = data.get("last_char", "stakhanov")
+
+func opt(k: String) -> float:
+	var o: Dictionary = data.get("options", {})
+	return float(o.get(k, {"numbers": 2, "fx": 100, "shake": 100}[k]))
+
+func set_opt(k: String, v: float):
+	if not data.has("options"): data["options"] = {}
+	data["options"][k] = v
+	save()
 
 func save():
 	var f := FileAccess.open(save_path, FileAccess.WRITE)

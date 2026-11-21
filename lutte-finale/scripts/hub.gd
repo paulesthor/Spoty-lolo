@@ -64,7 +64,7 @@ func _ready():
 	grade_bar = _bar(hb, 0.0, C_GOLD)
 	header_stats = _lbl("", 18, C_DIM); hb.add_child(header_stats)
 	nav.add_child(_space(6))
-	var tabs := [["lancer", "▶  LANCER UNE RUN"], ["bureau", "BUREAU DU PLAN"], ["caserne", "CASERNE"], ["usine", "USINE D'ARMEMENT"], ["plan", "PLAN QUINQUENNAL"], ["directives", "DIRECTIVES DU PARTI"]]
+	var tabs := [["lancer", "▶  LANCER UNE RUN"], ["bureau", "BUREAU DU PLAN"], ["caserne", "CASERNE"], ["usine", "USINE D'ARMEMENT"], ["plan", "PLAN QUINQUENNAL"], ["directives", "DIRECTIVES DU PARTI"], ["options", "OPTIONS"]]
 	for t in tabs:
 		var b := _btn(t[1], 24)
 		b.custom_minimum_size = Vector2(0, 52)
@@ -211,6 +211,7 @@ func _refresh():
 		"usine": _tab_usine()
 		"plan": _tab_plan()
 		"directives": _tab_directives()
+		"options": _tab_options()
 
 # ---------------------------------------------------------------- LANCER
 func _tab_lancer():
@@ -409,6 +410,31 @@ func _tab_directives():
 		v.add_child(b)
 	var f := Meta.ferveur(Meta.run_directives)
 	content.add_child(_lbl("FERVEUR TOTALE : %d  ·  médailles x%.2f" % [f, 1.0 + 0.15 * f], 30, C_GOLD))
+
+func _tab_options():
+	_title("OPTIONS", "Réglages de lisibilité. Ils sont enregistrés avec ta sauvegarde.")
+	var v := _card(content, C_PANEL)
+	v.add_child(_lbl("CHIFFRES DE DÉGÂTS", 24, C_GOLD))
+	var row := HBoxContainer.new(); row.add_theme_constant_override("separation", 10); v.add_child(row)
+	for o in [[2, "TOUS"], [1, "CRITIQUES SEULEMENT"], [0, "AUCUN"]]:
+		var b := _btn(("● " if int(Meta.opt("numbers")) == o[0] else "○ ") + o[1], 20)
+		b.pressed.connect(func(): Meta.set_opt("numbers", o[0]); _refresh())
+		row.add_child(b)
+	v.add_child(_lbl("INTENSITÉ DES EFFETS DE TES ARMES", 24, C_GOLD))
+	v.add_child(_lbl("Les dangers ennemis (zones rouges, tirs) restent toujours bien visibles.", 16, C_DIM))
+	var row2 := HBoxContainer.new(); row2.add_theme_constant_override("separation", 10); v.add_child(row2)
+	for o in [100, 75, 50, 25]:
+		var b := _btn(("● " if int(Meta.opt("fx")) == o else "○ ") + "%d %%" % o, 20)
+		b.pressed.connect(func(): Meta.set_opt("fx", o); _refresh())
+		row2.add_child(b)
+	v.add_child(_lbl("TREMBLEMENT DE L'ÉCRAN", 24, C_GOLD))
+	var row3 := HBoxContainer.new(); row3.add_theme_constant_override("separation", 10); v.add_child(row3)
+	for o in [100, 50, 0]:
+		var b := _btn(("● " if int(Meta.opt("shake")) == o else "○ ") + "%d %%" % o, 20)
+		b.pressed.connect(func(): Meta.set_opt("shake", o); _refresh())
+		row3.add_child(b)
+	var dv := _card(content, Color(0.22, 0.07, 0.06), C_BAD, 1)
+	dv.add_child(_lbl("Contrôles : ZQSD · souris · Espace saut · Maj glissade (traînée de feu) · clic droit / C esquive · F interagir · E ultime · Échap pause\nCartes : 1/2/3 choisir · T relancer · B bannir · X passer", 18, C_TEXT))
 
 func _launch():
 	Meta.save()

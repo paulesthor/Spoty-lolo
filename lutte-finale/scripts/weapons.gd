@@ -6,6 +6,7 @@ var owned := {}      # id -> {"lv": int, "mods": Dictionary, "evo": bool}
 var timers := {}
 var projectiles: Array = []
 var fires: Array = []
+var trails: Array = []
 var sats: Array = []
 var aura_fx: Node3D
 var slam_cd := 0.0
@@ -102,6 +103,7 @@ func _process(d: float):
 	if aura_fx: _update_aura_fx(d)
 	_update_projectiles(d)
 	_update_fires(d)
+	_update_trails(d)
 
 func _hit(e, dmg: float, s: Dictionary, from := Vector3.INF, knock := 0.0, src := "", show := true, ignore_armor := false):
 	var mod: String = s.get("module", "")
@@ -214,7 +216,7 @@ func _ring_fx(center: Vector3, area: float, col: Color):
 	tw.tween_property(ring, "scale", Vector3(area, 0.06, area), 0.28).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
 	tw.tween_property(m, "albedo_color:a", 0.0, 0.32)
 	tw.chain().tween_callback(ring.queue_free)
-	var flash := U.sprite(self, "circle_05.png", Vector3(center.x, 0.06, center.z), area * 2.0, Color(col.r, col.g, col.b, 0.35), 2.0, false, Vector3(-PI / 2, 0, 0))
+	var flash := _fx(self, "circle_05.png", Vector3(center.x, 0.06, center.z), area * 2.0, Color(col.r, col.g, col.b, 0.35), 2.0, false, Vector3(-PI / 2, 0, 0))
 	var tw2 := create_tween()
 	tw2.tween_property(flash, "scale", Vector3.ONE * 1.2, 0.25)
 	tw2.tween_callback(flash.queue_free)
@@ -227,7 +229,7 @@ func _cone_fx(pos: Vector3, dir: Vector3, rng_d: float, full: bool):
 		var dirs := [dir] if not full else [dir, dir.rotated(Vector3.UP, PI / 2), -dir, dir.rotated(Vector3.UP, -PI / 2)]
 		for dd in dirs:
 			var p: Vector3 = pos + dd * rng_d * k + Vector3(0, 1.0, 0)
-			var sp := U.sprite(self, "muzzle_02.png", p, 0.8 + 2.2 * k, Color(1.0, 0.85, 0.4, 0.6), 2.0)
+			var sp := _fx(self, "muzzle_02.png", p, 0.8 + 2.2 * k, Color(1.0, 0.85, 0.4, 0.6), 2.0)
 			var tw := sp.create_tween()
 			tw.tween_property(sp, "scale", Vector3.ONE * 0.1, 0.25 + 0.05 * i)
 			tw.tween_callback(sp.queue_free)
@@ -236,10 +238,10 @@ func _cone_fx(pos: Vector3, dir: Vector3, rng_d: float, full: bool):
 func _make_aura():
 	aura_fx = Node3D.new()
 	add_child(aura_fx)
-	var ring := U.sprite(aura_fx, "circle_03.png", Vector3(0, 0.07, 0), 2.0, Color(1.0, 0.6, 0.25, 0.35), 1.5, false, Vector3(-PI / 2, 0, 0))
+	var ring := _fx(aura_fx, "circle_03.png", Vector3(0, 0.07, 0), 2.0, Color(1.0, 0.6, 0.25, 0.35), 1.5, false, Vector3(-PI / 2, 0, 0))
 	ring.name = "ring"
 	for i in 6:
-		var st := U.sprite(aura_fx, "smoke_04.png", Vector3.ZERO, 0.9, Color(1, 0.9, 0.8, 0.25), 1.0)
+		var st := _fx(aura_fx, "smoke_04.png", Vector3.ZERO, 0.9, Color(1, 0.9, 0.8, 0.25), 1.0)
 		st.name = "steam%d" % i
 
 func _update_aura_fx(d: float):
@@ -262,7 +264,7 @@ func _update_sats(d: float):
 		for k in 4:
 			var ant := U.cyl(sp, 0.012, 0.8, Vector3(0, -0.2, 0.2), U.solid(Color(0.8, 0.8, 0.8), 0.0, 0.3, 1.0))
 			ant.rotation = Vector3(0.9, k * PI / 2, 0.6)
-		U.sprite(sp, "light_01.png", Vector3.ZERO, 1.2, Color(0.4, 0.8, 1.0, 0.5), 2.0)
+		_fx(sp, "light_01.png", Vector3.ZERO, 1.2, Color(0.4, 0.8, 1.0, 0.5), 2.0)
 		sats.append(sp)
 	orbit_a += d * 2.4
 	var pp: Vector3 = game.player.global_position
@@ -305,7 +307,7 @@ func _bullet(from: Vector3, dir: Vector3, s: Dictionary):
 	n.global_position = from
 	var b := U.sphere(n, 0.07, Vector3.ZERO, U.solid(Color(1, 0.8, 0.3), 6.0))
 	b.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	var tr := U.sprite(n, "trace_01.png", Vector3(0, 0, 0.6), 1.2, Color(1, 0.75, 0.3), 3.0, false, Vector3(PI / 2, 0, 0))
+	var tr := _fx(n, "trace_01.png", Vector3(0, 0, 0.6), 1.2, Color(1, 0.75, 0.3), 3.0, false, Vector3(PI / 2, 0, 0))
 	tr.scale = Vector3(0.3, 1.8, 1)
 	var flat := Vector3(dir.x, 0, dir.z)
 	if flat.length() > 0.05:
@@ -322,7 +324,7 @@ func _sickle(dir: Vector3, s: Dictionary):
 	blade.material_override = U.solid(Color(0.85, 0.86, 0.9), 0.6, 0.2, 1.0)
 	n.add_child(blade)
 	U.box(n, Vector3(0.1, 0.1, 0.5), Vector3(0.5, 0, 0.3), U.solid(Color(0.75, 0.08, 0.1), 0.0, 0.6))
-	U.sprite(n, "twirl_01.png", Vector3.ZERO, 1.8, Color(1, 0.25, 0.2, 0.7), 2.0, false, Vector3(-PI / 2, 0, 0))
+	_fx(n, "twirl_01.png", Vector3.ZERO, 1.8, Color(1, 0.25, 0.2, 0.7), 2.0, false, Vector3(-PI / 2, 0, 0))
 	n.global_position = game.player.global_position + Vector3(0, 1.1, 0)
 	projectiles.append({"t": "sickle", "n": n, "dir": dir, "age": 0.0, "dur": 1.5, "range": s["range"], "s": s})
 
@@ -332,7 +334,7 @@ func _molotov(from: Vector3, to: Vector3, s: Dictionary):
 	add_child(n)
 	n.global_position = from
 	U.cyl(n, 0.08, 0.3, Vector3.ZERO, U.solid(Color(0.25, 0.55, 0.3, 0.9), 0.0, 0.1))
-	U.sprite(n, "flame_02.png", Vector3(0, 0.25, 0), 0.4, Color(1, 0.6, 0.2), 3.0)
+	_fx(n, "flame_02.png", Vector3(0, 0.25, 0), 0.4, Color(1, 0.6, 0.2), 3.0)
 	projectiles.append({"t": "molotov", "n": n, "from": from, "to": to, "age": 0.0, "dur": 0.6, "s": s})
 
 func _spawn_fire(p: Vector3, s: Dictionary):
@@ -340,13 +342,13 @@ func _spawn_fire(p: Vector3, s: Dictionary):
 	add_child(root)
 	root.global_position = p
 	var area: float = s["area"]
-	U.sprite(root, "scorch_02.png", Vector3(0, 0.03, 0), area * 2.2, Color(0.15, 0.08, 0.04, 0.8), 1.0, false, Vector3(-PI / 2, 0, 0))
+	_fx(root, "scorch_02.png", Vector3(0, 0.03, 0), area * 2.2, Color(0.15, 0.08, 0.04, 0.8), 1.0, false, Vector3(-PI / 2, 0, 0))
 	var flames := []
 	for i in int(6 + area * 3):
 		var o := Vector3(randf_range(-area, area) * 0.8, 0, randf_range(-area, area) * 0.8)
 		if o.length() > area: o = o.normalized() * area * 0.9
 		var h := randf_range(0.8, 1.8)
-		flames.append(U.sprite(root, "flame_0%d.png" % (1 + i % 4), o + Vector3(0, h * 0.45, 0), h, Color(1, 0.5, 0.15) if i % 3 else Color(1, 0.2, 0.1), 3.0))
+		flames.append(_fx(root, "flame_0%d.png" % (1 + i % 4), o + Vector3(0, h * 0.45, 0), h, Color(1, 0.5, 0.15) if i % 3 else Color(1, 0.2, 0.1), 3.0))
 	fires.append({"n": root, "life": s["duration"], "area": area, "s": s, "tick": 0.0, "flames": flames})
 
 func _update_fires(d: float):
@@ -383,7 +385,7 @@ func _doll_burst(p: Vector3, s: Dictionary, depth: int, size: float):
 	var dmg: float = s["dmg"] * size
 	for e in game.enemies.in_radius(p, rad):
 		_hit(e, dmg, s, p, 6.0)
-	var fx := U.sprite(self, "star_04.png", p + Vector3(0, 0.6, 0), rad * 1.6, Color(1, 0.3, 0.2), 2.5)
+	var fx := _fx(self, "star_04.png", p + Vector3(0, 0.6, 0), rad * 1.6, Color(1, 0.3, 0.2), 2.5)
 	var tw := fx.create_tween()
 	tw.tween_property(fx, "scale", Vector3.ONE * 0.1, 0.25)
 	tw.tween_callback(fx.queue_free)
@@ -447,3 +449,43 @@ func _update_projectiles(d: float):
 				if k >= 1.0:
 					projectiles.erase(p); n.queue_free()
 					_doll_burst(p["to"], p["s"], p["depth"], p["size"])
+
+# ---------------------------------------------------------------- slide trail & dodge
+func trail_damage() -> float:
+	return (8.0 + 1.6 * game.level) * (1.0 + game.dv("productivite") / 100.0)
+
+func add_trail(p: Vector3):
+	if trails.size() > 90:
+		var old: Dictionary = trails.pop_front()
+		old["n"].queue_free()
+	var n := _fx(self, "flame_0%d.png" % (1 + randi() % 4), Vector3(p.x, 0.45, p.z), 1.0, Color(1, 0.35, 0.12, 0.9), 2.2)
+	trails.append({"n": n, "pos": Vector3(p.x, 0, p.z), "life": 2.0, "tick": 0.0})
+
+func _update_trails(d: float):
+	var s := {"crit": 0.05 + game.dv("critique") / 100.0, "id": ""}
+	var dmg := trail_damage()
+	for t in trails.duplicate():
+		t["life"] -= d
+		t["tick"] -= d
+		var n: Node3D = t["n"]
+		n.scale = Vector3.ONE * clampf(t["life"] / 2.0, 0.05, 1.0)
+		if t["tick"] <= 0.0:
+			t["tick"] = 0.3
+			for e in game.enemies.in_radius(t["pos"], 0.7):
+				game.enemies.damage(e, dmg, Vector3.INF, 0.0, "", false, true, s["crit"], "")
+		if t["life"] <= 0.0:
+			trails.erase(t)
+			n.queue_free()
+
+func dodge_fx(p: Vector3, dir: Vector3):
+	for i in 4:
+		var sp := _fx(self, "smoke_04.png", p + Vector3(0, 0.8, 0) - dir * i * 0.7, 1.2 - i * 0.2, Color(0.9, 0.9, 1.0, 0.35), 1.0)
+		var tw := sp.create_tween()
+		tw.tween_property(sp, "scale", Vector3.ONE * 0.1, 0.35)
+		tw.tween_callback(sp.queue_free)
+
+# player effects are drawn more discreetly than enemy threats (readability), scaled by the FX option
+func _fx(parent: Node, tex: String, pos: Vector3, size: float, color: Color, energy := 2.0, billboard := true, rot := Vector3.ZERO) -> MeshInstance3D:
+	var k: float = Meta.opt("fx") / 100.0
+	var c := Color(color.r, color.g, color.b, color.a * 0.75 * k)
+	return U.sprite(parent, tex, pos, size, c, energy * (0.6 + 0.4 * k), billboard, rot)

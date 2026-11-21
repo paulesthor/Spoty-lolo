@@ -9,6 +9,7 @@ var shrine_spots: Array = []
 var breakable_spots: Array = []
 var rng := RandomNumberGenerator.new()
 var _bscale := 1.0
+var env: Environment
 
 func build(seed_value := 1917):
 	rng.seed = seed_value
@@ -51,6 +52,7 @@ func _env():
 	env.adjustment_saturation = 0.92
 	env.adjustment_contrast = 1.12
 	we.environment = env
+	self.env = env
 	add_child(we)
 	var sun := DirectionalLight3D.new()
 	sun.shadow_enabled = true

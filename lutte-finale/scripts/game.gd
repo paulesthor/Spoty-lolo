@@ -24,6 +24,12 @@ var char_id := "stakhanov"
 var mods := {}            # permanent bonuses (talents, bureau, character)
 var dirs := {}            # active directives
 var rerolls := 0
+var banishes := 0
+var skips := 0
+var banned := {}
+var weather
+var base_time_scale := 1.0
+var slowmo_cd := 0.0
 var revives := 0
 var ult_kills := 0
 var ult_t := 0.0          # active ultimate remaining
@@ -108,12 +114,16 @@ func _ready():
 	weapons = load("res://scripts/weapons.gd").new()
 	add_child(weapons)
 	weapons.setup(self)
+	weather = load("res://scripts/weather.gd").new()
+	add_child(weather)
+	weather.process_mode = Node.PROCESS_MODE_PAUSABLE
 	_load_meta()
 	weapons.add_weapon(Meta.CHARACTERS[char_id]["weapon"])
 	for n in [world, player, enemies, weapons]:
 		n.process_mode = Node.PROCESS_MODE_PAUSABLE
 	_setup_camera()
 	_setup_map_objects()
+	weather.setup(self)
 	for i in 40:
 		var l := U.label(self, "", Vector3(0, -100, 0), 64, Color.WHITE, Color(0.08, 0.04, 0.02, 1))
 		l.visible = false
@@ -231,6 +241,9 @@ func _load_meta():
 	dirs = Meta.run_directives.duplicate()
 	mods = Meta.run_modifiers(char_id)
 	rerolls = int(mods.get("reroll", 0.0))
+	banishes = int(mods.get("banish", 0.0))
+	skips = int(mods.get("skip", 0.0))
+	base_time_scale = Engine.time_scale
 	revives = int(mods.get("revive", 0.0))
 	player.apply_character(char_id)
 	player.max_hp = 120.0 + mods.get("endurance", 0.0)
@@ -291,7 +304,7 @@ func _setup_input():
 	var acts := {
 		"move_left": [KEY_A, KEY_LEFT], "move_right": [KEY_D, KEY_RIGHT],
 		"move_forward": [KEY_W, KEY_UP], "move_back": [KEY_S, KEY_DOWN],
-		"jump": [KEY_SPACE], "slide": [KEY_SHIFT, KEY_CTRL], "interact": [KEY_F], "ultimate": [KEY_E], "reroll": [KEY_T],
+		"jump": [KEY_SPACE], "slide": [KEY_SHIFT, KEY_CTRL], "interact": [KEY_F], "ultimate": [KEY_E], "reroll": [KEY_T], "dodge": [KEY_C, KEY_ALT], "banish": [KEY_B], "skip": [KEY_X],
 		"cam_left": [KEY_Q], "cam_right": [KEY_R],
 		"pause": [KEY_ESCAPE, KEY_P], "confirm": [KEY_ENTER, KEY_KP_ENTER],
 		"choose_1": [KEY_1, KEY_KP_1], "choose_2": [KEY_2, KEY_KP_2], "choose_3": [KEY_3, KEY_KP_3], "choose_4": [KEY_4, KEY_KP_4],
@@ -303,10 +316,12 @@ func _setup_input():
 			var ev := InputEventKey.new()
 			ev.physical_keycode = k
 			InputMap.action_add_event(a, ev)
-	var pads := {"jump": JOY_BUTTON_A, "slide": JOY_BUTTON_B, "interact": JOY_BUTTON_X, "pause": JOY_BUTTON_START, "confirm": JOY_BUTTON_A, "restart": JOY_BUTTON_BACK, "choose_4": JOY_BUTTON_Y, "ultimate": JOY_BUTTON_RIGHT_SHOULDER, "reroll": JOY_BUTTON_LEFT_SHOULDER}
+	var pads := {"jump": JOY_BUTTON_A, "slide": JOY_BUTTON_B, "interact": JOY_BUTTON_X, "pause": JOY_BUTTON_START, "confirm": JOY_BUTTON_A, "restart": JOY_BUTTON_BACK, "choose_4": JOY_BUTTON_Y, "ultimate": JOY_BUTTON_RIGHT_SHOULDER, "reroll": JOY_BUTTON_LEFT_SHOULDER, "dodge": JOY_BUTTON_LEFT_SHOULDER, "banish": JOY_BUTTON_LEFT_STICK, "skip": JOY_BUTTON_RIGHT_STICK}
 	for a in pads:
 		var ev := InputEventJoypadButton.new(); ev.button_index = pads[a]
 		InputMap.action_add_event(a, ev)
+	var mb := InputEventMouseButton.new(); mb.button_index = MOUSE_BUTTON_RIGHT
+	InputMap.action_add_event("dodge", mb)
 	var axes := [["move_left", JOY_AXIS_LEFT_X, -1.0], ["move_right", JOY_AXIS_LEFT_X, 1.0], ["move_forward", JOY_AXIS_LEFT_Y, -1.0], ["move_back", JOY_AXIS_LEFT_Y, 1.0], ["cam_left", JOY_AXIS_RIGHT_X, -1.0], ["cam_right", JOY_AXIS_RIGHT_X, 1.0]]
 	for ax in axes:
 		var ev := InputEventJoypadMotion.new(); ev.axis = ax[1]; ev.axis_value = ax[2]
@@ -524,6 +539,33 @@ func _process(d: float):
 				var mr := 1 if hud.options.size() > 0 and choice_source == "shrine" else 0
 				var opts := _roll_options(n, mr)
 				if not opts.is_empty(): hud.show_choices(hud.choice_title.text, opts, "")
+			if Input.is_action_just_pressed("banish") and banishes > 0 and choice_source in ["level", "shrine", "market"] and hud.sel < hud.options.size():
+				var o: Dictionary = hud.options[hud.sel]
+				if o["kind"] != "pack":
+					banishes -= 1
+					banned[_ban_key(o)] = true
+					hud.toast("BANNI : %s (pour toute la run)" % o["title"], 1.5)
+					var keep := []
+					for i in hud.options.size():
+						if i != hud.sel: keep.append(hud.options[i])
+					var ex := []
+					for k in keep: ex.append(_ban_key(k))
+					var rep := _roll_options(1, 1 if choice_source == "shrine" else 0, 0, ex)
+					if choice_source == "market":
+						for r in rep: r["cost"] = int((22 + 14 * market_buys) * (1.0 + 0.5 * r["rarity"]))
+					var newopts := []
+					for i in hud.options.size():
+						if i == hud.sel:
+							if not rep.is_empty(): newopts.append(rep[0])
+						else:
+							newopts.append(hud.options[i])
+					hud.show_choices(hud.choice_title.text, newopts, hud.leave_label)
+			if Input.is_action_just_pressed("skip") and skips > 0 and choice_source in ["level", "shrine"]:
+				skips -= 1
+				rubles += 8
+				hud.toast("CARTES PASSÉES · +8 ROUBLES", 1.2)
+				_on_chosen(-2)
+				return
 			if bot:
 				choice_wait -= d / maxf(Engine.time_scale, 0.001)
 				if choice_wait <= 0.0: _on_chosen(_bot_pick())
@@ -569,7 +611,7 @@ func _update_camera(d: float):
 	cam.basis = Basis.looking_at(CAM_LOOK.lerp(Vector3(0, 1.0, -3.0), 1.0 - cam_k) - local, Vector3.UP)
 
 func shake(a: float):
-	shake_amt = minf(0.5, shake_amt + a)
+	shake_amt = minf(0.5, shake_amt + a * Meta.opt("shake") / 100.0)
 
 func _pause():
 	state = "paused"
@@ -726,11 +768,18 @@ func on_enemy_killed(e):
 func on_player_hit(amount: float):
 	hud.hurt()
 	shake(0.15)
+	if player.hp > 0.0 and player.hp < player.max_hp * 0.3 and time > slowmo_cd and not bot:
+		slowmo_cd = time + 12.0
+		hud.toast("PV CRITIQUES !", 1.0)
+		Engine.time_scale = base_time_scale * 0.3
+		get_tree().create_timer(0.45, true, false, true).timeout.connect(func(): Engine.time_scale = base_time_scale)
 
 func _on_landed(fall_speed: float):
 	weapons.on_landed(fall_speed)
 
 func damage_number(pos: Vector3, amt: float, crit: bool, resisted := false):
+	var mode := int(Meta.opt("numbers"))
+	if mode == 0 or (mode == 1 and not crit): return
 	var l: Label3D = dmg_labels[dmg_idx]
 	dmg_idx = (dmg_idx + 1) % dmg_labels.size()
 	if l.has_meta("tw"):
@@ -945,8 +994,10 @@ func _activate(s: Dictionary):
 		"marche":
 			s["cd"] = 2.0
 			var opts := _roll_options(3, 0)
+			if opts.size() >= 3: opts.pop_back()
 			for o in opts:
 				o["cost"] = int((22 + 14 * market_buys) * (1.0 + 0.5 * o["rarity"]))
+			opts.append({"kind": "pack", "id": "pack", "rarity": 1, "tag": "PAPERASSE", "title": "Dossier administratif", "lv": "Charges de choix", "desc": "+2 relances\n+1 bannissement\n+1 passer", "short": "charges", "cost": 25 + 10 * market_buys})
 			_open_choice("MARCHÉ NOIR · TU AS %d ROUBLES" % rubles, opts, "market", "PARTIR")
 
 func _open_chest(bonus: int):
@@ -972,7 +1023,10 @@ func roll_rarity(min_r := 0, bonus := 0) -> int:
 		if r <= 0.0: res = i; break
 	return mini(3, res + bonus)
 
-func _roll_options(n: int, min_r := 0, bonus := 0) -> Array:
+func _ban_key(o: Dictionary) -> String:
+	return ("d:" if o["kind"] == "decret" else "w:") + str(o.get("id", ""))
+
+func _roll_options(n: int, min_r := 0, bonus := 0, exclude: Array = []) -> Array:
 	var pool := []
 	for id in weapons.owned:
 		if weapons.can_evolve(id):
@@ -990,6 +1044,12 @@ func _roll_options(n: int, min_r := 0, bonus := 0) -> Array:
 		for id in Data.DECRETS:
 			if not decrets.has(id):
 				pool.append({"kind": "decret", "id": id, "w": 0.45})
+	var filtered := []
+	for o in pool:
+		var k := _ban_key(o)
+		if banned.has(k) or exclude.has(k): continue
+		filtered.append(o)
+	pool = filtered
 	var out := []
 	while out.size() < n and not pool.is_empty():
 		var total := 0.0
@@ -1054,6 +1114,8 @@ func _describe(o: Dictionary):
 
 func _apply(o: Dictionary):
 	match o["kind"]:
+		"pack":
+			rerolls += 2; banishes += 1; skips += 1
 		"evo":
 			got_evo = true
 			weapons.evolve(o["id"])
@@ -1166,7 +1228,7 @@ func game_over(abandon := false):
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	var rep := _report(false)
 	hud.show_screen("TU ES MORT",
-		"Officiellement, tu n'as jamais existé.\nTemps : %s   ·   Niveau %d   ·   %d capitalistes bonkés\n\n%s" % [_fmt(time), level, kills, "\n".join(rep["lines"])],
+		("Tué par : " + player.last_cause + "\n" if player.last_cause != "" else "") + "Officiellement, tu n'as jamais existé.\nTemps : %s   ·   Niveau %d   ·   %d capitalistes bonkés\n\n%s" % [_fmt(time), level, kills, "\n".join(rep["lines"])],
 		"ENTRÉE ou A : retour au Kolkhoze", Color(0.85, 0.15, 0.15))
 	print("[game] GAME OVER t=%s level=%d kills=%d" % [_fmt(time), level, kills])
 

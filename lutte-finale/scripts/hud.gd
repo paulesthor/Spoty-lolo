@@ -41,6 +41,8 @@ var screen_title: Label
 var screen_body: Label
 var screen_hint: Label
 var fps_label: Label
+var hit_marks: Array = []
+var hit_idx := 0
 var ult_label: Label
 
 func setup(g):
@@ -142,6 +144,14 @@ func setup(g):
 	_at(ult_label, Control.PRESET_CENTER_BOTTOM, Vector2(-400, -140), Vector2(800, 34))
 	ult_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	ult_label.add_theme_color_override("font_outline_color", Color.BLACK); ult_label.add_theme_constant_override("outline_size", 8)
+	for i in 4:
+		var m := _label(root, "▲", 90, Color(1, 0.15, 0.1))
+		m.size = Vector2(90, 110)
+		m.pivot_offset = Vector2(45, 55)
+		m.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		m.add_theme_color_override("font_outline_color", Color.BLACK); m.add_theme_constant_override("outline_size", 10)
+		m.modulate.a = 0.0
+		hit_marks.append(m)
 	_build_choices()
 	_build_screen()
 
@@ -226,6 +236,10 @@ func _process(d: float):
 	toast_label.modulate.a = clampf(toast_t * 2.0, 0.0, 1.0)
 	hurt_a = maxf(0.0, hurt_a - d * 1.5)
 	blind_a = maxf(0.0, blind_a - d * 0.6)
+	for m in hit_marks:
+		(m as Label).modulate.a = maxf(0.0, (m as Label).modulate.a - d * 1.4)
+	var low: bool = p.hp < p.max_hp * 0.3 and p.hp > 0.0
+	if low and hurt_a < 0.12: hurt_a = 0.12 + 0.08 * sin(Time.get_ticks_msec() / 150.0)
 	hurt_rect.color = Color(0.7, 0.0, 0.0, hurt_a) if blind_a <= 0.0 else Color(0.97, 0.95, 0.88, minf(blind_a, 0.85))
 	fps_label.text = "%d FPS · %d ennemis" % [Engine.get_frames_per_second(), game.enemies.count()]
 	var cost: int = game.ultimate_cost()
@@ -249,6 +263,21 @@ func prompt(t: String):
 
 func hurt():
 	hurt_a = 0.28
+
+# red arrow on the screen edge pointing to where the hit came from
+func hit_from(src: Vector3):
+	var v: Vector3 = src - game.player.global_position
+	v.y = 0
+	if v.length() < 0.01: return
+	var local := Basis(Vector3.UP, -game.player.cam_yaw) * v
+	var ang := atan2(local.x, -local.z)
+	var m: Label = hit_marks[hit_idx]
+	hit_idx = (hit_idx + 1) % hit_marks.size()
+	var c := root.size / 2.0
+	var rad := minf(c.x, c.y) * 0.62
+	m.position = c + Vector2(sin(ang), -cos(ang)) * rad - m.size / 2.0
+	m.rotation = ang
+	m.modulate.a = 1.0
 
 var blind_a := 0.0
 func blind():
@@ -304,7 +333,12 @@ var leave_label := ""
 func show_choices(title: String, opts: Array, leave := ""):
 	options = opts
 	leave_label = leave
-	hint_label.text = "1 · 2 · 3, clic, ou manette (gauche/droite + A)" + ("   ·   4 / Y : " + leave if leave != "" else "") + (("   ·   T / LB : relancer (%d)" % game.rerolls) if game.rerolls > 0 and game.choice_source in ["level", "shrine"] else "")
+	var parts := ["1 · 2 · 3 ou clic"]
+	if leave != "": parts.append("4 : " + leave)
+	if game.rerolls > 0 and game.choice_source in ["level", "shrine"]: parts.append("T : relancer (%d)" % game.rerolls)
+	if game.banishes > 0 and game.choice_source in ["level", "shrine", "market"]: parts.append("B : bannir la carte sélectionnée (%d)" % game.banishes)
+	if game.skips > 0 and game.choice_source in ["level", "shrine"]: parts.append("X : passer (%d)" % game.skips)
+	hint_label.text = "   ·   ".join(parts)
 	choice_title.text = title
 	sel = 0
 	for i in 3:

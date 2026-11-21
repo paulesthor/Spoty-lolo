@@ -28,6 +28,9 @@ class Enemy:
 	var slow_t := 0.0
 	var shielded := false
 	var last_w := ""
+	var affix := ""
+	var affix_fx: Node3D
+	var tp_t := 0.0
 	var vuln_t := 0.0
 	var hit_from := {}
 
@@ -96,7 +99,8 @@ func spawn(kind: String, pos: Vector3, hp_mult := 1.0, dmg_mult := 1.0) -> Enemy
 			elif kind == "lobbyiste": col = Color(0.8, 0.65, 1)
 			e.tag = U.label(e.node, def["name"].to_upper(), Vector3.ZERO, 44 if not (def.get("elite", false) or def.get("boss", false)) else 56, col, Color(0.05, 0.03, 0, 1))
 			e.tag.position = Vector3(0, (def["h"] + 0.3) / e.node.scale.y, 0)
-			e.tag.pixel_size = 0.01 / e.node.scale.y
+			e.tag.fixed_size = true
+			e.tag.pixel_size = 0.0006 if not (def.get("elite", false) or def.get("boss", false)) else 0.0009
 		if def.get("shield_aura", false):
 			var ring := U.sprite(e.node, "circle_03.png", Vector3(0, 0.05, 0), 10.0 / e.node.scale.x, Color(0.7, 0.5, 1.0, 0.18), 1.2, false, Vector3(-PI / 2, 0, 0))
 		e.ap = U.anim_player(e.node)
@@ -115,6 +119,11 @@ func spawn(kind: String, pos: Vector3, hp_mult := 1.0, dmg_mult := 1.0) -> Enemy
 	e.boss = def.get("boss", false)
 	e.invincible = def.get("invincible", false)
 	e.alive = true
+	e.affix = ""
+	if e.affix_fx: e.affix_fx.queue_free(); e.affix_fx = null
+	if not e.elite and not e.boss and not e.invincible and game.time > 180.0 and not game.warming:
+		var ch := clampf(0.03 + (game.time - 180.0) / 360.0 * 0.12, 0.0, 0.2)
+		if randf() < ch: _give_affix(e, ["blinde", "rapide", "diviseur", "vampire", "teleporteur"][randi() % 5])
 	e.knock = Vector3.ZERO
 	e.t_act = randf_range(1.0, 3.0)
 	e.phase = ""
@@ -127,6 +136,32 @@ func spawn(kind: String, pos: Vector3, hp_mult := 1.0, dmg_mult := 1.0) -> Enemy
 		e.ap.speed_scale = e.speed / 3.0
 	list.append(e)
 	return e
+
+const AFFIX_INFO := {
+	"blinde": ["BLINDÉ", Color(0.6, 0.65, 0.75)],
+	"rapide": ["RAPIDE", Color(0.3, 0.9, 1.0)],
+	"diviseur": ["DIVISEUR", Color(0.9, 0.5, 1.0)],
+	"vampire": ["VAMPIRE", Color(1.0, 0.2, 0.25)],
+	"teleporteur": ["TÉLÉPORTEUR", Color(0.4, 1.0, 0.5)],
+}
+
+func _give_affix(e: Enemy, a: String):
+	e.affix = a
+	e.hp *= 2.2; e.max_hp = e.hp
+	e.xp *= 3
+	match a:
+		"blinde": e.armor += 7.0
+		"rapide": e.speed *= 1.6
+		"teleporteur": e.tp_t = randf_range(3.0, 5.0)
+	var info: Array = AFFIX_INFO[a]
+	var fx := Node3D.new()
+	e.node.add_child(fx)
+	var sc: float = e.node.scale.y
+	U.sprite(fx, "circle_03.png", Vector3(0, 0.05 / sc, 0), 2.4 / sc, Color(info[1].r, info[1].g, info[1].b, 0.8), 2.0, false, Vector3(-PI / 2, 0, 0))
+	var l := U.label(fx, info[0], Vector3(0, (e.def["h"] + 0.35) / sc, 0), 40, info[1], Color(0, 0, 0, 1))
+	l.fixed_size = true
+	l.pixel_size = 0.0006
+	e.affix_fx = fx
 
 func _process(d: float):
 	if game == null: return
@@ -161,6 +196,15 @@ func _process(d: float):
 		e.vuln_t = maxf(0.0, e.vuln_t - d)
 		var spd: float = e.speed * slow_world * (0.6 if e.slow_t > 0.0 else 1.0)
 		var move := dir
+		if e.affix == "vampire": e.hp = minf(e.max_hp, e.hp + e.max_hp * 0.02 * d)
+		if e.affix == "teleporteur":
+			e.tp_t -= d
+			if e.tp_t <= 0.0 and dist < 25.0:
+				e.tp_t = randf_range(4.0, 6.0)
+				var side := Vector3(-dir.z, 0, dir.x) * (1.0 if randf() < 0.5 else -1.0)
+				_heal_fx(p)
+				p = game.world.resolve(pp + side * 3.5 - dir * 1.5, e.r)
+				_heal_fx(p)
 		if e.stun_t > 0.0:
 			spd = 0.0
 		else:
@@ -192,7 +236,8 @@ func _process(d: float):
 		grid[key].append(e)
 		var py: float = game.player.global_position.y
 		if dist < e.r + 0.45 and py < 1.4 and e.stun_t <= 0.0:
-			if game.player.take_damage(e.dmg):
+			if game.player.take_damage(e.dmg, false, p, ("un " + AFFIX_INFO[e.affix][0].to_lower() + " · " if e.affix != "" else "") + e.def["name"]):
+				if e.affix == "vampire": e.hp = minf(e.max_hp, e.hp + e.max_hp * 0.3)
 				var eff: String = e.def.get("on_hit", "")
 				if eff != "": game.player.apply_status(eff)
 		if dist > 55.0 and not e.boss and not e.invincible:
@@ -351,7 +396,7 @@ func _slam(p: Vector3, r: float, dmg: float):
 	var v: Vector3 = game.player.global_position - p
 	v.y = 0
 	if v.length() < r and game.player.global_position.y < 1.5:
-		game.player.take_damage(dmg)
+		game.player.take_damage(dmg, false, p, "le coup de zone d'un Actionnaire")
 		game.player.velocity += v.normalized() * 12.0 + Vector3(0, 6, 0)
 	var s := U.sprite(self, "circle_05.png", Vector3(p.x, 0.07, p.z), r * 2.2, Color(1, 0.5, 0.2, 0.7), 2.5, false, Vector3(-PI / 2, 0, 0))
 	var tw := s.create_tween()
@@ -364,7 +409,7 @@ func _explode(p: Vector3, dmg: float):
 	get_tree().create_timer(0.7, false).timeout.connect(func():
 		var v: Vector3 = game.player.global_position - p
 		v.y = 0
-		if v.length() < 2.8: game.player.take_damage(dmg)
+		if v.length() < 2.8: game.player.take_damage(dmg, false, p, "l'explosion d'un Crypto-bro")
 		for o in in_radius(p, 2.8):
 			damage(o, dmg * 2.0, p, 8.0)
 		var s := U.sprite(self, "star_04.png", p + Vector3(0, 0.8, 0), 5.5, Color(0.4, 1.0, 0.5), 3.0)
@@ -388,7 +433,7 @@ func _update_hazards(d: float):
 				n.global_position += h["v"] * d
 				h["life"] -= d
 				if n.global_position.distance_to(pp) < 0.75:
-					if game.player.take_damage(h["dmg"]) and h["eff"] != "":
+					if game.player.take_damage(h["dmg"], false, n.global_position, "un tir d'Influenceur") and h["eff"] != "":
 						game.player.apply_status(h["eff"])
 					h["life"] = 0.0
 				if h["life"] <= 0.0:
@@ -412,7 +457,7 @@ func _update_hazards(d: float):
 					game.player.apply_status("debt")
 					if h["tick"] <= 0.0:
 						h["tick"] = 0.5
-						game.player.take_damage(h["dmg"], true)
+						game.player.take_damage(h["dmg"], true, n.global_position, "une zone de Dette")
 				if h["life"] <= 0.0:
 					hazards.erase(h); n.queue_free()
 
@@ -451,6 +496,14 @@ func kill(e: Enemy):
 	if not e.alive: return
 	e.alive = false
 	list.erase(e)
+	if e.affix == "diviseur" and not game.warming:
+		var m: Array = game.mults()
+		for i in 2:
+			var c := spawn(e.kind, game.world.resolve(e.node.position + Vector3(randf_range(-1, 1), 0, randf_range(-1, 1)), e.r), m[0] * 0.4, m[1])
+			c.node.scale = c.node.get_meta("base_scale") * 0.75
+			c.affix = ""
+	if e.affix_fx:
+		e.affix_fx.queue_free(); e.affix_fx = null
 	if e.def.has("explode"):
 		_explode(e.node.position, e.def["explode"] * game.mults()[1])
 	game.on_enemy_killed(e)
