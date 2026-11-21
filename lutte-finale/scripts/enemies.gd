@@ -33,7 +33,9 @@ class Enemy:
 	var tp_t := 0.0
 	var vuln_t := 0.0
 	var level := -1
-	var stun_imm := 0.0       # diminishing returns: immune to new stuns while > 0           # -1 ground, otherwise index of the plateau it stands on
+	var stun_imm := 0.0
+	var idx := 0
+	var anim_acc := 0.0       # diminishing returns: immune to new stuns while > 0           # -1 ground, otherwise index of the plateau it stands on
 	var hit_from := {}
 
 var game
@@ -45,6 +47,9 @@ var boss_mat: StandardMaterial3D
 var _alive_cache: Array = []
 var _tint_mats := {}
 var heal_t := 0.0
+var _next_idx := 0
+var _frame := 0
+var dying: Array = []
 var aura_t := 0.0
 
 func setup(g):
@@ -77,22 +82,13 @@ func spawn(kind: String, pos: Vector3, hp_mult := 1.0, dmg_mult := 1.0) -> Enemy
 	else:
 		e = Enemy.new()
 		e.kind = kind
-		var models: Array = def["models"]
-		e.node = U.place(self, U.CH + models[randi() % models.size()] + ".glb", pos, def["h"], 0.0)
+		e.node = Chars.build_enemy(self, kind, pos, def["h"] * 1.08)
 		e.node.set_meta("base_scale", e.node.scale)
-		U.shrink_head(e.node)
 		var acc: Array = def["acc"].duplicate()
 		if kind == "cadre" and randf() < 0.45: acc = []
 		if kind == "cadre" and randf() < 0.3: acc.append("cigar")
 		if kind == "stagiaire" and randf() < 0.15: acc = ["sunglasses"]
-		if not acc.is_empty(): U.attach_head(e.node, acc)
-		if def.has("tint"): _tint(e.node, def["tint"])
-		if kind == "golden" or kind == "boss":
-			var mat := gold_mat if kind == "golden" else boss_mat
-			for m in e.node.find_children("*", "MeshInstance3D", true, false):
-				if m.get_parent() is BoneAttachment3D or m.get_parent().get_parent() is BoneAttachment3D: continue
-				if m.name == "head-mesh" and kind == "boss": continue
-				(m as MeshInstance3D).material_override = mat
+		if not acc.is_empty(): Chars.attach(e.node, acc)
 		var show_tag: bool = def.get("elite", false) or def.get("boss", false) or def.get("invincible", false) or kind in ["coach", "lobbyiste", "drh"]
 		if show_tag:
 			var col := Color(1, 0.82, 0.3)
@@ -106,6 +102,11 @@ func spawn(kind: String, pos: Vector3, hp_mult := 1.0, dmg_mult := 1.0) -> Enemy
 		if def.get("shield_aura", false):
 			var ring := U.sprite(e.node, "circle_03.png", Vector3(0, 0.05, 0), 10.0 / e.node.scale.x, Color(0.7, 0.5, 1.0, 0.18), 1.2, false, Vector3(-PI / 2, 0, 0))
 		e.ap = U.anim_player(e.node)
+		if e.ap:
+			e.ap.callback_mode_process = AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
+			e.ap.playback_default_blend_time = 0.1
+		e.idx = _next_idx
+		_next_idx += 1
 	e.def = def
 	e.hp = def["hp"] * hp_mult
 	e.max_hp = e.hp
@@ -135,9 +136,12 @@ func spawn(kind: String, pos: Vector3, hp_mult := 1.0, dmg_mult := 1.0) -> Enemy
 	e.slow_t = 0.0
 	e.hit_from.clear()
 	if e.ap:
-		e.ap.play("walk", 0.0)
-		e.ap.seek(randf() * e.ap.current_animation_length, true)
-		e.ap.speed_scale = e.speed / 3.0
+		var an: String = Chars.ENEMY_ANIMS["run"] if e.speed > 3.4 else Chars.ENEMY_ANIMS["walk"]
+		if e.ap.has_animation(an):
+			e.ap.play(an, 0.0)
+			e.ap.seek(randf() * e.ap.current_animation_length, true)
+			e.ap.speed_scale = e.speed / (4.5 if e.speed > 3.4 else 1.8)
+			e.ap.advance(0.0)
 	list.append(e)
 	return e
 
@@ -174,6 +178,8 @@ func _process(d: float):
 	for e in list:
 		if e.alive: _alive_cache.append(e)
 	if game.state != "play": return
+	_frame += 1
+	_update_dying(d)
 	var pp: Vector3 = game.player.global_position
 	var grid := {}
 	const CELL := 1.6
@@ -271,6 +277,12 @@ func _process(d: float):
 			p = w.resolve(p, e.r)
 		p.y = ground_y
 		e.node.position = p
+		if e.ap:
+			e.anim_acc += d
+			var step := 1 if dist < 18.0 else (2 if dist < 35.0 else 4)
+			if (_frame + e.idx) % step == 0:
+				e.ap.advance(e.anim_acc)
+				e.anim_acc = 0.0
 		var face: Vector3 = dir if e.phase != "dash" else e.dash_dir
 		if dist > 0.1:
 			e.node.rotation.y = lerp_angle(e.node.rotation.y, atan2(face.x, face.z), 10.0 * d)
@@ -560,6 +572,14 @@ func kill(e: Enemy):
 	if e.def.has("explode"):
 		_explode(e.node.position, e.def["explode"] * game.mults()[1])
 	game.on_enemy_killed(e)
+	if e.ap and e.ap.has_animation(Chars.ENEMY_ANIMS["death"]) and dying.size() < 50 and not game.warming:
+		e.ap.play(Chars.ENEMY_ANIMS["death"], 0.05)
+		e.ap.speed_scale = 1.8
+		dying.append({"e": e, "t": 0.0})
+	else:
+		_pool(e)
+
+func _pool(e: Enemy):
 	var n := e.node
 	var tw := create_tween()
 	tw.tween_property(n, "scale", n.scale * 0.05, 0.14)
@@ -567,6 +587,21 @@ func kill(e: Enemy):
 		n.visible = false
 		if not pools.has(e.kind): pools[e.kind] = []
 		pools[e.kind].append(e))
+
+# dead enemies play their death animation, stay a moment, then sink into the ground
+func _update_dying(d: float):
+	for dd in dying.duplicate():
+		var e: Enemy = dd["e"]
+		dd["t"] += d
+		if e.ap: e.ap.advance(d)
+		if dd["t"] > 0.9:
+			e.node.position.y -= d * 2.5
+		if dd["t"] > 1.5:
+			dying.erase(dd)
+			e.node.visible = false
+			e.node.scale = e.node.get_meta("base_scale")
+			if not pools.has(e.kind): pools[e.kind] = []
+			pools[e.kind].append(e)
 
 func nearest(pos: Vector3, max_d: float, exclude: Array = []) -> Enemy:
 	var best: Enemy = null

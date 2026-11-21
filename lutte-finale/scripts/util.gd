@@ -257,6 +257,38 @@ static func _build_accessories(root: Node3D, kinds: Array, w: float, top: float,
 			"sunglasses":
 				for sx in [-1.0, 1.0]:
 					box(root, Vector3(w * 0.26, w * 0.13, w * 0.03), Vector3(sx * w * 0.2, top - w * 0.48, front + w * 0.02), solid(Color(0.05, 0.05, 0.06), 0.0, 0.1))
+			"miner":
+				var y := solid(Color(0.95, 0.75, 0.1), 0.0, 0.4)
+				sphere(root, w * 0.55, Vector3(0, top - w * 0.05, cz), y, w * 0.6)
+				cyl(root, w * 0.62, w * 0.05, Vector3(0, top - w * 0.12, cz), y)
+				var lamp := cyl(root, w * 0.11, w * 0.12, Vector3(0, top + w * 0.05, cz + w * 0.5), solid(Color(1, 1, 0.8), 3.0))
+				lamp.rotation = Vector3(PI / 2, 0, 0)
+			"goatee":
+				var g := solid(Color(0.45, 0.25, 0.12), 0.0, 1.0)
+				var gb := box(root, Vector3(w * 0.22, w * 0.3, w * 0.12), Vector3(0, top - w * 1.05, front + w * 0.02), g)
+				gb.rotation = Vector3(-0.25, 0, PI / 4)
+				box(root, Vector3(w * 0.42, w * 0.06, w * 0.08), Vector3(0, top - w * 0.78, front + w * 0.03), g)
+			"kepi":
+				var kp := solid(Color(0.3, 0.35, 0.25), 0.0, 0.8)
+				cyl(root, w * 0.5, w * 0.28, Vector3(0, top + w * 0.06, cz), kp)
+				cyl(root, w * 0.56, w * 0.08, Vector3(0, top + w * 0.22, cz), kp)
+				box(root, Vector3(w * 0.7, w * 0.04, w * 0.32), Vector3(0, top - w * 0.06, front + w * 0.12), solid(Color(0.1, 0.1, 0.1), 0.0, 0.3))
+				cyl(root, w * 0.51, w * 0.07, Vector3(0, top - w * 0.02, cz), solid(Color(0.75, 0.08, 0.1)))
+				var st := Label3D.new(); st.text = "★"; st.font = _sym_font; st.font_size = 64; st.pixel_size = w * 0.003
+				st.modulate = Color(1, 0.8, 0.2); st.outline_size = 0; st.position = Vector3(0, top + w * 0.1, cz + w * 0.51); st.shaded = false
+				root.add_child(st)
+			"big_moustache":
+				var mo := solid(Color(0.12, 0.08, 0.06), 0.0, 1.0)
+				for sx in [-1.0, 1.0]:
+					var half := box(root, Vector3(w * 0.42, w * 0.13, w * 0.12), Vector3(sx * w * 0.22, top - w * 0.72, front + w * 0.05), mo)
+					half.rotation = Vector3(0, 0, sx * -0.3)
+			"fichu":
+				var f := solid(Color(0.8, 0.1, 0.12), 0.0, 0.9)
+				sphere(root, w * 0.56, Vector3(0, top - w * 0.12, cz - w * 0.02), f, w * 0.75)
+				var knot := box(root, Vector3(w * 0.3, w * 0.22, w * 0.12), Vector3(0, top - w * 0.95, front - w * 0.05), f)
+				knot.rotation = Vector3(0, 0, PI / 4)
+				for dk in 5:
+					sphere(root, w * 0.05, Vector3((dk - 2) * w * 0.2, top + w * 0.05, cz + w * 0.45), solid(Color(1, 1, 1)))
 			"cap":
 				var cc := solid(Color(0.15, 0.2, 0.35), 0.0, 0.8)
 				cyl(root, w * 0.5, w * 0.18, Vector3(0, top + w * 0.02, cz), cc)

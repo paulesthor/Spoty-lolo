@@ -44,48 +44,45 @@ func setup(g):
 	col.position = Vector3(0, 0.85, 0)
 	add_child(col)
 	floor_snap_length = 0.3
-	_build_model("character-male-b", ["chapka"])
-	ap = U.anim_player(model)
-	_anim("idle")
+	_build_model("stakhanov")
 
 func apply_character(c: String):
-	var def: Dictionary = Meta.CHARACTERS[c]
-	_build_model(def["model"], def["acc"])
-	if def["base"].has("vitesse"): pass
+	_build_model(c)
 
-func _build_model(model_name: String, acc: Array):
+var oneshot_t := 0.0
+var char_id := "stakhanov"
+
+func _build_model(c: String):
+	char_id = c
 	if model:
 		model.queue_free()
 		cur_anim = ""
 	var keep := global_position
 	global_position = Vector3.ZERO
-	model = U.place(self, U.CH + model_name + ".glb", Vector3.ZERO, 1.75, 0.0)
-	U.shrink_head(model)
-	if not acc.is_empty(): U.attach_head(model, acc)
-	var arm := U.bone_attach(model, "arm-right")
-	if arm:
-		var ww: float = arm.get_meta("w")
-		var hammer := Node3D.new()
-		var handle := MeshInstance3D.new(); var cy := CylinderMesh.new(); cy.top_radius = 0.035; cy.bottom_radius = 0.035; cy.height = 1.0
-		handle.mesh = cy; handle.material_override = U.solid(Color(0.55, 0.33, 0.15)); handle.position = Vector3(0, 0.45, 0)
-		hammer.add_child(handle)
-		var head := MeshInstance3D.new(); var hb := BoxMesh.new(); hb.size = Vector3(0.42, 0.2, 0.2)
-		head.mesh = hb; head.material_override = U.solid(Color(0.5, 0.52, 0.56), 0.0, 0.35, 0.9); head.position = Vector3(0.0, 0.95, 0)
-		hammer.add_child(head)
-		arm.add_child(hammer)
-		hammer.scale = Vector3.ONE * ww * 1.1
-		hammer.position = Vector3(-ww * 0.1, -ww * 0.75, ww * 0.15)
-		hammer.rotation_degrees = Vector3(-60, 0, 0)
+	model = Chars.build_hero(self, c)
 	ap = U.anim_player(model)
+	if ap: ap.playback_default_blend_time = 0.12
 	_anim("idle")
 	global_position = keep
 
-func _anim(a: String, speed := 1.0):
+func _anim(state: String, speed := 1.0):
 	if ap == null: return
+	var a: String = Chars.HERO_ANIMS.get(state, state)
+	if not ap.has_animation(a): return
 	if cur_anim != a:
 		cur_anim = a
 		ap.play(a, 0.12)
 	ap.speed_scale = speed
+
+func oneshot(state: String, dur: float, speed := 1.0):
+	if ap == null: return
+	var a: String = Chars.HERO_ANIMS.get(state, state)
+	if not ap.has_animation(a): return
+	cur_anim = a
+	ap.play(a, 0.08)
+	ap.seek(0.0, true)
+	ap.speed_scale = speed
+	oneshot_t = dur
 
 func stat_speed() -> float:
 	var sp: float = base_speed * (1.0 + game.dv("vitesse") / 100.0)
@@ -161,6 +158,13 @@ func _physics_process(d: float):
 		dodge_dir = dir.normalized() if dir.length() > 0.1 else facing
 		invuln = maxf(invuln, 0.38)
 		game.weapons.dodge_fx(global_position, dodge_dir)
+		var side := facing.cross(Vector3.UP).dot(dodge_dir)
+		var fwd := facing.dot(dodge_dir)
+		var st := "dodge_f"
+		if fwd < -0.5: st = "dodge_b"
+		elif side > 0.5: st = "dodge_r"
+		elif side < -0.5: st = "dodge_l"
+		oneshot(st, 0.4, 1.6)
 	var hv := Vector3(velocity.x, 0, velocity.z)
 	var accel := 70.0 if is_on_floor() else 30.0
 	hv = hv.move_toward(dir * spd, accel * d)
@@ -183,16 +187,20 @@ func _physics_process(d: float):
 	var on_floor := is_on_floor()
 	if on_floor and not was_on_floor:
 		landed.emit(-last_vy)
+		if -last_vy > 7.0 and oneshot_t <= 0.0: oneshot("land", 0.25, 1.5)
 	was_on_floor = on_floor
 	if hv.length() > 0.3:
 		facing = hv.normalized()
-		model.rotation.y = lerp_angle(model.rotation.y, atan2(facing.x, facing.z), 14.0 * d)
-	if not on_floor:
+		model.rotation.y = lerp_angle(model.rotation.y, atan2(facing.x, facing.z) + Chars.KK_YAW, 14.0 * d)
+	oneshot_t = maxf(0.0, oneshot_t - d)
+	if oneshot_t > 0.0:
+		pass
+	elif not on_floor:
 		_anim("jump" if velocity.y > 0.0 else "fall")
 	elif slide_t > 0.0:
-		_anim("crouch")
+		_anim("slide", 1.3)
 	elif hv.length() > 0.5:
-		_anim("sprint", clampf(hv.length() / 7.5, 0.6, 1.6))
+		_anim("run", clampf(hv.length() / 7.0, 0.7, 1.6))
 	else:
 		_anim("idle")
 	if global_position.y < -5.0:
@@ -202,6 +210,7 @@ var last_cause := ""
 func take_damage(amount: float, dot := false, from := Vector3.INF, cause := "") -> bool:
 	if hp <= 0.0 or (invuln > 0.0 and not dot): return false
 	if cause != "": last_cause = cause
+	if not dot and oneshot_t <= 0.0 and slide_t <= 0.0: oneshot("hit", 0.25, 1.6)
 	if from != Vector3.INF and not dot: game.hud.hit_from(from)
 	if not dot and randf() * 100.0 < game.mods.get("dodge", 0.0):
 		invuln = 0.3
