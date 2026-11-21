@@ -600,6 +600,7 @@ func damage(e: Enemy, amount: float, knock_from := Vector3.INF, knock_force := 0
 		amt = maxf(amt - e.armor, amt * 0.15)
 	if e.shielded: amt *= 0.6
 	e.hp -= amt
+	if crit and amt > 150.0 and randf() < 0.15: game.pop_word(e.node.position + Vector3(0, e.def["h"] + 0.9, 0), ["PAF !", "CRAC !", "POW !"][randi() % 3], Color(1, 0.3, 0.2), 0.8)
 	if show_num or crit:
 		game.damage_number(e.node.position + Vector3(0, e.def["h"] + 0.3, 0), amt, crit, e.armor > 0.0 and not ignore_armor and amt < amount * 0.6)
 	if knock_from != Vector3.INF and not e.boss and e.ai != "slammer":

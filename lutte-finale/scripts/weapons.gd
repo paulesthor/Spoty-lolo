@@ -253,6 +253,7 @@ func on_landed(fall_speed: float):
 	slam_cd = 0.6
 	var s := stats("marteau")
 	_shockwave(game.player.global_position, s["area"] * 1.15, s["dmg"] * 2.0 * (1.0 + game.mods.get("slam_bonus", 0.0) / 100.0), Color(1.0, 0.75, 0.2), s, owned["marteau"]["evo"])
+	game.pop_word(game.player.global_position + Vector3(0, 2.6, 0), ["BONK !", "KRACH !", "BAM !"][randi() % 3], Color(1.0, 0.85, 0.2), 1.1)
 
 func _shockwave(center: Vector3, area: float, dmg: float, col: Color, s: Dictionary, stun := false):
 	for e in game.enemies.in_radius(center, area):
@@ -691,6 +692,7 @@ func _toughest(p: Vector3, rad: float, n: int) -> Array:
 	return l.slice(0, n)
 
 func _blast(p: Vector3, rad: float, dmg: float, s: Dictionary, col: Color, show := true):
+	if rad >= 2.5 and randf() < 0.25: game.pop_word(p + Vector3(0, 2.2, 0), ["BOUM !", "PAF !", "VLAN !"][randi() % 3], Color(1.0, 0.55, 0.15), 0.9)
 	for e in game.enemies.in_radius(p, rad):
 		_hit(e, dmg, s, p, 6.0, "", show)
 	var fx := _fx(self, "star_04.png", p + Vector3(0, 0.5, 0), rad * 1.7, col, 2.5)

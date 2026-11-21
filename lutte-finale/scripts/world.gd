@@ -21,6 +21,7 @@ var env: Environment
 var _bscale := 1.0
 var gen_tries := 0
 var decor: Node3D
+var far_smokes: Array = []
 
 func build(seed_value := 1917, tpl: Dictionary = Levels.HYPERMARCHE):
 	template = tpl
@@ -243,8 +244,19 @@ func _env():
 			env.ambient_light_energy = 0.85; env.fog_light_color = Color(0.3, 0.25, 0.4); env.fog_density = 0.005
 			env.adjustment_saturation = 1.05; env.adjustment_contrast = 1.1
 			sun.light_color = Color(0.65, 0.7, 1.0); sun.light_energy = 0.9; sun.rotation_degrees = Vector3(-35, 40, 0)
-	ps.sun_angle_max = 30.0
-	sky.sky_material = ps
+	# stylised poster sky (colours from the mood above)
+	var sm := ShaderMaterial.new()
+	sm.shader = load("res://shaders/sky.gdshader")
+	sm.set_shader_parameter("top_col", ps.sky_top_color)
+	sm.set_shader_parameter("horizon_col", ps.sky_horizon_color)
+	sm.set_shader_parameter("ground_col", ps.sky_horizon_color.darkened(0.45))
+	sm.set_shader_parameter("offset", Vector2(rng.randf() * 50.0, rng.randf() * 50.0))
+	match ambiance:
+		"fin_journee": sm.set_shader_parameter("cloud_col", Color(1.0, 0.86, 0.7)); sm.set_shader_parameter("cloud_shadow", Color(0.72, 0.52, 0.55))
+		"couvert": sm.set_shader_parameter("cloud_col", Color(0.86, 0.87, 0.9)); sm.set_shader_parameter("cloud_shadow", Color(0.55, 0.58, 0.64)); sm.set_shader_parameter("cloud_amount", 0.95); sm.set_shader_parameter("cloud_scale", 1.0)
+		"aube": sm.set_shader_parameter("cloud_col", Color(1.0, 0.8, 0.8)); sm.set_shader_parameter("cloud_shadow", Color(0.6, 0.45, 0.6))
+		"nuit": sm.set_shader_parameter("cloud_col", Color(0.28, 0.24, 0.38)); sm.set_shader_parameter("cloud_shadow", Color(0.12, 0.1, 0.2)); sm.set_shader_parameter("cloud_amount", 0.5); sm.set_shader_parameter("stars", 0.9)
+	sky.sky_material = sm
 	env.background_mode = Environment.BG_SKY
 	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
@@ -337,6 +349,7 @@ func _buildings():
 				_bld(U.CC + cb + ".glb", Vector3(cx, 0, cz), [0.0, PI / 2, PI, -PI / 2][rng.randi() % 4])
 				cz += 11.0
 			cx += 11.0
+	_skyline()
 	# hypermarket facade on the back wall
 	var fz := b.position.y - 10.0
 	var fac: Array = template["facade"]
@@ -833,3 +846,31 @@ func _lot_floor(r: Rect2, kind: String):
 	if mat == null: return
 	var f := U.box(self, Vector3(r.size.x, 0.04, r.size.y), Vector3(r.get_center().x, 0.02, r.get_center().y), mat)
 	f.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+# distant city silhouette beyond the arena (fog fades it): towers, factory chimneys, lit windows at night
+func _skyline():
+	var night: bool = ambiance == "nuit"
+	var c := bounds.get_center()
+	var dark := U.solid(Color(0.32, 0.3, 0.34) if not night else Color(0.08, 0.08, 0.12), 0.0, 0.9)
+	var win := U.solid(Color(1.0, 0.8, 0.45), 3.0)
+	var rad := maxf(bounds.size.x, bounds.size.y) * 0.5 + 70.0
+	var n := 46
+	for i in n:
+		var a := TAU * i / n + rng.randf_range(-0.03, 0.03)
+		var r := rad + rng.randf_range(0.0, 40.0)
+		var p := Vector3(c.x + cos(a) * r, 0, c.y + sin(a) * r)
+		var h := rng.randf_range(18.0, 60.0) * (1.4 if template.get("id", "") != "hypermarche" else 0.8)
+		var wd := rng.randf_range(8.0, 18.0)
+		var b := U.box(self, Vector3(wd, h, wd), p + Vector3(0, h / 2.0, 0), dark, Vector3(0, -a, 0))
+		b.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		if night and rng.randf() < 0.8:
+			for k in 6:
+				var wy := rng.randf_range(4.0, h - 2.0)
+				var wp := p + Vector3(-cos(a), 0, -sin(a)) * (wd * 0.5 + 0.05) + Vector3(0, wy, 0)
+				var wl := U.box(self, Vector3(rng.randf_range(1.0, 3.0), 0.5, 0.1), wp, win, Vector3(0, -a + PI / 2, 0))
+				wl.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		elif template.get("id", "") == "hypermarche" and i % 9 == 0:
+			var ch := U.cyl(self, 1.6, h * 1.6, p + Vector3(0, h * 0.8, 0), U.solid(Color(0.45, 0.25, 0.2), 0.0, 0.9))
+			ch.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			U.cyl(self, 1.7, 1.2, p + Vector3(0, h * 1.4, 0), U.solid(Color(0.85, 0.85, 0.82)))
+			far_smokes.append({"p": p + Vector3(0, h * 1.62, 0), "t": 0.0, "s": 9.0})

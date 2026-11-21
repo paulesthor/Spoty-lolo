@@ -914,7 +914,9 @@ func on_enemy_killed(e):
 	ult_kills += 1
 	kills_by_kind[e.kind] = int(kills_by_kind.get(e.kind, 0)) + 1
 	if e.last_w != "": kills_by_weapon[e.last_w] = int(kills_by_weapon.get(e.last_w, 0)) + 1
-	if e.elite: elites_killed += 1
+	if e.elite:
+		elites_killed += 1
+		stamp(e.node.position + Vector3(0, 3.0, 0), ["LIQUIDÉ !", "NATIONALISÉ !", "REDISTRIBUÉ !"][randi() % 3])
 	if char_id == "barbudo" and ult_t > 0.0 and not e.boss:
 		var bp: Vector3 = e.node.position
 		weapons._blast(bp, 2.6, 30.0 + 6.0 * level, {"crit": 0.1, "id": ""}, Color(1, 0.4, 0.15), false)
@@ -969,6 +971,37 @@ func spark(pos: Vector3, big := false):
 	var tw := s.create_tween()
 	tw.tween_property(s, "scale", Vector3.ONE * 0.1, 0.25)
 	tw.tween_callback(s.queue_free)
+
+# comic onomatopoeia (poster/comic identity); rate-limited so it never floods the screen
+var _word_t := 0.0
+var _word_font: Font
+func pop_word(pos: Vector3, text: String, col: Color, size := 1.0, force := false):
+	var now := Time.get_ticks_msec() / 1000.0
+	if not force and now < _word_t: return
+	_word_t = now + 0.35
+	if _word_font == null: _word_font = load("res://fonts/Bangers.woff2")
+	var l := Label3D.new()
+	l.text = text; l.font = _word_font; l.font_size = 96
+	l.pixel_size = 0.012 * size
+	l.modulate = col
+	l.outline_modulate = Color(0.06, 0.04, 0.03, 1); l.outline_size = 18
+	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	l.no_depth_test = true
+	l.render_priority = 5
+	l.rotation.z = randf_range(-0.25, 0.25)
+	add_child(l)
+	l.global_position = pos
+	l.scale = Vector3.ONE * 0.2
+	var tw := l.create_tween()
+	tw.tween_property(l, "scale", Vector3.ONE * 1.15, 0.09).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(l, "scale", Vector3.ONE, 0.06)
+	tw.tween_interval(0.35)
+	tw.parallel().tween_property(l, "position:y", l.position.y + 0.8, 0.5)
+	tw.tween_property(l, "modulate:a", 0.0, 0.18)
+	tw.tween_callback(l.queue_free)
+
+func stamp(pos: Vector3, text: String):
+	pop_word(pos, text, Color(0.85, 0.08, 0.1), 1.4, true)
 
 func toast(t: String, dur := 2.0):
 	hud.toast(t, dur)

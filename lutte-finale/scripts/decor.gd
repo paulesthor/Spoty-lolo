@@ -24,6 +24,7 @@ func build(world):
 	w = world
 	rng = world.rng
 	var id: String = w.template.get("id", "hypermarche")
+	smokes.append_array(w.far_smokes)
 	_street_furniture()
 	_flags(10)
 	_pigeon_flocks(5)
@@ -391,9 +392,10 @@ func _process(d: float):
 	if smoke_t <= 0.0 and not smokes.is_empty():
 		smoke_t = 0.6
 		for s in smokes:
-			var sp := U.sprite(self, "smoke_04.png", s["p"], 3.0, Color(0.6, 0.58, 0.55, 0.45), 1.0)
+			var k: float = s.get("s", 3.0) / 3.0
+			var sp := U.sprite(self, "smoke_04.png", s["p"], 3.0 * k, Color(0.6, 0.58, 0.55, 0.45), 1.0)
 			var tw := sp.create_tween().set_parallel()
-			tw.tween_property(sp, "position", s["p"] + Vector3(rng.randf_range(2, 5), 12, 0), 6.0)
+			tw.tween_property(sp, "position", s["p"] + Vector3(rng.randf_range(2, 5), 12, 0) * k, 6.0)
 			tw.tween_property(sp, "scale", Vector3.ONE * 3.0, 6.0)
 			tw.chain().tween_callback(sp.queue_free)
 	_update_pigeons(d)
