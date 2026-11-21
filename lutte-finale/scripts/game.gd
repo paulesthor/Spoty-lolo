@@ -108,6 +108,7 @@ func _ready():
 	player.setup(self)
 	player.bot = bot
 	player.landed.connect(_on_landed)
+	player.global_position = world.player_start + Vector3(0, 0.3, 0)
 	enemies = load("res://scripts/enemies.gd").new()
 	add_child(enemies)
 	enemies.setup(self)
@@ -642,7 +643,7 @@ func spawn_point(min_d: float, max_d: float) -> Vector3:
 		var a := rng.randf() * TAU
 		var dd := rng.randf_range(min_d, max_d)
 		var p := Vector3(pp.x + cos(a) * dd, 0, pp.z + sin(a) * dd)
-		if world.bounds.grow(-1.0).has_point(Vector2(p.x, p.z)):
+		if world.inside(p) and world.plateau_at(p) < 0:
 			return world.resolve(p, 0.6)
 	return world.resolve(Vector3(pp.x + min_d, 0, pp.z), 0.6)
 
@@ -818,8 +819,8 @@ func _drop_gem(p: Vector3, val: int):
 	mi.material_override = U.solid(Color(0.2, 0.95, 0.45) if val < 4 else Color(0.3, 0.6, 1.0), 2.5)
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(mi)
-	mi.global_position = Vector3(p.x, 0.35, p.z)
-	gems.append({"n": mi, "v": val, "pull": false, "spd": 0.0})
+	mi.global_position = Vector3(p.x, p.y + 0.35, p.z)
+	gems.append({"n": mi, "v": val, "pull": false, "spd": 0.0, "y0": p.y + 0.35})
 
 func _drop_coin(p: Vector3, val: int):
 	var mi := MeshInstance3D.new()
@@ -828,16 +829,16 @@ func _drop_coin(p: Vector3, val: int):
 	mi.material_override = U.solid(Color(1, 0.78, 0.25), 1.2, 0.3, 1.0)
 	mi.rotation.x = PI / 2
 	add_child(mi)
-	mi.global_position = Vector3(p.x, 0.4, p.z)
-	coins.append({"n": mi, "v": val, "pull": false, "spd": 0.0})
+	mi.global_position = Vector3(p.x, p.y + 0.4, p.z)
+	coins.append({"n": mi, "v": val, "pull": false, "spd": 0.0, "y0": p.y + 0.4})
 
 func _drop_heal(p: Vector3):
 	var n := Node3D.new()
 	add_child(n)
-	n.global_position = Vector3(p.x, 0.4, p.z)
+	n.global_position = Vector3(p.x, p.y + 0.4, p.z)
 	U.box(n, Vector3(0.5, 0.14, 0.4), Vector3.ZERO, U.solid(Color(0.85, 0.6, 0.3)))
 	U.box(n, Vector3(0.44, 0.04, 0.34), Vector3(0, 0.09, 0), U.solid(Color(0.95, 0.2, 0.25), 0.6))
-	coins.append({"n": n, "v": 0, "heal": 25.0, "pull": false, "spd": 0.0})
+	coins.append({"n": n, "v": 0, "heal": 25.0, "pull": false, "spd": 0.0, "y0": p.y + 0.4})
 
 func nearest_gem(p: Vector3, maxd: float):
 	var best = null
@@ -872,7 +873,7 @@ func _update_pickups(d: float):
 						rubles += int(ceil(g["v"] * (1.0 + 0.35 * bets) * (1.0 + mods.get("rubles_pct", 0.0) / 100.0) * (0.6 if dirl("inflation") > 0 else 1.0)))
 			else:
 				n.rotation.y = t * 2.0
-				n.position.y = 0.35 + sin(t * 3.0 + n.position.x) * 0.08
+				n.position.y = g.get("y0", 0.35) + sin(t * 3.0 + n.position.x) * 0.08
 	for b in breakables.duplicate():
 		var v2: Vector3 = b["pos"] - player.global_position
 		v2.y = 0

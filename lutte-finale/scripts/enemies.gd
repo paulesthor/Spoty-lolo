@@ -32,6 +32,7 @@ class Enemy:
 	var affix_fx: Node3D
 	var tp_t := 0.0
 	var vuln_t := 0.0
+	var level := -1           # -1 ground, otherwise index of the plateau it stands on
 	var hit_from := {}
 
 var game
@@ -112,6 +113,7 @@ func spawn(kind: String, pos: Vector3, hp_mult := 1.0, dmg_mult := 1.0) -> Enemy
 	e.armor = def.get("armor", 0.0) * (1.0 + 0.12 * game.time / 60.0) + 2.0 * game.dirl("lutte")
 	e.last_w = ""
 	e.vuln_t = 0.0
+	e.level = -1
 	e.r = def["r"]
 	e.xp = def["xp"]
 	e.ai = def.get("ai", "chase")
@@ -174,6 +176,13 @@ func _process(d: float):
 	var grid := {}
 	const CELL := 1.6
 	var slow_world: float = game.enemy_speed_mult()
+	var w = game.world
+	var pl_player := -1
+	if pp.y > 1.2:
+		pl_player = w.plateau_at(pp)
+		if pl_player < 0:
+			var rp0: Array = w.ramp_at(pp)
+			if not rp0.is_empty(): pl_player = rp0[0]
 	# support auras
 	heal_t -= d
 	aura_t -= d
@@ -222,11 +231,42 @@ func _process(d: float):
 				if o != e and o.hp < o.max_hp and not o.boss:
 					o.hp = minf(o.max_hp, o.hp + o.max_hp * 0.06)
 					_heal_fx(o.node.position)
+		# climbing: ground enemies head for a ramp when the player is up on a plateau,
+		# and walk back down when the player leaves it
+		var on_ramp: Array = w.ramp_at(p)
+		if e.phase != "dash" and not e.invincible and e.stun_t <= 0.0 and (pl_player != e.level or not on_ramp.is_empty()):
+			var target_pl := pl_player if pl_player >= 0 else e.level
+			if target_pl >= 0 and target_pl < w.plateaus.size():
+				var best_v := Vector3.ZERO
+				var best_d := 1e9
+				for rp in w.plateaus[target_pl]["ramps"]:
+					var rc: Rect2 = rp["rect"]
+					var c3 := Vector3(rc.get_center().x, 0, rc.get_center().y)
+					var half: float = (rc.size.y if absf(rp["dir"].z) > 0.5 else rc.size.x) / 2.0
+					var goal: Vector3 = c3 - rp["dir"] * (half + 0.5) if pl_player >= 0 else c3 + rp["dir"] * (half + 0.8)
+					if (rc as Rect2).has_point(Vector2(p.x, p.z)):
+						goal = c3 + rp["dir"] * (half + 1.5) if pl_player >= 0 else c3 - rp["dir"] * (half + 1.5)
+					var dd := goal.distance_to(Vector3(p.x, 0, p.z))
+					if dd < best_d: best_d = dd; best_v = goal
+				if best_d < 1e8:
+					var tv := best_v - Vector3(p.x, 0, p.z)
+					if tv.length() > 0.3: move = tv.normalized()
 		p += move * spd * d + e.knock * d
 		e.knock = e.knock.move_toward(Vector3.ZERO, 30.0 * d)
-		if not e.invincible:
-			p = game.world.resolve(p, e.r)
-		p.y = 0.0
+		on_ramp = w.ramp_at(p)
+		var ground_y := 0.0
+		if not on_ramp.is_empty():
+			ground_y = w.ramp_height(p, on_ramp[0], on_ramp[1])
+			if ground_y > w.plateaus[on_ramp[0]]["h"] * 0.9: e.level = on_ramp[0]
+			elif ground_y < 0.3: e.level = -1
+		elif e.level >= 0:
+			var pr: Rect2 = w.plateaus[e.level]["rect"]
+			p.x = clampf(p.x, pr.position.x + e.r, pr.end.x - e.r)
+			p.z = clampf(p.z, pr.position.y + e.r, pr.end.y - e.r)
+			ground_y = w.plateaus[e.level]["h"]
+		elif not e.invincible:
+			p = w.resolve(p, e.r)
+		p.y = ground_y
 		e.node.position = p
 		var face: Vector3 = dir if e.phase != "dash" else e.dash_dir
 		if dist > 0.1:
@@ -235,7 +275,7 @@ func _process(d: float):
 		if not grid.has(key): grid[key] = []
 		grid[key].append(e)
 		var py: float = game.player.global_position.y
-		if dist < e.r + 0.45 and py < 1.4 and e.stun_t <= 0.0:
+		if dist < e.r + 0.45 and absf(py - p.y) < 1.4 and e.stun_t <= 0.0:
 			if game.player.take_damage(e.dmg, false, p, ("un " + AFFIX_INFO[e.affix][0].to_lower() + " · " if e.affix != "" else "") + e.def["name"]):
 				if e.affix == "vampire": e.hp = minf(e.max_hp, e.hp + e.max_hp * 0.3)
 				var eff: String = e.def.get("on_hit", "")
@@ -250,7 +290,7 @@ func _process(d: float):
 					var k2 := Vector2i(key.x + ox, key.y + oz)
 					if not grid.has(k2): continue
 					for o in grid[k2]:
-						if o == e: continue
+						if o == e or o.level != e.level: continue
 						var v: Vector3 = e.node.position - o.node.position
 						v.y = 0
 						var dd := v.length()

@@ -1,80 +1,260 @@
 extends Node3D
-# Builds the "Hypermarché" zone: a large commercial district split in lots
-# (parking lots, container yards, plazas, market), surrounded by buildings.
+# Procedural zone generator. A level template (Levels.*) gives the global structure;
+# each run gets its own layout: arena shape, BSP lots, lot contents, raised platforms
+# with ramps, landmarks, chests/shrines placement, lighting mood. Maps are validated
+# (everything reachable) and regenerated if needed.
 
-var obstacles: Array = []        # Rect2 (x, z, w, d) that enemies must avoid
+var template: Dictionary = Levels.HYPERMARCHE
+var obstacles: Array = []        # Rect2 (x, z, w, d) that ground enemies must avoid
 var bounds := Rect2(-80, -95, 160, 170)
+var cuts: Array = []             # Rect2 removed from the arena (filled with buildings)
+var lots: Array = []             # [Rect2, kind]
+var plateaus: Array = []         # {rect, h, ramps:[{rect, dir(Vector3), top}]}
 var chest_spots: Array = []
 var shrine_spots: Array = []
 var breakable_spots: Array = []
+var player_start := Vector3.ZERO
+var shape := "rect"
+var ambiance := "fin_journee"
 var rng := RandomNumberGenerator.new()
-var _bscale := 1.0
 var env: Environment
+var _bscale := 1.0
+var gen_tries := 0
 
 func build(seed_value := 1917):
-	rng.seed = seed_value
 	U.fonts()
+	var s := seed_value
+	for attempt in 6:
+		gen_tries = attempt + 1
+		rng.seed = s
+		_reset()
+		_plan_layout()
+		if _validate(): break
+		s += 7777
 	_env()
 	_ground()
 	_buildings()
-	_lots()
+	_fill_lots()
 	_props()
 	_walls()
 	_pick_spots()
 
+func _reset():
+	obstacles.clear(); cuts.clear(); lots.clear(); plateaus.clear()
+	chest_spots.clear(); shrine_spots.clear(); breakable_spots.clear()
+
+# ---------------------------------------------------------------- layout planning (no nodes yet)
+func _plan_layout():
+	var w := rng.randf_range(template["width"][0], template["width"][1])
+	var d := rng.randf_range(template["depth"][0], template["depth"][1])
+	bounds = Rect2(-w / 2.0, -d / 2.0 - 10.0, w, d)
+	shape = Levels.pick(rng, template["shapes"])
+	var b := bounds
+	var cw := w * rng.randf_range(0.28, 0.36)
+	var cd := d * rng.randf_range(0.28, 0.36)
+	match shape:
+		"L":
+			var corner := rng.randi() % 4
+			var cx: float = b.position.x if corner % 2 == 0 else b.end.x - cw
+			var cz: float = b.position.y if corner < 2 else b.end.y - cd
+			cuts.append(Rect2(cx, cz, cw, cd))
+		"croix":
+			var kw := cw * 0.8
+			var kd := cd * 0.8
+			for c in [[b.position.x, b.position.y], [b.end.x - kw, b.position.y], [b.position.x, b.end.y - kd], [b.end.x - kw, b.end.y - kd]]:
+				cuts.append(Rect2(c[0], c[1], kw, kd))
+		"anneau":
+			var iw := w * rng.randf_range(0.2, 0.26)
+			var id := d * rng.randf_range(0.2, 0.26)
+			var c := b.get_center()
+			cuts.append(Rect2(c.x - iw / 2.0 + rng.randf_range(-6, 6), c.y - id / 2.0 + rng.randf_range(-6, 6), iw, id))
+	for c in cuts: obstacles.append(c)
+	# BSP split of the arena into lots, separated by avenues
+	var leaves := []
+	_split(Rect2(b.position.x + 4.0, b.position.y + 4.0, b.size.x - 8.0, b.size.y - 8.0), leaves, 0)
+	var av: float = template["avenue"] / 2.0
+	var usable := []
+	for r in leaves:
+		var lot: Rect2 = (r as Rect2).grow(-av)
+		if lot.size.x < 14.0 or lot.size.y < 14.0: continue
+		var hit := false
+		for c in cuts:
+			if (c as Rect2).grow(2.0).intersects(lot): hit = true
+		if not hit: usable.append(lot)
+	# the most central lot stays an open square where the player starts
+	var centre := b.get_center()
+	usable.sort_custom(func(a, c): return a.get_center().distance_to(centre) < c.get_center().distance_to(centre))
+	var start_lot: Rect2 = usable.pop_front() if not usable.is_empty() else Rect2(centre.x - 8, centre.y - 8, 16, 16)
+	player_start = Vector3(start_lot.get_center().x, 0, start_lot.get_center().y)
+	lots.append([start_lot, "start"])
+	usable.shuffle()
+	# guaranteed lot kinds first, then weighted picks
+	var kinds := []
+	for k in template["min"]:
+		for i in template["min"][k]: kinds.append(k)
+	while kinds.size() < usable.size():
+		kinds.append(Levels.pick(rng, template["lots"]))
+	for i in usable.size():
+		lots.append([usable[i], kinds[i]])
+	# plan raised platforms (they affect pathing and validation)
+	for l in lots:
+		if l[1] in ["quai", "chantier"]: _plan_plateaus(l[0], l[1])
+
+func _split(r: Rect2, out: Array, depth: int):
+	var mn: float = template["lot_size"][0]
+	var mx: float = template["lot_size"][1]
+	var can_x := r.size.x > mn * 2.0
+	var can_z := r.size.y > mn * 2.0
+	if (not can_x and not can_z) or (r.size.x <= mx and r.size.y <= mx and rng.randf() < 0.45 and depth > 1):
+		out.append(r); return
+	var along_x := can_x and (not can_z or r.size.x > r.size.y * rng.randf_range(0.8, 1.25))
+	if along_x:
+		var cut := rng.randf_range(mn, r.size.x - mn)
+		_split(Rect2(r.position.x, r.position.y, cut, r.size.y), out, depth + 1)
+		_split(Rect2(r.position.x + cut, r.position.y, r.size.x - cut, r.size.y), out, depth + 1)
+	else:
+		var cut := rng.randf_range(mn, r.size.y - mn)
+		_split(Rect2(r.position.x, r.position.y, r.size.x, cut), out, depth + 1)
+		_split(Rect2(r.position.x, r.position.y + cut, r.size.x, r.size.y - cut), out, depth + 1)
+
+func _plan_plateaus(lot: Rect2, kind: String):
+	var h := 3.0 if kind == "quai" else rng.randf_range(2.6, 3.4)
+	var pw := lot.size.x * rng.randf_range(0.45, 0.6)
+	var pd := lot.size.y * rng.randf_range(0.45, 0.6)
+	var px := lot.position.x + rng.randf_range(2.0, lot.size.x - pw - 2.0)
+	var pz := lot.position.y + rng.randf_range(2.0, lot.size.y - pd - 2.0)
+	var rect := Rect2(px, pz, pw, pd)
+	var ramps := []
+	var sides := [0, 1, 2, 3]
+	sides.shuffle()
+	var n := 2 if kind == "quai" else 1 + rng.randi() % 2
+	for i in n:
+		var side: int = sides[i]
+		var rl := h * 3.2      # ramp length (~17 degrees)
+		var rw := 4.0
+		var rr: Rect2
+		var dir: Vector3      # uphill direction
+		match side:
+			0: rr = Rect2(px + pw * 0.5 - rw / 2.0, pz - rl, rw, rl); dir = Vector3(0, 0, 1)
+			1: rr = Rect2(px + pw * 0.5 - rw / 2.0, pz + pd, rw, rl); dir = Vector3(0, 0, -1)
+			2: rr = Rect2(px - rl, pz + pd * 0.5 - rw / 2.0, rl, rw); dir = Vector3(1, 0, 0)
+			3: rr = Rect2(px + pw, pz + pd * 0.5 - rw / 2.0, rl, rw); dir = Vector3(-1, 0, 0)
+		if not lot.grow(2.0).encloses(rr): continue
+		ramps.append({"rect": rr, "dir": dir})
+	if ramps.is_empty():
+		var rl2 := h * 3.2
+		ramps.append({"rect": Rect2(px + pw * 0.5 - 2.0, pz - rl2, 4.0, rl2), "dir": Vector3(0, 0, 1)})
+	plateaus.append({"rect": rect, "h": h, "ramps": ramps, "kind": kind})
+
+# ---------------------------------------------------------------- validation (flood fill on a 2 m grid)
+func _validate() -> bool:
+	var cell := 2.0
+	var nx := int(bounds.size.x / cell)
+	var nz := int(bounds.size.y / cell)
+	var blocked := {}
+	var free_count := 0
+	for ix in nx:
+		for iz in nz:
+			var p := Vector2(bounds.position.x + (ix + 0.5) * cell, bounds.position.y + (iz + 0.5) * cell)
+			var b := false
+			for c in cuts:
+				if (c as Rect2).has_point(p): b = true; break
+			if b: blocked[Vector2i(ix, iz)] = true
+			else: free_count += 1
+	var sx := int((player_start.x - bounds.position.x) / cell)
+	var sz := int((player_start.z - bounds.position.y) / cell)
+	var seen := {Vector2i(sx, sz): true}
+	var stack := [Vector2i(sx, sz)]
+	while not stack.is_empty():
+		var c: Vector2i = stack.pop_back()
+		for o in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var n: Vector2i = c + o
+			if n.x < 0 or n.y < 0 or n.x >= nx or n.y >= nz: continue
+			if seen.has(n) or blocked.has(n): continue
+			seen[n] = true
+			stack.append(n)
+	return seen.size() >= free_count * 0.98
+
+# ---------------------------------------------------------------- ground height (plateaus and ramps)
+func plateau_at(p: Vector3) -> int:
+	for i in plateaus.size():
+		if (plateaus[i]["rect"] as Rect2).has_point(Vector2(p.x, p.z)): return i
+	return -1
+
+func ramp_at(p: Vector3) -> Array:
+	for i in plateaus.size():
+		for r in plateaus[i]["ramps"]:
+			if (r["rect"] as Rect2).has_point(Vector2(p.x, p.z)): return [i, r]
+	return []
+
+# height of a ramp at p (0 at the bottom, plateau height at the top)
+func ramp_height(p: Vector3, i: int, r: Dictionary) -> float:
+	var rect: Rect2 = r["rect"]
+	var dir: Vector3 = r["dir"]
+	var k := 0.0
+	if dir.z > 0.5: k = (p.z - rect.position.y) / rect.size.y
+	elif dir.z < -0.5: k = (rect.end.y - p.z) / rect.size.y
+	elif dir.x > 0.5: k = (p.x - rect.position.x) / rect.size.x
+	else: k = (rect.end.x - p.x) / rect.size.x
+	return clampf(k, 0.0, 1.0) * plateaus[i]["h"]
+
+# ---------------------------------------------------------------- lighting
 func _env():
+	ambiance = Levels.pick(rng, template["ambiances"])
 	var we := WorldEnvironment.new()
-	var env := Environment.new()
+	env = Environment.new()
 	var sky := Sky.new()
 	var ps := ProceduralSkyMaterial.new()
-	ps.sky_top_color = Color(0.3, 0.42, 0.6)
-	ps.sky_horizon_color = Color(0.95, 0.72, 0.5)
-	ps.ground_horizon_color = Color(0.95, 0.72, 0.5)
+	var sun := DirectionalLight3D.new()
+	sun.shadow_enabled = true
+	sun.directional_shadow_max_distance = 70.0
+	sun.shadow_blur = 1.2
+	env.fog_enabled = true
+	env.fog_sky_affect = 0.3
+	env.adjustment_enabled = true
+	match ambiance:
+		"fin_journee":
+			ps.sky_top_color = Color(0.3, 0.42, 0.6); ps.sky_horizon_color = Color(0.95, 0.72, 0.5); ps.ground_horizon_color = Color(0.95, 0.72, 0.5)
+			env.ambient_light_energy = 0.7; env.fog_light_color = Color(0.8, 0.68, 0.58); env.fog_density = 0.004
+			env.adjustment_saturation = 0.92; env.adjustment_contrast = 1.12
+			sun.light_color = Color(1.0, 0.72, 0.45); sun.light_energy = 1.6; sun.rotation_degrees = Vector3(-17, -60, 0)
+		"couvert":
+			ps.sky_top_color = Color(0.42, 0.5, 0.6); ps.sky_horizon_color = Color(0.72, 0.74, 0.76); ps.ground_horizon_color = Color(0.72, 0.74, 0.76)
+			env.ambient_light_energy = 0.9; env.fog_light_color = Color(0.68, 0.7, 0.73); env.fog_density = 0.0045
+			env.adjustment_saturation = 0.82; env.adjustment_contrast = 1.08
+			sun.light_color = Color(1.0, 0.96, 0.9); sun.light_energy = 1.1; sun.rotation_degrees = Vector3(-42, -30, 0)
+		"aube":
+			ps.sky_top_color = Color(0.25, 0.32, 0.55); ps.sky_horizon_color = Color(0.95, 0.6, 0.65); ps.ground_horizon_color = Color(0.95, 0.6, 0.65)
+			env.ambient_light_energy = 0.65; env.fog_light_color = Color(0.75, 0.62, 0.68); env.fog_density = 0.005
+			env.adjustment_saturation = 0.9; env.adjustment_contrast = 1.1
+			sun.light_color = Color(1.0, 0.75, 0.7); sun.light_energy = 1.3; sun.rotation_degrees = Vector3(-14, 120, 0)
 	ps.sun_angle_max = 30.0
 	sky.sky_material = ps
 	env.background_mode = Environment.BG_SKY
 	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	env.ambient_light_energy = 0.7
 	env.tonemap_mode = Environment.TONE_MAPPER_AGX
 	env.tonemap_exposure = 1.05
 	if RenderingServer.get_current_rendering_method() == "forward_plus":
-		env.ssao_enabled = true
-		env.ssao_radius = 1.5
-		env.ssao_intensity = 3.0
+		env.ssao_enabled = true; env.ssao_radius = 1.5; env.ssao_intensity = 3.0
 	env.glow_enabled = true
 	env.glow_intensity = 0.35
-	env.fog_enabled = true
-	env.fog_light_color = Color(0.8, 0.68, 0.58)
-	env.fog_density = 0.004
-	env.fog_sky_affect = 0.3
-	env.adjustment_enabled = true
-	env.adjustment_saturation = 0.92
-	env.adjustment_contrast = 1.12
 	we.environment = env
-	self.env = env
 	add_child(we)
-	var sun := DirectionalLight3D.new()
-	sun.shadow_enabled = true
-	sun.directional_shadow_max_distance = 70.0
-	sun.shadow_blur = 1.2
-	sun.light_color = Color(1.0, 0.72, 0.45)
-	sun.light_energy = 1.6
-	sun.rotation_degrees = Vector3(-17, -60, 0)
 	add_child(sun)
 
 func _ground():
 	var g := MeshInstance3D.new()
-	var pm := PlaneMesh.new(); pm.size = Vector2(420, 420)
+	var pm := PlaneMesh.new(); pm.size = Vector2(500, 500)
 	g.mesh = pm
 	var m := StandardMaterial3D.new()
 	m.albedo_color = Color(0.42, 0.43, 0.46)
 	var nt := NoiseTexture2D.new()
-	var fn := FastNoiseLite.new(); fn.frequency = 0.02
+	var fn := FastNoiseLite.new(); fn.frequency = 0.02; fn.seed = rng.randi()
 	nt.noise = fn; nt.seamless = true; nt.width = 512; nt.height = 512
 	var gr := Gradient.new(); gr.set_color(0, Color(0.86, 0.86, 0.86)); gr.set_color(1, Color(1, 1, 1)); nt.color_ramp = gr
 	m.albedo_texture = nt
-	m.uv1_scale = Vector3(50, 50, 50)
+	m.uv1_scale = Vector3(60, 60, 60)
 	m.roughness = 0.95
 	g.material_override = m
 	add_child(g)
@@ -83,12 +263,17 @@ func _ground():
 	cs.shape = WorldBoundaryShape3D.new()
 	body.add_child(cs)
 	add_child(body)
-	# main avenues (lane markings)
+	# avenue lane markings around each lot
 	var lm := U.solid(Color(0.92, 0.9, 0.82), 0.0, 0.9)
-	for i in range(-26, 27):
-		U.box(self, Vector3(1.4, 0.02, 0.18), Vector3(i * 3.0, 0.01, 0.0), lm)
-		U.box(self, Vector3(0.18, 0.02, 1.4), Vector3(0.0, 0.01, i * 3.0 - 10.0), lm)
+	for l in lots:
+		var r: Rect2 = l[0]
+		var z := r.end.y + 2.0
+		var x := r.position.x
+		while x < r.end.x:
+			U.box(self, Vector3(1.4, 0.02, 0.18), Vector3(x + 0.7, 0.01, z), lm)
+			x += 3.0
 
+# ---------------------------------------------------------------- buildings (border + cuts)
 func _bld(path: String, pos: Vector3, rot: float) -> Node3D:
 	var n := U.place(self, path, pos, -1, rot, _bscale)
 	var a := U.world_aabb(n)
@@ -103,27 +288,38 @@ func _bld(path: String, pos: Vector3, rot: float) -> Node3D:
 	add_child(body)
 	return n
 
+const BNAMES := ["building-a", "building-b", "building-c", "building-d", "building-e", "building-f", "building-g", "building-h", "building-i", "building-j", "building-k", "building-l", "building-m", "building-n"]
+const SKY := ["building-skyscraper-a", "building-skyscraper-b", "building-skyscraper-c", "building-skyscraper-d", "building-skyscraper-e"]
+
 func _buildings():
 	var ref: Node3D = U.scene(U.CC + "building-a.glb").instantiate()
 	add_child(ref)
 	_bscale = 12.0 / maxf(U.world_aabb(ref).size.y, 0.001)
 	ref.queue_free()
-	var names := ["building-a", "building-b", "building-c", "building-d", "building-e", "building-f", "building-g", "building-h", "building-i", "building-j", "building-k", "building-l", "building-m", "building-n"]
-	var sky := ["building-skyscraper-a", "building-skyscraper-b", "building-skyscraper-c", "building-skyscraper-d", "building-skyscraper-e"]
 	var b := bounds
-	var i := 0
+	var i := rng.randi() % 14
 	var z := b.end.y + 4.0
 	while z > b.position.y - 6.0:
-		_bld(U.CC + names[i % names.size()] + ".glb", Vector3(b.position.x - 16, 0, z), PI / 2); i += 1
-		_bld(U.CC + names[(i + 5) % names.size()] + ".glb", Vector3(b.end.x + 16, 0, z), -PI / 2); i += 1
+		_bld(U.CC + BNAMES[i % 14] + ".glb", Vector3(b.position.x - 16, 0, z), PI / 2); i += 1
+		_bld(U.CC + BNAMES[(i + 5) % 14] + ".glb", Vector3(b.end.x + 16, 0, z), -PI / 2); i += 1
 		z -= 11.0
 	var x := b.position.x - 6.0
-	var j := 0
+	var j := rng.randi() % 5
 	while x < b.end.x + 8.0:
-		var back: String = sky[j % sky.size()] if j % 3 == 0 else names[(j * 3) % names.size()]
+		var back: String = SKY[j % 5] if j % 3 == 0 else BNAMES[(j * 3) % 14]
 		_bld(U.CC + back + ".glb", Vector3(x, 0, b.position.y - 16 - (6 if "sky" in back else 0)), 0.0)
-		_bld(U.CC + names[(j * 5 + 2) % names.size()] + ".glb", Vector3(x, 0, b.end.y + 16), PI)
+		_bld(U.CC + BNAMES[(j * 5 + 2) % 14] + ".glb", Vector3(x, 0, b.end.y + 16), PI)
 		x += 11.0; j += 1
+	# cut areas: blocks of buildings facing the arena
+	for c in cuts:
+		var r: Rect2 = c
+		var cx := r.position.x + 6.0
+		while cx < r.end.x - 2.0:
+			var cz := r.position.y + 6.0
+			while cz < r.end.y - 2.0:
+				_bld(U.CC + BNAMES[rng.randi() % 14] + ".glb", Vector3(cx, 0, cz), [0.0, PI / 2, PI, -PI / 2][rng.randi() % 4])
+				cz += 11.0
+			cx += 11.0
 	# hypermarket facade on the back wall
 	var fz := b.position.y - 10.0
 	U.box(self, Vector3(34, 3.6, 0.6), Vector3(0, 12.5, fz), U.solid(Color(0.15, 0.5, 0.28)))
@@ -134,13 +330,11 @@ func _buildings():
 	U.box(self, Vector3(12, 4, 0.3), Vector3(-30, 15, fz), U.solid(Color(0.92, 0.9, 0.86)))
 	var bt := U.label(self, "ACHETEZ.  CONSOMMEZ.  RECOMMENCEZ.", Vector3(-30, 15.1, fz + 0.2), 120, Color(0.1, 0.1, 0.12), Color(0, 0, 0, 0), false, U.font_main)
 	bt.outline_size = 0; bt.shaded = true
-	# propaganda banners on side buildings
-	var lx := b.position.x - 10.5
-	var rx := b.end.x + 10.5
 	var slogans := ["TRAVAILLEURS DE TOUS LES PAYS, BONKEZ-VOUS", "LE PLAN QUINQUENNAL SERA BONKÉ EN 4 ANS", "LE CAPITAL EST UN TIGRE DE PAPIER. BONKEZ LE PAPIER.", "", "UN SPECTRE HANTE L'HYPERMARCHÉ", ""]
+	slogans.shuffle()
 	for k in 6:
-		var zz := b.end.y - 20.0 - k * 26.0
-		_banner(Vector3(lx if k % 2 == 0 else rx, 9.5, zz), PI / 2 if k % 2 == 0 else -PI / 2, Vector2(5.0, 6.5), slogans[k])
+		var zz := b.end.y - 20.0 - k * (b.size.y - 30.0) / 6.0
+		_banner(Vector3(b.position.x - 10.5 if k % 2 == 0 else b.end.x + 10.5, 9.5, zz), PI / 2 if k % 2 == 0 else -PI / 2, Vector2(5.0, 6.5), slogans[k])
 
 func _banner(pos: Vector3, rot_y: float, size: Vector2, text: String):
 	U.box(self, Vector3(size.x, size.y, 0.08), pos, U.solid(Color(0.72, 0.05, 0.1), 0.0, 0.9), Vector3(0, rot_y, 0))
@@ -159,88 +353,116 @@ func _banner(pos: Vector3, rot_y: float, size: Vector2, text: String):
 func add_obstacle(n: Node3D, collide := true, pad := 0.0) -> AABB:
 	var a := U.world_aabb(n).grow(pad)
 	obstacles.append(Rect2(a.position.x, a.position.z, a.size.x, a.size.z))
-	if collide:
-		var body := StaticBody3D.new()
-		var cs := CollisionShape3D.new()
-		var bs := BoxShape3D.new(); bs.size = a.size
-		cs.shape = bs
-		body.add_child(cs)
-		body.position = a.get_center()
-		add_child(body)
+	if collide: _static_box(a.get_center(), a.size)
 	return a
 
-# ---------------------------------------------------------------- lots
-func _lots():
-	# 4 x 4 grid of lots; the two central avenues (x=0, z=-10) stay open
-	var cols := 4
-	var rows := 4
-	var cw := bounds.size.x / cols
-	var ch := bounds.size.y / rows
-	var kinds := ["parking", "parking", "parking", "containers", "containers", "plaza", "market", "market", "parking", "containers", "plaza", "parking", "market", "empty", "containers", "parking"]
-	var order := range(cols * rows)
-	for k in range(order.size() - 1, 0, -1):
-		var r := rng.randi() % (k + 1)
-		var tmp = kinds[k]; kinds[k] = kinds[r]; kinds[r] = tmp
-	for i in cols * rows:
-		var cx := bounds.position.x + cw * (i % cols) + cw / 2.0
-		var cz := bounds.position.y + ch * (i / cols) + ch / 2.0
-		var c := Vector3(cx + (6.0 if cx < 0 else -6.0), 0, cz + (5.0 if cz < -10 else -5.0))
-		match kinds[i]:
-			"parking": _lot_parking(c)
-			"containers": _lot_containers(c)
-			"plaza": _lot_plaza(c)
-			"market": _lot_market(c)
-	_landmarks()
+func _static_box(center: Vector3, size: Vector3, rot := Vector3.ZERO):
+	var body := StaticBody3D.new()
+	var cs := CollisionShape3D.new()
+	var bs := BoxShape3D.new(); bs.size = size
+	cs.shape = bs
+	body.add_child(cs)
+	body.position = center
+	body.rotation = rot
+	add_child(body)
 
-func _lot_parking(c: Vector3):
+# ---------------------------------------------------------------- lot contents
+func _fill_lots():
+	for l in lots:
+		var r: Rect2 = l[0]
+		match l[1]:
+			"parking": _lot_parking(r)
+			"containers": _lot_containers(r)
+			"market": _lot_market(r)
+			"plaza": _lot_plaza(r)
+			"square": _lot_square(r)
+			"station": _lot_station(r)
+			"empty": _lot_empty(r)
+			"start": _lot_empty(r, true)
+	for i in plateaus.size(): _build_plateau(i)
+
+func _v(x: float, z: float) -> Vector3:
+	return Vector3(x, 0, z)
+
+func _lot_parking(r: Rect2):
 	var cars := ["sedan", "suv", "taxi", "hatchback-sports", "van", "suv-luxury", "sedan-sports", "police", "delivery", "truck"]
 	var lm := U.solid(Color(0.92, 0.9, 0.82), 0.0, 0.9)
-	for row in [-7.0, 7.0]:
-		for i in range(-5, 6):
-			U.box(self, Vector3(0.12, 0.02, 4.4), c + Vector3(i * 2.8, 0.01, row), lm)
-			if rng.randf() < 0.4: continue
-			var car := U.place(self, U.CAR + cars[rng.randi() % cars.size()] + ".glb", c + Vector3(i * 2.8 + 1.4, 0, row + rng.randf_range(-0.3, 0.3)), 1.5, PI / 2 * (1 if rng.randf() < 0.5 else -1))
+	var horizontal := r.size.x >= r.size.y
+	var rows := maxi(1, int((r.size.y if horizontal else r.size.x) / 12.0))
+	for row in rows:
+		var off := (row + 0.5) * (r.size.y if horizontal else r.size.x) / rows
+		var length := r.size.x if horizontal else r.size.y
+		var n := int(length / 2.8)
+		for i in n:
+			var along := i * 2.8 + 1.4
+			var p := _v(r.position.x + along, r.position.y + off) if horizontal else _v(r.position.x + off, r.position.y + along)
+			if horizontal: U.box(self, Vector3(0.12, 0.02, 4.4), p + Vector3(-1.4, 0.01, 0), lm)
+			else: U.box(self, Vector3(4.4, 0.02, 0.12), p + Vector3(0, 0.01, -1.4), lm)
+			if rng.randf() < 0.42 or i == n / 2: continue
+			var rot := (PI / 2 if horizontal else 0.0) + (PI if rng.randf() < 0.5 else 0.0)
+			var car := U.place(self, U.CAR + cars[rng.randi() % cars.size()] + ".glb", p, 1.5, rot)
 			add_obstacle(car)
-	for i in 3:
-		U.place(self, U.SHOP + "shopping-cart.glb", c + Vector3(rng.randf_range(-12, 12), 0, rng.randf_range(-3, 3)), 1.1, rng.randf() * TAU)
+	for i in 2:
+		U.place(self, U.SHOP + "shopping-cart.glb", _v(rng.randf_range(r.position.x, r.end.x), rng.randf_range(r.position.y, r.end.y)), 1.1, rng.randf() * TAU)
 
-func _lot_containers(c: Vector3):
+func _lot_containers(r: Rect2):
+	# a little maze: grid of container slots, randomly filled, some stacked
 	var kinds := ["shipping-container-a", "shipping-container-b", "shipping-container-c"]
-	var spots := [[Vector3(-6, 0, -5), 0.0], [Vector3(-2, 0, -5), 0.0], [Vector3(6, 0, 4), PI / 2], [Vector3(-8, 0, 7), PI / 2], [Vector3(9, 0, -6), 0.0]]
-	for i in spots.size():
-		if rng.randf() < 0.2: continue
-		var cont := U.place(self, U.IND + kinds[(i + rng.randi()) % 3] + ".glb", c + spots[i][0], 2.3, spots[i][1])
-		add_obstacle(cont)
-	var top := U.place(self, U.IND + "shipping-container-c.glb", c + Vector3(-4, 2.3, -5), 2.3, PI / 2)
-	add_obstacle(top)
-	if rng.randf() < 0.6:
-		var tank := U.place(self, U.IND + "detail-tank.glb", c + Vector3(3, 0, -9), 3.5, 0.0)
-		add_obstacle(tank)
+	var cx := r.position.x + 4.0
+	while cx < r.end.x - 4.0:
+		var cz := r.position.y + 3.0
+		while cz < r.end.y - 3.0:
+			if rng.randf() < 0.48:
+				var rot := 0.0 if rng.randf() < 0.6 else PI / 2
+				var c := U.place(self, U.IND + kinds[rng.randi() % 3] + ".glb", _v(cx, cz), 2.3, rot)
+				add_obstacle(c)
+				if rng.randf() < 0.25:
+					var top := U.place(self, U.IND + kinds[rng.randi() % 3] + ".glb", Vector3(cx, 2.3, cz), 2.3, rot)
+					add_obstacle(top)
+			cz += 7.0
+		cx += 8.5
 
-func _lot_market(c: Vector3):
-	# stalls: counters with food and awnings
+func _lot_market(r: Rect2):
 	var foods := ["bread", "cheese", "apple", "burger", "carrot", "cake", "donut", "fish", "banana"]
-	for i in 6:
-		var p := c + Vector3((i % 3 - 1) * 8.0, 0, (i / 3 - 0.5) * 10.0)
-		var counter := U.box(self, Vector3(3.2, 1.0, 1.2), p + Vector3(0, 0.5, 0), U.solid(Color(0.55, 0.38, 0.22)))
-		var aw := U.box(self, Vector3(3.6, 0.12, 2.0), p + Vector3(0, 2.6, 0.2), U.solid(Color(0.8, 0.12, 0.12) if i % 2 == 0 else Color(0.9, 0.85, 0.75)))
-		for pole in [-1.6, 1.6]:
-			U.box(self, Vector3(0.1, 2.6, 0.1), p + Vector3(pole, 1.3, 1.0), U.solid(Color(0.3, 0.3, 0.3)))
-		for f in 3:
-			var path: String = U.FOOD + foods[rng.randi() % foods.size()] + ".glb"
-			if ResourceLoader.exists(path):
-				U.place(self, path, p + Vector3(-1.0 + f, 1.0, 0), 0.35, rng.randf() * TAU)
-		add_obstacle(counter)
+	var cols := maxi(1, int(r.size.x / 9.0))
+	var rows := maxi(1, int(r.size.y / 10.0))
+	for ix in cols:
+		for iz in rows:
+			if rng.randf() < 0.2: continue
+			var p := _v(r.position.x + (ix + 0.5) * r.size.x / cols, r.position.y + (iz + 0.5) * r.size.y / rows)
+			var counter := U.box(self, Vector3(3.2, 1.0, 1.2), p + Vector3(0, 0.5, 0), U.solid(Color(0.55, 0.38, 0.22)))
+			U.box(self, Vector3(3.6, 0.12, 2.0), p + Vector3(0, 2.6, 0.2), U.solid(Color(0.8, 0.12, 0.12) if (ix + iz) % 2 == 0 else Color(0.9, 0.85, 0.75)))
+			for pole in [-1.6, 1.6]:
+				U.box(self, Vector3(0.1, 2.6, 0.1), p + Vector3(pole, 1.3, 1.0), U.solid(Color(0.3, 0.3, 0.3)))
+			for f in 3:
+				var path: String = U.FOOD + foods[rng.randi() % foods.size()] + ".glb"
+				if ResourceLoader.exists(path):
+					U.place(self, path, p + Vector3(-1.0 + f, 1.0, 0), 0.35, rng.randf() * TAU)
+			add_obstacle(counter)
 
-func _lot_plaza(c: Vector3):
+func _lot_plaza(r: Rect2):
+	var c := _v(r.get_center().x, r.get_center().y)
 	shrine_spots.append(c)
 	for i in 4:
 		var a := TAU * i / 4.0 + PI / 4
-		U.place(self, U.SUB + "tree-large.glb", c + Vector3(cos(a), 0, sin(a)) * 9.0, 5.0, rng.randf() * TAU)
+		var tp := c + Vector3(cos(a), 0, sin(a)) * minf(9.0, minf(r.size.x, r.size.y) * 0.4)
+		U.place(self, U.SUB + "tree-large.glb", tp, 5.0, rng.randf() * TAU)
 
-func _landmarks():
-	# giant matryoshka near the centre-back
-	var mp := Vector3(-22, 0, -48)
+func _lot_square(r: Rect2):
+	var c := _v(r.get_center().x, r.get_center().y)
+	if rng.randf() < 0.5:
+		_matryoshka(c)
+	else:
+		var basin := U.cyl(self, 3.0, 0.8, c + Vector3(0, 0.4, 0), U.solid(Color(0.6, 0.58, 0.55)))
+		U.cyl(self, 2.7, 0.1, c + Vector3(0, 0.75, 0), U.solid(Color(0.3, 0.5, 0.7), 0.0, 0.1))
+		U.cyl(self, 0.3, 2.4, c + Vector3(0, 1.2, 0), U.solid(Color(0.6, 0.58, 0.55)))
+		obstacles.append(Rect2(c.x - 3, c.z - 3, 6, 6)); _static_box(c + Vector3(0, 0.4, 0), Vector3(6, 0.8, 6))
+	for i in 6:
+		var a := rng.randf() * TAU
+		var tp := c + Vector3(cos(a), 0, sin(a)) * rng.randf_range(7.0, minf(r.size.x, r.size.y) * 0.45)
+		U.place(self, U.SUB + ("tree-large.glb" if i % 2 == 0 else "tree-small.glb"), tp, 4.5 if i % 2 == 0 else 2.5, rng.randf() * TAU)
+
+func _matryoshka(mp: Vector3):
 	var mr := U.solid(Color(0.75, 0.08, 0.1), 0.0, 0.5)
 	U.sphere(self, 1.6, mp + Vector3(0, 2.0, 0), mr, 4.0)
 	U.sphere(self, 1.2, mp + Vector3(0, 4.6, 0), mr, 2.3)
@@ -252,17 +474,70 @@ func _landmarks():
 	var body := StaticBody3D.new(); var cs := CollisionShape3D.new(); var cy := CylinderShape3D.new(); cy.radius = 1.6; cy.height = 5.5
 	cs.shape = cy; body.add_child(cs); body.position = mp + Vector3(0, 2.75, 0); add_child(body)
 
+func _lot_station(r: Rect2):
+	# petrol station: canopy on pillars, pumps, a small shop
+	var c := _v(r.get_center().x, r.get_center().y)
+	U.box(self, Vector3(14, 0.5, 9), c + Vector3(0, 4.5, 0), U.solid(Color(0.85, 0.12, 0.12)))
+	U.label(self, "PÉTROLE DU PEUPLE", c + Vector3(0, 4.5, 4.6), 90, Color(1, 0.95, 0.85), Color(0, 0, 0, 0), false, U.font_main)
+	for px in [-5.5, 5.5]:
+		for pz in [-3.5, 3.5]:
+			U.box(self, Vector3(0.4, 4.5, 0.4), c + Vector3(px, 2.25, pz), U.solid(Color(0.8, 0.8, 0.8)))
+	for px in [-3.0, 3.0]:
+		var pump := U.box(self, Vector3(0.9, 1.6, 0.6), c + Vector3(px, 0.8, 0), U.solid(Color(0.9, 0.85, 0.2)))
+		add_obstacle(pump)
+	var shop := U.box(self, Vector3(8, 3.5, 5), c + Vector3(0, 1.75, -r.size.y * 0.3), U.solid(Color(0.85, 0.82, 0.75)))
+	add_obstacle(shop)
+
+func _lot_empty(r: Rect2, start := false):
+	for i in (2 if start else 5):
+		U.place(self, U.CR + "construction-cone.glb", _v(rng.randf_range(r.position.x, r.end.x), rng.randf_range(r.position.y, r.end.y)), 0.7, rng.randf() * TAU)
+
+func _build_plateau(i: int):
+	var pl: Dictionary = plateaus[i]
+	var r: Rect2 = pl["rect"]
+	var h: float = pl["h"]
+	var col := Color(0.55, 0.53, 0.5) if pl["kind"] == "quai" else Color(0.75, 0.6, 0.25)
+	var c := Vector3(r.get_center().x, h / 2.0, r.get_center().y)
+	var mi := U.box(self, Vector3(r.size.x, h, r.size.y), c, U.solid(col))
+	_static_box(c, Vector3(r.size.x, h, r.size.y))
+	# railing posts and stripes so the edge reads clearly
+	U.box(self, Vector3(r.size.x, 0.12, r.size.y), Vector3(c.x, h + 0.06, c.z), U.solid(col.lightened(0.15)))
+	if pl["kind"] == "chantier":
+		for k in 4:
+			U.box(self, Vector3(0.2, 2.5, 0.2), Vector3(r.position.x + 0.5 + k * (r.size.x - 1.0) / 3.0, h + 1.25, r.position.y + 0.5), U.solid(Color(0.4, 0.4, 0.42), 0.0, 0.4, 0.8))
+		U.label(self, "CHANTIER DU PEUPLE", Vector3(c.x, h + 2.8, r.position.y + 0.5), 80, Color(1, 0.85, 0.3), Color(0, 0, 0, 1), false)
+	else:
+		U.label(self, "QUAI DE CHARGEMENT", Vector3(c.x, h + 1.2, r.position.y - 0.05), 70, Color(1, 1, 1), Color(0, 0, 0, 1), false)
+		for k in 3:
+			U.place(self, U.CAR + "box.glb", Vector3(r.position.x + 2.0 + k * 1.5, h, r.position.y + 2.0), 0.9, rng.randf() * TAU)
+	for rp in pl["ramps"]:
+		var rr: Rect2 = rp["rect"]
+		var dir: Vector3 = rp["dir"]
+		var length: float = rr.size.y if absf(dir.z) > 0.5 else rr.size.x
+		var width: float = rr.size.x if absf(dir.z) > 0.5 else rr.size.y
+		var ang := atan2(h, length)
+		var slope := sqrt(h * h + length * length)
+		var rc := Vector3(rr.get_center().x, h / 2.0, rr.get_center().y)
+		var rot := Vector3.ZERO
+		var size := Vector3(width, 0.3, slope)
+		if absf(dir.z) > 0.5:
+			rot = Vector3(ang if dir.z < 0 else -ang, 0, 0)
+		else:
+			size = Vector3(slope, 0.3, width)
+			rot = Vector3(0, 0, -ang if dir.x < 0 else ang)
+		var ramp := U.box(self, size, rc, U.solid(Color(0.5, 0.5, 0.48)), rot)
+		_static_box(rc, size, rot)
+	# ground enemies treat the plateau body as an obstacle (they use the ramps)
+	obstacles.append(r)
+
 func _props():
-	for z in range(int(bounds.position.y) + 10, int(bounds.end.y), 16):
-		for x in [bounds.position.x + 3.0, bounds.end.x - 3.0]:
-			U.place(self, U.CR + "light-square.glb", Vector3(x, 0, z), 6.5, PI / 2 if x < 0 else -PI / 2)
-	for i in 30:
-		var p := Vector3(rng.randf_range(bounds.position.x + 3, bounds.end.x - 3), 0, rng.randf_range(bounds.position.y + 3, bounds.end.y - 3))
-		if _blocked(p, 2.0): continue
-		U.place(self, U.CR + "construction-cone.glb", p, 0.7, rng.randf() * TAU)
-	for i in 8:
-		var p := Vector3(rng.randf_range(bounds.position.x + 5, bounds.end.x - 5), 0, rng.randf_range(bounds.position.y + 5, bounds.end.y - 5))
-		if _blocked(p, 3.0) or p.length() < 8.0: continue
+	var b := bounds
+	for z in range(int(b.position.y) + 10, int(b.end.y), 18):
+		for x in [b.position.x + 3.0, b.end.x - 3.0]:
+			var p := Vector3(x, 0, z)
+			if not _in_cut(p): U.place(self, U.CR + "light-square.glb", p, 6.5, PI / 2 if x < 0 else -PI / 2)
+	for i in 12:
+		var p := free_spot(6.0, 3.0)
 		var d := U.place(self, U.CR + "dumpster.glb", p, 1.6, rng.randf() * TAU)
 		add_obstacle(d)
 
@@ -274,33 +549,45 @@ func _walls():
 		[Vector3(b.get_center().x, 4, b.position.y - 1), Vector3(b.size.x + 4, 8, 2)],
 		[Vector3(b.get_center().x, 4, b.end.y + 1), Vector3(b.size.x + 4, 8, 2)],
 	]
-	for w in walls:
-		var body := StaticBody3D.new(); var cs := CollisionShape3D.new(); var bs := BoxShape3D.new(); bs.size = w[1]
-		cs.shape = bs; body.add_child(cs); body.position = w[0]; add_child(body)
+	for c in cuts:
+		var r: Rect2 = c
+		walls.append([Vector3(r.get_center().x, 4, r.get_center().y), Vector3(r.size.x, 8, r.size.y)])
+	for w in walls: _static_box(w[0], w[1])
+
+func _in_cut(p: Vector3) -> bool:
+	for c in cuts:
+		if (c as Rect2).grow(1.0).has_point(Vector2(p.x, p.z)): return true
+	return false
+
+func inside(p: Vector3) -> bool:
+	return bounds.grow(-1.0).has_point(Vector2(p.x, p.z)) and not _in_cut(p)
 
 func _blocked(p: Vector3, pad: float) -> bool:
 	for r in obstacles:
 		if (r as Rect2).grow(pad).has_point(Vector2(p.x, p.z)): return true
+	for pl in plateaus:
+		for rp in pl["ramps"]:
+			if (rp["rect"] as Rect2).grow(pad).has_point(Vector2(p.x, p.z)): return true
 	for s in shrine_spots:
 		if p.distance_to(s) < 6.0: return true
 	return false
 
-func free_spot(min_from_center := 6.0, pad := 1.5) -> Vector3:
-	for i in 200:
+func free_spot(min_from_start := 6.0, pad := 1.5) -> Vector3:
+	for i in 300:
 		var p := Vector3(rng.randf_range(bounds.position.x + 4, bounds.end.x - 4), 0, rng.randf_range(bounds.position.y + 4, bounds.end.y - 4))
-		if not _blocked(p, pad) and p.length() >= min_from_center: return p
-	return Vector3(rng.randf_range(-10, 10), 0, rng.randf_range(-10, 10))
+		if inside(p) and not _blocked(p, pad) and p.distance_to(player_start) >= min_from_start: return p
+	return player_start + Vector3(rng.randf_range(-6, 6), 0, rng.randf_range(-6, 6))
 
 func _pick_spots():
-	# extra shrine spots in open ground (in addition to plazas)
-	while shrine_spots.size() < 9:
+	var tries := 0
+	while shrine_spots.size() < 9 and tries < 400:
+		tries += 1
 		var p := free_spot(18.0, 5.0)
 		var ok := true
 		for q in shrine_spots:
-			if p.distance_to(q) < 25.0: ok = false
+			if p.distance_to(q) < 24.0: ok = false
 		if ok: shrine_spots.append(p)
-		elif rng.randf() < 0.05: shrine_spots.append(p)
-	var tries := 0
+	tries = 0
 	while chest_spots.size() < 16 and tries < 800:
 		tries += 1
 		var p := free_spot(8.0, 1.5)
@@ -308,10 +595,14 @@ func _pick_spots():
 		for q in chest_spots + shrine_spots:
 			if p.distance_to(q) < 14.0: ok = false
 		if ok: chest_spots.append(p)
-	for i in 90:
+	# a couple of chests on top of plateaus (reward for climbing)
+	for pl in plateaus:
+		var r: Rect2 = pl["rect"]
+		chest_spots.append(Vector3(r.get_center().x + 1.5, pl["h"], r.get_center().y))
+	for i in 100:
 		breakable_spots.append(free_spot(5.0, 1.0))
 
-# push a point out of obstacles (for enemies); returns corrected position
+# push a point out of obstacles (for ground enemies); returns corrected position
 func resolve(p: Vector3, r: float) -> Vector3:
 	for o in obstacles:
 		var g: Rect2 = (o as Rect2).grow(r)
