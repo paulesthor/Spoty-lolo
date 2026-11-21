@@ -31,7 +31,7 @@ const WEAPONS := {
 	"faucille": {
 		"name": "Faucille", "tags": ["projectile"],
 		"desc": "Part en arc et revient. Traverse tout sur son passage.",
-		"dmg": 20.0, "cd": 2.4, "count": 1, "range": 9.0,
+		"dmg": 16.0, "cd": 2.4, "count": 1, "range": 9.0,
 		"ups": ["dmg", "cd", "count", "range"],
 		"evo": "collectivisation", "evo_name": "Moisson Rouge", "evo_desc": "+3 faucilles en éventail, portée accrue.",
 	},
@@ -52,14 +52,14 @@ const WEAPONS := {
 	"spoutnik": {
 		"name": "Spoutnik", "tags": ["orbital"],
 		"desc": "Des satellites tournent autour de toi et percutent les ennemis.",
-		"dmg": 10.0, "cd": 0.5, "count": 1, "area": 3.2,
+		"dmg": 8.0, "cd": 0.5, "count": 1, "area": 3.2,
 		"ups": ["dmg", "count", "area", "cd"],
 		"evo": "productivite", "evo_name": "Constellation", "evo_desc": "+3 satellites et un laser sur l'ennemi le plus proche.",
 	},
 	"samovar": {
 		"name": "Samovar", "tags": ["zone"],
 		"desc": "Thé bouillant autour de toi : dégâts continus et ralentissement.",
-		"dmg": 5.0, "cd": 0.5, "area": 2.8,
+		"dmg": 7.0, "cd": 0.5, "area": 2.8,
 		"ups": ["dmg", "area", "cd"],
 		"evo": "endurance", "evo_name": "Grand Samovar", "evo_desc": "Zone plus grande, et chaque brûlure te soigne un peu.",
 	},
@@ -80,7 +80,7 @@ const WEAPONS := {
 	"ours": {
 		"name": "Ours de Sibérie", "tags": ["melee"],
 		"desc": "Un ours apprivoisé (plus ou moins) court sur les capitalistes et les gifle.",
-		"dmg": 18.0, "cd": 0.9, "count": 1, "area": 1.8, "speed": 9.0,
+		"dmg": 14.0, "cd": 0.9, "count": 1, "area": 1.8, "speed": 9.0,
 		"ups": ["dmg", "cd", "count", "area"],
 		"evo": "endurance", "evo_name": "Grand Ours Soviétique", "evo_desc": "+1 ours, plus gros, ses gifles étourdissent.",
 	},
@@ -115,21 +115,21 @@ const WEAPONS := {
 	"katioucha": {
 		"name": "Orgue du Peuple", "tags": ["zone"],
 		"desc": "Une salve de roquettes tombe du ciel sur les ennemis autour de toi.",
-		"dmg": 14.0, "cd": 3.5, "count": 4, "area": 1.8,
+		"dmg": 18.0, "cd": 3.5, "count": 4, "area": 1.8,
 		"ups": ["dmg", "cd", "count", "area"],
 		"evo": "collectivisation", "evo_name": "Salve Infinie", "evo_desc": "Deux fois plus de roquettes.",
 	},
 	"balalaika": {
 		"name": "Balalaïka", "tags": ["projectile"],
 		"desc": "Des notes têtes chercheuses. Personne n'échappe à la musique folklorique.",
-		"dmg": 17.0, "cd": 0.75, "count": 2, "speed": 15.0, "pierce": 0,
+		"dmg": 18.0, "cd": 0.75, "count": 3, "speed": 15.0, "pierce": 0,
 		"ups": ["dmg", "cd", "count", "pierce"],
 		"evo": "propagande", "evo_name": "Chœur de l'Armée Rouge", "evo_desc": "+3 notes qui traversent 2 ennemis.",
 	},
 	"goulag": {
 		"name": "Goulag Portatif", "tags": ["zone"],
 		"desc": "Une cage tombe sur un groupe d'ennemis : ils sont immobilisés et prennent des dégâts. Rééducation express.",
-		"dmg": 7.0, "cd": 7.0, "area": 3.0, "duration": 3.0,
+		"dmg": 10.0, "cd": 7.0, "area": 3.0, "duration": 3.0,
 		"ups": ["dmg", "cd", "area", "duration"],
 		"evo": "duree", "evo_name": "Archipel", "evo_desc": "Trois cages à chaque fois.",
 	},
@@ -143,7 +143,7 @@ const WEAPONS := {
 	"tracts": {
 		"name": "Tracts de Propagande", "tags": ["projectile"],
 		"desc": "Des tracts partent en spirale autour de toi. Lire, c'est déjà se rendre.",
-		"dmg": 8.0, "cd": 0.45, "count": 2, "speed": 11.0, "pierce": 1,
+		"dmg": 12.0, "cd": 0.45, "count": 2, "speed": 11.0, "pierce": 1,
 		"ups": ["dmg", "cd", "count", "pierce"],
 		"evo": "perforation", "evo_name": "Pluie de Tracts", "evo_desc": "Deux fois plus de tracts, qui traversent tout.",
 	},

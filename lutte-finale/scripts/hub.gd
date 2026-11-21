@@ -232,7 +232,7 @@ func _tab_lancer():
 			b.pressed.connect(func(): Meta.run_char = c; Meta.data["last_char"] = c; _refresh())
 			v.add_child(b)
 		else:
-			v.add_child(_lbl("🔒 À recruter à la Caserne\n%d médailles · grade %d" % [def["cost"], Meta.CHAR_GRADE.get(c, 1)], 18, C_DIM))
+			v.add_child(_lbl("VERROUILLÉ · À recruter à la Caserne\n%d médailles · grade %d" % [def["cost"], Meta.CHAR_GRADE.get(c, 1)], 18, C_DIM))
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 14)
 	content.add_child(row)
@@ -343,7 +343,7 @@ func _tab_caserne():
 		var v := _card(content, C_PANEL)
 		if not cd["unlocked"]:
 			var cg: int = Meta.CHAR_GRADE.get(c, 1)
-			v.add_child(_lbl(def["name"].to_upper() + "  🔒", 26, C_DIM))
+			v.add_child(_lbl(def["name"].to_upper() + "  · VERROUILLÉ", 26, C_DIM))
 			v.add_child(_lbl("Arme : %s · %s" % [Data.WEAPONS[def["weapon"]]["name"], def["passive"]], 17, C_DIM))
 			var ub := _btn("RECRUTER · %d médailles%s" % [def["cost"], (" · grade %d requis" % cg) if Meta.grade() < cg else ""], 20, Meta.data["medals"] >= def["cost"] and Meta.grade() >= cg)
 			ub.pressed.connect(func(): Meta.unlock_char(c); _refresh())
@@ -406,7 +406,7 @@ func _tab_usine():
 		var v := _card(g, C_PANEL, Color(1, 1, 1, 0.06), 1, 420)
 		if not Meta.weapon_unlocked(w):
 			var wg: int = Meta.WEAPON_GRADE.get(w, 1)
-			v.add_child(_lbl(name.to_upper() + "  🔒", 24, C_DIM))
+			v.add_child(_lbl(name.to_upper() + "  · VERROUILLÉ", 24, C_DIM))
 			v.add_child(_lbl(Data.WEAPONS[w]["desc"], 16, C_DIM))
 			var ub := _btn("DÉBLOQUER · %d médailles%s" % [Meta.WEAPON_UNLOCK[w], (" · grade %d requis" % wg) if Meta.grade() < wg else ""], 18, Meta.data["medals"] >= Meta.WEAPON_UNLOCK[w] and Meta.grade() >= wg)
 			ub.pressed.connect(func(): Meta.unlock_weapon(w); _refresh())

@@ -229,6 +229,9 @@ func _fire(id: String, s: Dictionary) -> bool:
 		"hautparleur":
 			var dir: Vector3 = game.player.facing
 			var full: bool = owned[id]["evo"]
+			var ht = game.enemies.nearest(pp, s["area"])
+			if ht == null: return false
+			dir = ht.node.position - pp; dir.y = 0; dir = dir.normalized()
 			for e in game.enemies.in_radius(pp, s["area"]):
 				var v: Vector3 = e.node.position - pp
 				v.y = 0
@@ -781,8 +784,8 @@ func _wall(c: Vector3, along: Vector3, s: Dictionary):
 	add_child(n)
 	n.global_position = Vector3(c.x, 0, c.z)
 	var half: float = s["area"]
-	var mi := U.box(n, Vector3(half * 2.0, 2.4, 0.35), Vector3(0, 1.2, 0), U.solid(Color(0.4, 0.42, 0.45), 0.0, 0.4, 0.8))
-	U.box(n, Vector3(half * 2.0, 0.15, 0.4), Vector3(0, 2.45, 0), U.solid(Color(0.75, 0.08, 0.1)))
+	U.box(n, Vector3(half * 2.0, 1.2, 0.3), Vector3(0, 0.6, 0), U.solid(Color(0.4, 0.42, 0.45, 0.85), 0.0, 0.4, 0.8))
+	U.box(n, Vector3(half * 2.0, 0.12, 0.36), Vector3(0, 1.24, 0), U.solid(Color(0.75, 0.08, 0.1)))
 	n.rotation.y = atan2(along.x, along.z) - PI / 2
 	n.scale = Vector3(1, 0.05, 1)
 	var tw := n.create_tween()

@@ -36,6 +36,9 @@ Ce fichier garde en mémoire les décisions prises avec le créateur du jeu, pou
 - [x] Départ depuis une zone déjà débloquée (niveaux de rattrapage), **3 difficultés** (Camarade, Commissaire, Héros de l'Union), **mode Sans fin** (zones en boucle, boss renforcés), record sauvegardé.
 - [x] **20 armes** (12 nouvelles : Tracteur, Ours de Sibérie, Vodka Frappée, Piolet, Rideau de Fer, Char du Peuple, Orgue du Peuple, Balalaïka, Goulag Portatif, Étoile Rouge, Tracts, Havane Explosif), chacune avec son évolution (arme niv 6 + décret), et **8 fusions** de deux armes (libèrent un emplacement).
 
+- [x] Équilibrage des 20 armes au banc (bot seul avec une arme, 4 min) : Faucille, Spoutnik, Ours réduits ; Piolet, Haut-parleur (vise maintenant l'ennemi le plus proche), Balalaïka, Tracts, Samovar, Goulag, Orgue renforcés.
+- À faire : modules d'Usine pour les 12 nouvelles armes ; vérifier l'équilibrage des zones 2 et 3 avec de vrais joueurs (le bot meurt encore en zone 1 après 8 runs).
+
 ## Réponses du créateur (questionnaire du 21/11/2026)
 **À faire maintenant :**
 - Personnages : taille des capitalistes inchangée ; ennemis tués = **disparition immédiate** (pas de cadavre) ; pas d'animation de frappe du héros ; je propose les 5e/6e camarades ; **skins débloquables** oui.
