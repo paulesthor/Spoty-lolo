@@ -217,6 +217,10 @@ static func attach_head(n: Node, kinds: Array):
 	sk.add_child(ba)
 	var root := Node3D.new()
 	ba.add_child(root)
+	_build_accessories(root, kinds, w, top, cz, front)
+
+static func _build_accessories(root: Node3D, kinds: Array, w: float, top: float, cz: float, front: float):
+	fonts()
 	for k in kinds:
 		match k:
 			"chapka":
