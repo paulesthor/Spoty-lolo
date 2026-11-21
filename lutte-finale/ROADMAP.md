@@ -46,6 +46,12 @@ Ce fichier garde en mémoire les décisions prises avec le créateur du jeu, pou
 - [x] Refonte visuelle (demande du créateur : « un vrai rendu professionnel avec une identité forte ») : sols PBR texturés (asphalte, pavés, béton, marbre, ambientCG CC0), végétation stylisée Quaternius (feuillage texturé), relief de crépi et de briques sur les immeubles, affiches de propagande constructivistes et publicités détournées générées pour le jeu, palissades d'affiches, étalonnage « affiche » (papier chaud, ombres froides, rouges poussés, vignettage, grain), contours encrés sur le héros, les élites et les boss, écran de chargement et Kolkhoze illustrés, HUD aux panneaux inclinés.
 - À poursuivre (identité visuelle) : effets des armes plus graphiques, ciel et lointains, plus de variété de façades, vérifier les performances sur le PC du créateur (FPS en fin de partie).
 
+## Lot 4 — correctifs et sensation de puissance (21/11/2026)
+- [x] Animation de course figée : les clips importés ne bouclaient pas (course, marche, attente). Boucles forcées pour le héros et les ennemis, et délai de grâce au sol (rampes, bordures).
+- [x] Optimisation mesurée (5:00, 106 ennemis) : appels de dessin 3541 → 1913, triangles 1,85 M → 0,83 M. Fusion des décors statiques, accessoires fusionnés, horde sans ombre temps réel (ombre ronde au sol), ombres en 2 passes à 48 m, arbres légers, petits objets non dessinés au-delà de 62 m.
+- [x] Sensation de puissance : la chair à canon (stagiaires, cadres) se renforce moins vite, tireurs et lanceurs plafonnés en nombre, +1,5 % de dégâts par niveau.
+- [x] Fin de partie : cartes « Surplus du Plan » sans limite (dégâts, cadence, PV, régénération, critique, aimant, vitesse) et « Surcharge » des armes au maximum ; conservées d'une zone à l'autre.
+
 ## Réponses du créateur (questionnaire du 21/11/2026)
 **À faire maintenant :**
 - Personnages : taille des capitalistes inchangée ; ennemis tués = **disparition immédiate** (pas de cadavre) ; pas d'animation de frappe du héros ; je propose les 5e/6e camarades ; **skins débloquables** oui.

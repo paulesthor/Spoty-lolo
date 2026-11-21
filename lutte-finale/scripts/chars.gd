@@ -104,6 +104,11 @@ static func build_enemy(parent: Node, kind: String, pos: Vector3, h: float) -> N
 	var n := U.place(parent, path, pos, h, 0.0)
 	recolor(n, ENEMY_COLORS.get(kind, {}))
 	rim(n, Color(1.0, 0.85, 0.7), 0.45)
+	# the horde casts no real-time shadow (big saving); a soft blob grounds each capitalist instead
+	if not kind in ["golden", "boss", "boss2", "boss3"]:
+		for m in n.find_children("*", "GeometryInstance3D", true, false):
+			(m as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		U.blob(n, Vector3(0, 0.04 / n.scale.y, 0), 1.4 / n.scale.x)
 	return n
 
 # rim light: a soft bright edge that detaches characters from the ground (cached per source material)
@@ -176,6 +181,7 @@ static func attach(n: Node3D, kinds: Array):
 	if kk:
 		root.position.y = w * 0.12
 	U._build_accessories(root, kinds, w, hh, 0.0, w * 0.5)
+	U.batch_static(root)      # a hat made of 3 pieces -> one draw call per material
 
 static func hammer(n: Node3D):
 	var sk := skeleton(n)
@@ -211,3 +217,12 @@ static func outline(n: Node, width := 0.025):
 			var d: BaseMaterial3D = src.duplicate()
 			d.next_pass = mat
 			mi.set_surface_override_material(i, d)
+
+# imported glTF clips don't loop by default: locomotion/idle clips must, or the model freezes mid-run
+const LOOPING := ["Idle", "2H_Melee_Idle", "Running_A", "Running_B", "Walking_A", "Walking_B", "Jump_Idle", "Unarmed_Idle",
+	"Walk", "Run", "Run_Back", "Run_Left", "Run_Right", "Idle_Neutral", "Idle_Gun", "Idle_Gun_Pointing", "Idle_Sword", "Idle_Gun_Shoot"]
+static func set_loops(ap: AnimationPlayer):
+	if ap == null: return
+	for nm in LOOPING:
+		if ap.has_animation(nm):
+			ap.get_animation(nm).loop_mode = Animation.LOOP_LINEAR

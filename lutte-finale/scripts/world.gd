@@ -45,6 +45,28 @@ func build(seed_value := 1917, tpl: Dictionary = Levels.HYPERMARCHE):
 	decor.build(self)
 	_walls()
 	_pick_spots()
+	call_deferred("_batch")
+
+func _batch():
+	var keep: Array = []
+	if decor:
+		for b in decor.blinkers: keep.append(b["n"])
+		for sp in decor.spinners: keep.append(sp["n"])
+	var n1 := U.batch_static(self, keep)
+	var n2 := U.batch_static(decor, keep) if decor else 0
+	print("[world] batched %d static meshes" % (n1 + n2))
+	# small props are not drawn beyond what the gameplay camera can make out
+	var culled := 0
+	for g in find_children("*", "GeometryInstance3D", true, false):
+		var gi: GeometryInstance3D = g
+		if gi is MeshInstance3D and (gi as MeshInstance3D).mesh == null: continue
+		var ab: AABB = gi.global_transform * gi.get_aabb()
+		if ab.size.x < 5.0 and ab.size.z < 5.0 and ab.size.y < 6.0:
+			gi.visibility_range_end = 62.0
+			gi.visibility_range_end_margin = 6.0
+			gi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_DISABLED
+			culled += 1
+	print("[world] distance-culled %d small props" % culled)
 
 func _reset():
 	obstacles.clear(); cuts.clear(); lots.clear(); plateaus.clear()
@@ -218,7 +240,8 @@ func _env():
 	var ps := ProceduralSkyMaterial.new()
 	var sun := DirectionalLight3D.new()
 	sun.shadow_enabled = true
-	sun.directional_shadow_max_distance = 70.0
+	sun.directional_shadow_max_distance = 48.0
+	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS     # 2 passes instead of 4
 	sun.shadow_blur = 1.2
 	env.fog_enabled = true
 	env.fog_sky_affect = 0.3
@@ -491,7 +514,7 @@ func _lot_plaza(r: Rect2):
 		var a := TAU * i / 4.0 + PI / 4
 		var tp := c + Vector3(cos(a), 0, sin(a)) * clampf(minf(r.size.x, r.size.y) * 0.45, 9.5, 12.0)
 		if not r.grow(-1.0).has_point(Vector2(tp.x, tp.z)): continue
-		U.nature(self, ["maple_tree_1", "maple_tree_2", "normal_tree_1", "normal_tree_3", "maple_tree_4", "normal_tree_4"][rng.randi() % 6], tp, rng.randf_range(5.5, 7.0), rng.randf() * TAU)
+		U.nature(self, ["maple_tree_1", "maple_tree_2", "maple_tree_4", "birch_tree_1", "maple_tree_1", "maple_tree_4"][rng.randi() % 6], tp, rng.randf_range(5.5, 7.0), rng.randf() * TAU)
 		_undergrowth(tp)
 		obstacles.append(Rect2(tp.x - 0.5, tp.z - 0.5, 1.0, 1.0))      # trunk: nothing else gets placed on it
 
@@ -509,7 +532,7 @@ func _lot_square(r: Rect2):
 		var tp := c + Vector3(cos(a), 0, sin(a)) * rng.randf_range(7.0, minf(r.size.x, r.size.y) * 0.45)
 		if _blocked(tp, 1.5): continue
 		if i % 2 == 0:
-			U.nature(self, ["birch_tree_1", "birch_tree_2", "normal_tree_2", "maple_tree_3"][rng.randi() % 4], tp, rng.randf_range(5.0, 6.5), rng.randf() * TAU)
+			U.nature(self, ["birch_tree_1", "maple_tree_2", "maple_tree_4", "maple_tree_1"][rng.randi() % 4], tp, rng.randf_range(5.0, 6.5), rng.randf() * TAU)
 			_undergrowth(tp)
 		else:
 			U.nature(self, ["bush_large", "bush_large_flowers", "bush_flowers", "bush"][rng.randi() % 4], tp, rng.randf_range(1.2, 1.8), rng.randf() * TAU)
@@ -826,7 +849,8 @@ func _undergrowth(p: Vector3):
 	for k in rng.randi_range(2, 4):
 		var a := rng.randf() * TAU
 		var q := p + Vector3(cos(a), 0, sin(a)) * rng.randf_range(0.8, 1.8)
-		U.nature(self, ["grass_large", "grass_small", "flower_2_clump", "flower_4_clump", "plant_1"][rng.randi() % 5], q, rng.randf_range(0.35, 0.7), rng.randf() * TAU)
+		var ug := U.nature(self, ["grass_large", "grass_small", "flower_2_clump", "flower_4_clump", "plant_1"][rng.randi() % 5], q, rng.randf_range(0.35, 0.7), rng.randf() * TAU)
+		for gm in ug.find_children("*", "GeometryInstance3D", true, false): (gm as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 # each lot gets its own floor: paving on squares and markets, concrete in yards, marble in the stock exchange
 func _lot_floor(r: Rect2, kind: String):

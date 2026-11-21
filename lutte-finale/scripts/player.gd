@@ -50,6 +50,7 @@ func apply_character(c: String):
 	_build_model(c)
 
 var oneshot_t := 0.0
+var air_t := 0.0
 var char_id := "stakhanov"
 
 func _build_model(c: String):
@@ -62,6 +63,7 @@ func _build_model(c: String):
 	model = Chars.build_hero(self, c, Meta.skin_sel(c))
 	Chars.outline(model, 0.022)
 	ap = U.anim_player(model)
+	Chars.set_loops(ap)
 	if ap: ap.playback_default_blend_time = 0.12
 	_anim("idle")
 	global_position = keep
@@ -70,7 +72,7 @@ func _anim(state: String, speed := 1.0):
 	if ap == null: return
 	var a: String = Chars.HERO_ANIMS.get(state, state)
 	if not ap.has_animation(a): return
-	if cur_anim != a:
+	if cur_anim != a or not ap.is_playing():
 		cur_anim = a
 		ap.play(a, 0.12)
 	ap.speed_scale = speed
@@ -195,9 +197,12 @@ func _physics_process(d: float):
 		facing = hv.normalized()
 		model.rotation.y = lerp_angle(model.rotation.y, atan2(facing.x, facing.z) + Chars.KK_YAW, 14.0 * d)
 	oneshot_t = maxf(0.0, oneshot_t - d)
+	# airborne only after a short grace time: ramps and kerbs briefly break floor contact
+	air_t = 0.0 if on_floor else air_t + d
+	var airborne := air_t > 0.15 or velocity.y > 2.0
 	if oneshot_t > 0.0:
 		pass
-	elif not on_floor:
+	elif airborne:
 		_anim("jump" if velocity.y > 0.0 else "fall")
 	elif slide_t > 0.0:
 		_anim("slide", 1.3)

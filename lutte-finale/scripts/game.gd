@@ -347,6 +347,7 @@ func dv(id: String) -> float:
 	var v: float = (decrets[id]["v"] if decrets.has(id) else 0.0)
 	if id == "endurance": return v
 	v += mods.get(id, 0.0)
+	if id == "productivite": v += 1.5 * (level - 1)       # "Expérience du Parti": every level makes you hit harder
 	if id == "productivite" and char_id == "barbudo": v += minf(30.0, 3.0 * (elites_killed + bosses_killed.size()))
 	if id == "cadence":
 		if char_id == "stakhanov": v += minf(20.0, floorf(kills / 150.0) * 2.0)
@@ -380,7 +381,7 @@ func _do_warp():
 			_apply({"kind": "decret", "id": id, "rarity": 1})
 	var m := mults()
 	for i in 100:
-		enemies.spawn(_pick_kind(), spawn_point(8.0, 26.0), m[0], m[1])
+		_spawn_picked(spawn_point(8.0, 26.0), m)
 
 func _setup_input():
 	var acts := {
@@ -814,6 +815,20 @@ func mults() -> Array:
 func enemy_speed_mult() -> float:
 	return 0.55 if event_name == "greve" else 1.0
 
+# the horde stays mowable (fodder scales slower) and shooters are capped, so the player keeps hunting
+const FODDER := ["stagiaire", "cadre"]
+const SHOOTERS := ["influenceur", "banquier"]
+func _spawn_picked(p: Vector3, m: Array):
+	var kind := _pick_kind()
+	if kind in SHOOTERS:
+		var n := 0
+		for e in enemies.alive_list():
+			if e.kind in SHOOTERS: n += 1
+		if n >= int(5 + minf(dtime() / 150.0, 6.0)): kind = "cadre" if rng.randf() < 0.5 else "stagiaire"
+	var hp: float = m[0]
+	if kind in FODDER: hp = pow(hp, 0.82)
+	enemies.spawn(kind, p, hp, m[1])
+
 func _pick_kind() -> String:
 	var tm := dtime() / 60.0
 	var total := 0.0
@@ -838,7 +853,7 @@ func _director(d: float):
 	while spawn_acc >= 1.0:
 		spawn_acc -= 1.0
 		if enemies.count() >= cap: break
-		enemies.spawn(_pick_kind(), spawn_point(20.0, 30.0), m[0], m[1])
+		_spawn_picked(spawn_point(20.0, 30.0), m)
 	if time >= next_wave and time < ZONE_TIME:
 		next_wave += 60.0
 		var n := int(12 + tm * 5)
@@ -1151,7 +1166,7 @@ func _update_interactions(d: float):
 						var m := mults()
 						for i in int(14 + time / 25.0):
 							var a := TAU * i / (14 + time / 25.0)
-							enemies.spawn(_pick_kind(), world.resolve(s["pos"] + Vector3(cos(a), 0, sin(a)) * 15.0, 0.5), m[0], m[1])
+							_spawn_picked(world.resolve(s["pos"] + Vector3(cos(a), 0, sin(a)) * 15.0, 0.5), m)
 			_:
 				if s["used"] and s["kind"] != "marche": continue
 				if dist < 3.5 and s["cd"] <= 0.0:
@@ -1234,6 +1249,8 @@ func _roll_options(n: int, min_r := 0, bonus := 0, exclude: Array = []) -> Array
 			pool.append({"kind": "evo", "id": id, "w": 4.0})
 		elif weapons.level(id) < Data.MAX_WEAPON_LV:
 			pool.append({"kind": "weapon_up", "id": id, "w": 1.3})
+		else:
+			pool.append({"kind": "surcharge", "id": id, "w": 0.8})
 	for f in Data.FUSIONS:
 		if weapons.can_fuse(f):
 			pool.append({"kind": "fusion", "id": f, "w": 4.0})
@@ -1248,6 +1265,8 @@ func _roll_options(n: int, min_r := 0, bonus := 0, exclude: Array = []) -> Array
 		for id in Data.DECRETS:
 			if not decrets.has(id):
 				pool.append({"kind": "decret", "id": id, "w": 0.45})
+	for sid in SURPLUS:
+		pool.append({"kind": "surplus", "id": sid, "w": 0.12})
 	var filtered := []
 	for o in pool:
 		var k := _ban_key(o)
@@ -1270,9 +1289,38 @@ func _roll_options(n: int, min_r := 0, bonus := 0, exclude: Array = []) -> Array
 		_describe(o)
 	return out
 
+# endless "Surplus du Plan" cards: once everything is maxed, chests and levels still pay off
+const SURPLUS := {
+	"productivite": ["SURPLUS DE PRODUCTION", "+%d %% de dégâts", 6.0],
+	"cadence": ["HEURES SUPPLÉMENTAIRES", "+%d %% de cadence", 5.0],
+	"endurance": ["RATIONS DOUBLES", "+%d PV max (et soin)", 15.0],
+	"regen": ["SOUPE AU CHOU", "+%.1f PV/s", 0.35],
+	"critique": ["ZÈLE RÉVOLUTIONNAIRE", "+%d %% de critique", 3.0],
+	"crit_dmg": ["COUP DE GRÂCE", "+%d %% de dégâts critiques", 15.0],
+	"aimant": ["AIMANT DU PARTI", "+%d %% de ramassage", 15.0],
+	"vitesse": ["STAKHANOVISME", "+%d %% de vitesse", 3.0],
+}
+
 func _describe(o: Dictionary):
 	var r: int = o["rarity"]
 	match o["kind"]:
+		"surplus":
+			var sp: Array = SURPLUS[o["id"]]
+			var v: float = sp[2] * Data.RARITY_MULT[r]
+			o["value"] = v
+			o["title"] = sp[0]
+			o["tag"] = "SURPLUS DU PLAN · " + Data.RARITIES[r]
+			o["lv"] = "Sans limite"
+			o["desc"] = (sp[1] as String) % (v if o["id"] == "regen" else roundi(v))
+			o["short"] = o["desc"]
+		"surcharge":
+			var v2: float = 0.12 * Data.RARITY_MULT[r]
+			o["value"] = v2
+			o["title"] = "SURCHARGE · " + weapons.display_name(o["id"]).to_upper()
+			o["tag"] = "ARME AU MAXIMUM · " + Data.RARITIES[r]
+			o["lv"] = "Surcharge"
+			o["desc"] = "+%d %% de dégâts et +%d %% de cadence pour cette arme." % [roundi(v2 * 100), roundi(v2 * 40)]
+			o["short"] = o["desc"]
 		"evo":
 			var w: Dictionary = Data.WEAPONS[o["id"]]
 			o["title"] = w["evo_name"]
@@ -1346,6 +1394,20 @@ func _apply(o: Dictionary):
 		"weapon_up":
 			if not o.has("mods"): _describe(o)
 			weapons.upgrade(o["id"], o["mods"])
+		"surcharge":
+			if not o.has("value"): _describe(o)
+			if bot: print("[surcharge] %s" % o["id"])
+			var wm: Dictionary = weapons.owned[o["id"]]["mods"]
+			wm["dmg"] = wm.get("dmg", 0.0) + o["value"]
+			wm["cd"] = wm.get("cd", 0.0) + o["value"] * 0.4
+		"surplus":
+			if not o.has("value"): _describe(o)
+			if bot: print("[surplus] %s +%.1f" % [o["id"], o["value"]])
+			var sv: float = o["value"]
+			if o["id"] == "endurance":
+				player.max_hp += sv; player.heal(sv)
+			else:
+				mods[o["id"]] = mods.get(o["id"], 0.0) + sv
 		"decret":
 			var v: float = o.get("value", Data.decret_value(o["id"], o["rarity"]))
 			if not decrets.has(o["id"]): decrets[o["id"]] = {"n": 0, "v": 0.0}
@@ -1517,7 +1579,7 @@ func _snapshot() -> Dictionary:
 		"kills": kills, "kills_by_kind": kills_by_kind.duplicate(), "kills_by_weapon": kills_by_weapon.duplicate(), "dmg_by_weapon": dmg_by_weapon.duplicate(),
 		"elites": elites_killed, "chests": chests_opened, "shrines": shrines_used, "evo": got_evo, "rerolls": rerolls, "banishes": banishes, "skips": skips,
 		"banned": banned.duplicate(), "revives": revives, "ult_kills": ult_kills, "ult_uses": ult_uses, "hp": player.hp, "max_hp": player.max_hp, "run_time": run_time + time,
-		"bosses": bosses_killed.duplicate(), "market_buys": market_buys}
+		"bosses": bosses_killed.duplicate(), "market_buys": market_buys, "mods": mods.duplicate()}
 
 func _restore(c: Dictionary):
 	carried = true
@@ -1530,6 +1592,7 @@ func _restore(c: Dictionary):
 	rerolls = c["rerolls"]; banishes = c["banishes"]; skips = c["skips"]; banned = c["banned"]; revives = c["revives"]
 	ult_kills = c["ult_kills"]; ult_uses = c["ult_uses"]; run_time = c["run_time"]; bosses_killed = c["bosses"]
 	market_buys = c.get("market_buys", 0)
+	if c.has("mods"): mods = c["mods"]      # includes "Surplus du Plan" bonuses
 	player.max_hp = c["max_hp"]
 	player.hp = player.max_hp     # a new zone: the Party grants a full meal
 
@@ -1607,6 +1670,7 @@ func _bot_pick() -> int:
 		var sc: float = 1.0 + o["rarity"] * 0.6
 		match o["kind"]:
 			"evo", "fusion": sc += 10.0
+			"surcharge", "surplus": sc += 1.2
 			"weapon_new": sc += 3.0 if weapons.slot_ids().size() < 3 else 1.0
 			"weapon_up": sc += 2.0
 			"decret":
@@ -1626,6 +1690,7 @@ func _bot_tick(d: float):
 		var dl := []
 		for id in decrets: dl.append("%s%d" % [id.substr(0, 4), decrets[id]["n"]])
 		print("[bot] t=%s lvl=%d hp=%d/%d kills=%d enemies=%d rub=%d fps=%d w=%s d=%s bets=%d state=%s" % [_fmt(time), level, player.hp, player.max_hp, kills, enemies.count(), rubles, Engine.get_frames_per_second(), ",".join(wl), ",".join(dl), bets, state])
+		print("[perf] dc=%d obj=%d prims=%d proc_ms=%.1f phys_ms=%.1f nodes=%d" % [Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME), Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME), Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0, Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0, Performance.get_monitor(Performance.OBJECT_NODE_COUNT)])
 	if shot_every > 0.0:
 		shot_t += d
 		if shot_t >= shot_every:
@@ -1640,6 +1705,7 @@ func _bot_tick(d: float):
 	if test_dur > 0.0 and (time >= test_dur or state in ["over", "win"]):
 		if state in ["over", "win"]: _screenshot()
 		print("[bot] END state=%s t=%s lvl=%d kills=%d" % [state, _fmt(time), level, kills])
+		print("[perf] END dc=%d obj=%d prims=%d proc_ms=%.1f enemies=%d nodes=%d" % [Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME), Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME), Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0, enemies.count(), Performance.get_monitor(Performance.OBJECT_NODE_COUNT)])
 		var dl := []
 		for k in dmg_by_weapon: dl.append("%s=%d" % [k, int(dmg_by_weapon[k])])
 		print("[bot] DMG " + " ".join(dl))

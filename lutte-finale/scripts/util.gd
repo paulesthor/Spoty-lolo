@@ -154,6 +154,41 @@ static func nature(parent: Node, prefab: String, pos: Vector3, height: float, ro
 	n.position += Vector3(pos.x - b.get_center().x, pos.y - b.position.y, pos.z - b.get_center().z)
 	return n
 
+# Static batching: merge the primitive meshes that are direct children of `root` into one mesh per
+# (material, shadow) pair. Hundreds of boxes/cylinders become a handful of draw calls.
+static func batch_static(root: Node3D, keep: Array = []) -> int:
+	var groups := {}
+	var inv := root.global_transform.affine_inverse()
+	for c in root.get_children():
+		if not (c is MeshInstance3D) or keep.has(c): continue
+		var mi: MeshInstance3D = c
+		if not (mi.mesh is PrimitiveMesh) or mi.material_override == null or not mi.visible: continue
+		if mi.get_child_count() > 0 or mi.has_meta("airborne"): continue
+		var bmat := mi.material_override as BaseMaterial3D
+		if bmat and bmat.billboard_mode != BaseMaterial3D.BILLBOARD_DISABLED: continue   # billboards must stay separate
+		var key := "%d_%d" % [mi.material_override.get_instance_id(), mi.cast_shadow]
+		if not groups.has(key): groups[key] = []
+		groups[key].append(mi)
+	var merged := 0
+	for key in groups:
+		var list: Array = groups[key]
+		if list.size() < 2: continue
+		var st := SurfaceTool.new()
+		st.begin(Mesh.PRIMITIVE_TRIANGLES)
+		for mi in list:
+			var m: MeshInstance3D = mi
+			for si in m.mesh.get_surface_count():
+				st.append_from(m.mesh, si, inv * m.global_transform)
+		var out := MeshInstance3D.new()
+		out.mesh = st.commit()
+		out.material_override = (list[0] as MeshInstance3D).material_override
+		out.cast_shadow = (list[0] as MeshInstance3D).cast_shadow
+		root.add_child(out)
+		for mi in list:
+			(mi as Node).queue_free()
+		merged += list.size()
+	return merged
+
 static func solid(color: Color, emissive := 0.0, rough := 0.8, metal := 0.0) -> StandardMaterial3D:
 	var key := "%s_%f_%f_%f" % [color.to_html(), emissive, rough, metal]
 	if _mats.has(key): return _mats[key]
@@ -231,6 +266,27 @@ static func sprite(parent: Node, tex: String, pos: Vector3, size: float, color: 
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	mi.position = pos
 	mi.rotation = rot
+	parent.add_child(mi)
+	return mi
+
+# soft dark ground blob (cheap stand-in for a real-time shadow)
+static func blob(parent: Node, pos: Vector3, size: float, alpha := 0.42) -> MeshInstance3D:
+	var key := "blob_%f" % alpha
+	if not _mats.has(key):
+		var m := StandardMaterial3D.new()
+		m.albedo_texture = load("res://fx/circle_05.png")
+		m.albedo_color = Color(0, 0, 0, alpha)
+		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		m.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+		_mats[key] = m
+	var mi := MeshInstance3D.new()
+	var q := QuadMesh.new(); q.size = Vector2(size, size)
+	mi.mesh = q
+	mi.material_override = _mats[key]
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.position = pos
+	mi.rotation = Vector3(-PI / 2, 0, 0)
 	parent.add_child(mi)
 	return mi
 

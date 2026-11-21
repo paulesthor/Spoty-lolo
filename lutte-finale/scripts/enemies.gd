@@ -106,6 +106,7 @@ func spawn(kind: String, pos: Vector3, hp_mult := 1.0, dmg_mult := 1.0) -> Enemy
 		if def.get("shield_aura", false):
 			var ring := U.sprite(e.node, "circle_03.png", Vector3(0, 0.05, 0), 10.0 / e.node.scale.x, Color(0.7, 0.5, 1.0, 0.18), 1.2, false, Vector3(-PI / 2, 0, 0))
 		e.ap = U.anim_player(e.node)
+		Chars.set_loops(e.ap)
 		if e.ap:
 			e.ap.callback_mode_process = AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
 			e.ap.playback_default_blend_time = 0.1
