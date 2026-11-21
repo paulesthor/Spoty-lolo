@@ -4,7 +4,8 @@ extends Node3D
 var game
 var kind := ""
 var t := 0.0
-var next_at := 150.0
+var next_at := 120.0      # earliest moment a weather event may happen
+var roll_t := 15.0
 var force := ""
 var tornadoes: Array = []
 var strike_t := 0.0
@@ -20,8 +21,14 @@ func _process(d: float):
 	if game == null or game.state != "play": return
 	d = minf(d, 0.05)
 	if kind == "":
-		if game.time >= next_at and not game.krach:
-			_start(force if force != "" else ["tornades", "smog", "orage"][randi() % 3])
+		if force != "" and game.time >= next_at:
+			_start(force); return
+		# rare and random: a 6 % roll every 15 s once allowed (about one event per run on average, sometimes none)
+		roll_t -= d
+		if roll_t <= 0.0:
+			roll_t = 15.0
+			if game.time >= next_at and not game.krach and randf() < 0.06:
+				_start(["tornades", "smog", "orage"][randi() % 3])
 		return
 	t -= d
 	match kind:
@@ -31,7 +38,7 @@ func _process(d: float):
 
 func _start(k: String):
 	kind = k
-	t = 30.0 if k != "smog" else 25.0
+	t = randf_range(20.0, 35.0)
 	match k:
 		"tornades":
 			game.toast("MÉTÉO · TORNADES DE CADDIES ! ÉLOIGNE-TOI DES TOURBILLONS", 3.0)
@@ -57,7 +64,7 @@ func _stop():
 			tw.tween_property(game.world.env, "fog_density", base_fog, 3.0)
 			game.world.env.fog_light_color = Color(0.8, 0.68, 0.58)
 	kind = ""
-	next_at = game.time + randf_range(110.0, 150.0)
+	next_at = game.time + 90.0
 	game.toast("LA MÉTÉO SE CALME", 1.5)
 
 func _make_tornado(p: Vector3) -> Dictionary:
