@@ -22,6 +22,7 @@ const HERO_ANIMS := {
 	"idle": "2H_Melee_Idle", "run": "Running_A", "jump": "Jump_Idle", "fall": "Jump_Idle", "land": "Jump_Land",
 	"slide": "Dodge_Forward", "dodge_f": "Dodge_Forward", "dodge_b": "Dodge_Backward", "dodge_l": "Dodge_Left", "dodge_r": "Dodge_Right",
 	"hit": "Hit_A", "death": "Death_A", "cheer": "Cheer", "attack": "2H_Melee_Attack_Chop", "throw": "Throw",
+	"interact": "Interact", "cast": "Spellcast_Raise", "pickup": "PickUp",
 }
 
 const KK_YAW := 0.0   # KayKit models face +Z (glTF forward), like our facing convention
@@ -165,6 +166,7 @@ static func hammer(n: Node3D):
 	ba.bone_name = bone
 	sk.add_child(ba)
 	var h := Node3D.new()
+	h.set_meta("airborne", true)    # held in the hand: the layout checker can't see the skinned hand
 	ba.add_child(h)
 	U.cyl(h, 0.035, 1.0, Vector3(0, 0.45, 0), U.solid(Color(0.55, 0.33, 0.15)))
 	U.box(h, Vector3(0.42, 0.2, 0.2), Vector3(0, 0.95, 0), U.solid(Color(0.5, 0.52, 0.56), 0.0, 0.35, 0.9))

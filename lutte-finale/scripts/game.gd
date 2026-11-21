@@ -152,6 +152,12 @@ func _ready():
 		n.process_mode = Node.PROCESS_MODE_PAUSABLE
 	_setup_camera()
 	_setup_map_objects()
+	if "layoutcheck" in OS.get_cmdline_user_args():
+		var iss: Array = load("res://scripts/layout_check.gd").run(self)
+		for line in iss: print("[layout] " + line)
+		print("[layout] zone=%d issues=%d" % [zone, iss.size()])
+		get_tree().quit()
+		return
 	weather.setup(self)
 	for i in 40:
 		var l := U.label(self, "", Vector3(0, -100, 0), 64, Color.WHITE, Color(0.08, 0.04, 0.02, 1))
@@ -404,6 +410,7 @@ func _beam(parent: Node3D, col: Color, h := 30.0):
 	m.material_override = mat
 	m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	m.position = Vector3(0, h / 2.0, 0)
+	m.set_meta("airborne", true)     # light beam, not a physical object
 	parent.add_child(m)
 	return m
 
@@ -413,16 +420,54 @@ func _setup_map_objects():
 	var kinds := ["statue", "file", "statue", "pari", "goulag", "marche", "aimant", "defi", "file"]
 	for i in world.shrine_spots.size():
 		_make_shrine(kinds[i % kinds.size()], world.shrine_spots[i])
+	var taken: Array = []
+	for c in chests: taken.append((c["n"] as Node3D).global_position)
 	for p in world.breakable_spots:
+		var ok := true
+		for q in taken:
+			if p.distance_to(q) < 1.6: ok = false; break
+		if not ok: continue
+		taken.append(p)
 		_make_breakable(p)
+
+# lid swings open and coins burst out; runs while the game is paused on the reward choice
+func _chest_open_fx(n: Node3D):
+	var lid: Node3D = n.get_node_or_null("lid")
+	var tw := create_tween().set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	if lid: tw.tween_property(lid, "rotation:x", -1.9, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	for i in 8:
+		var c := U.cyl(n, 0.12, 0.04, Vector3(0, 0.6, 0), U.solid(Color(1, 0.8, 0.25), 1.5, 0.3, 1.0))
+		var a := TAU * i / 8.0
+		var to := Vector3(cos(a) * 1.2, 1.6 + randf() * 0.8, sin(a) * 1.2)
+		var ct := create_tween().set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+		ct.tween_property(c, "position", to, 0.35).set_ease(Tween.EASE_OUT)
+		ct.parallel().tween_property(c, "rotation", Vector3(randf() * 6, randf() * 6, 0), 0.35)
+		ct.tween_property(c, "scale", Vector3.ONE * 0.01, 0.3)
+	var glow := U.sprite(n, "light_01.png", Vector3(0, 1.0, 0), 3.0, Color(1, 0.8, 0.3, 0.8), 3.0)
+	var gt := create_tween().set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	gt.tween_property(glow, "scale", Vector3.ONE * 2.0, 0.4)
+	tw.tween_interval(0.9)
+	tw.tween_property(n, "scale", Vector3.ONE * 0.01, 0.25)
+	tw.tween_callback(n.queue_free)
 
 func _make_chest(p: Vector3, free: bool, rarity_bonus := 0):
 	var n := Node3D.new()
 	add_child(n)
 	n.global_position = p
 	n.rotation.y = rng.randf() * TAU
-	U.box(n, Vector3(1.2, 0.8, 0.8), Vector3(0, 0.4, 0), U.solid(Color(0.95, 0.68, 0.15) if rarity_bonus == 0 else Color(0.75, 0.4, 1.0), 0.0, 0.4, 0.6))
-	U.box(n, Vector3(1.24, 0.12, 0.84), Vector3(0, 0.62, 0), U.solid(Color(0.35, 0.2, 0.1)))
+	var body_col := Color(0.95, 0.68, 0.15) if rarity_bonus == 0 else Color(0.75, 0.4, 1.0)
+	var wood := U.solid(Color(0.42, 0.25, 0.12), 0.0, 0.8)
+	U.box(n, Vector3(1.2, 0.62, 0.8), Vector3(0, 0.31, 0), wood)
+	for bx in [-0.5, 0.5]:
+		U.box(n, Vector3(0.1, 0.64, 0.84), Vector3(bx, 0.32, 0), U.solid(body_col, 0.0, 0.4, 0.6))
+	var lid := Node3D.new(); lid.name = "lid"; n.add_child(lid); lid.position = Vector3(0, 0.62, -0.4)
+	U.box(lid, Vector3(1.22, 0.26, 0.82), Vector3(0, 0.13, 0.4), wood)
+	for bx in [-0.5, 0.5]:
+		U.box(lid, Vector3(0.1, 0.28, 0.86), Vector3(bx, 0.13, 0.4), U.solid(body_col, 0.0, 0.4, 0.6))
+	U.box(lid, Vector3(0.18, 0.22, 0.06), Vector3(0, 0.05, 0.83), U.solid(Color(1, 0.85, 0.3), 0.5, 0.3, 1.0))
+	var st := Label3D.new(); st.text = "★"; st.font = load("res://fonts/Symbols.ttf"); st.font_size = 96; st.pixel_size = 0.004
+	st.modulate = Color(0.85, 0.1, 0.1); st.outline_size = 0; st.position = Vector3(0, 0.3, 0.41)
+	n.add_child(st)
 	_beam(n, Color(1, 0.8, 0.3) if rarity_bonus == 0 else Color(0.8, 0.5, 1.0), 14.0)
 	var lab := U.label(n, "GRATUIT" if free else "", Vector3(0, 1.6, 0), 48, Color(1, 0.88, 0.4), Color(0, 0, 0, 1))
 	chests.append({"n": n, "free": free, "label": lab, "bonus": rarity_bonus})
@@ -446,24 +491,29 @@ func _make_shrine(kind: String, p: Vector3):
 	match kind:
 		"statue":
 			U.box(n, Vector3(3, 2.2, 3), Vector3(0, 1.1, 0), U.solid(Color(0.55, 0.52, 0.5)))
-			var st := U.place(n, U.CH + "character-male-b.glb", p + Vector3(0, 2.2, 0), 5.2, 0.4)
-			U.play_anim(st, "emote-yes", 0.25, 0.0)
+			var holder := Node3D.new(); n.add_child(holder); holder.position = Vector3(0, 2.2, 0)
+			var st := Chars.build_hero(holder, char_id, 0)
+			st.position = Vector3.ZERO      # build_hero places at the world origin; re-centre on the plinth
+			st.scale *= 1.9
+			st.rotation.y = rng.randf() * TAU
 			var ap := U.anim_player(st)
-			if ap: ap.pause()
+			if ap and ap.has_animation("Cheer"):
+				ap.play("Cheer"); ap.seek(0.55, true); ap.pause()
 			for m in st.find_children("*", "MeshInstance3D", true, false):
 				(m as MeshInstance3D).material_override = U.solid(Color(0.75, 0.12, 0.12), 0.0, 0.45, 0.3)
 			world.obstacles.append(Rect2(p.x - 1.5, p.z - 1.5, 3, 3))
 			_static_box(p + Vector3(0, 1.1, 0), Vector3(3, 2.2, 3))
 			for fx in [-3.0, 3.0]:
-				U.box(n, Vector3(0.15, 7, 0.15), Vector3(fx, 3.5, 0), U.solid(Color(0.3, 0.3, 0.32), 0.0, 0.4, 0.8))
-				U.box(n, Vector3(2.4, 1.5, 0.05), Vector3(fx + 1.25, 6.2, 0), U.solid(Color(0.72, 0.05, 0.1)))
+				U.box(n, Vector3(0.15, 5.0, 0.15), Vector3(fx, 2.5, 0), U.solid(Color(0.3, 0.3, 0.32), 0.0, 0.4, 0.8))
+				U.box(n, Vector3(2.4, 1.5, 0.05), Vector3(fx + 1.25, 4.2, 0), U.solid(Color(0.72, 0.05, 0.1)))
 				var s2 := Label3D.new(); s2.text = "☭"; s2.font = load("res://fonts/Symbols.ttf"); s2.font_size = 128; s2.pixel_size = 0.008
-				s2.modulate = Color(1, 0.8, 0.25); s2.outline_size = 0; s2.position = Vector3(fx + 1.25, 6.2, 0.05); s2.shaded = true
+				s2.modulate = Color(1, 0.8, 0.25); s2.outline_size = 0; s2.position = Vector3(fx + 1.25, 4.2, 0.05); s2.shaded = true
 				n.add_child(s2)
 		"file":
 			for i in 6:
 				U.cyl(n, 0.08, 1.0, Vector3(-3.5 + i * 1.4, 0.5, 2.5), U.solid(Color(0.75, 0.75, 0.78), 0.0, 0.3, 0.9))
 			U.box(n, Vector3(7.0, 0.08, 0.05), Vector3(0, 0.85, 2.5), U.solid(Color(0.8, 0.1, 0.1)))
+			U.box(n, Vector3(0.14, 1.7, 0.14), Vector3(0, 0.85, -0.12), U.solid(Color(0.3, 0.3, 0.32), 0.0, 0.4, 0.8))
 			U.box(n, Vector3(2.2, 1.6, 0.15), Vector3(0, 2.4, 0), U.solid(Color(0.9, 0.88, 0.8)))
 			U.label(n, "PRENEZ UN\nNUMÉRO", Vector3(0, 2.4, 0.1), 56, Color(0.1, 0.1, 0.1), Color(0, 0, 0, 0), false)
 		"pari":
@@ -481,26 +531,31 @@ func _make_shrine(kind: String, p: Vector3):
 		"marche":
 			U.box(n, Vector3(3.2, 1.0, 1.2), Vector3(0, 0.5, 0), U.solid(Color(0.3, 0.2, 0.25)))
 			U.box(n, Vector3(3.6, 0.12, 2.0), Vector3(0, 2.6, 0.2), U.solid(Color(0.35, 0.15, 0.45)))
+			for px in [-1.65, 1.65]:
+				for pz in [-0.6, 1.0]:
+					U.box(n, Vector3(0.1, 2.55, 0.1), Vector3(px, 1.27, pz), U.solid(Color(0.25, 0.25, 0.27), 0.0, 0.4, 0.8))
 			var gm := U.place(n, U.SHOP + "gacha-machine.glb", p + Vector3(2.4, 0, 0), 1.8, 0.0)
 			var lamp := OmniLight3D.new(); lamp.light_color = col; lamp.light_energy = 1.5; lamp.omni_range = 5.0; lamp.position = Vector3(0, 2.2, 0.6)
 			n.add_child(lamp)
 			world.obstacles.append(Rect2(p.x - 1.6, p.z - 0.6, 3.2, 1.2)); _static_box(p + Vector3(0, 0.5, 0), Vector3(3.2, 1.0, 1.2))
 		"aimant":
 			var fr := U.place(n, U.SHOP + "freezer.glb", p, 2.2, 0.0)
-			U.box(n, Vector3(1.6, 0.6, 0.1), Vector3(0, 2.6, 0.5), U.solid(Color(0.72, 0.05, 0.1)))
+			var fa := U.world_aabb(fr)
+			U.box(n, Vector3(1.6, 0.6, 0.1), Vector3(0, fa.end.y - p.y + 0.28, fa.end.z - p.z + 0.02), U.solid(Color(0.72, 0.05, 0.1)))
 			world.obstacles.append(Rect2(p.x - 0.8, p.z - 0.6, 1.6, 1.2))
 		"defi":
 			U.box(n, Vector3(2.4, 1.2, 2.4), Vector3(0, 0.6, 0), U.solid(Color(0.3, 0.28, 0.25)))
-			var g := U.place(n, U.CH + "character-male-d.glb", p + Vector3(0, 1.2, 0), 3.2, 0.0)
-			U.play_anim(g, "emote-yes", 0.3, 0.0)
+			var g := Chars.build_enemy(n, "golden", p + Vector3(0, 1.2, 0), 3.2)
+			Chars.attach(g, ["tophat", "cigar", "monocle"])
 			var ap2 := U.anim_player(g)
-			if ap2: ap2.pause()
+			if ap2 and ap2.has_animation("Wave"):
+				ap2.play("Wave"); ap2.seek(0.4, true); ap2.pause()
 			for m in g.find_children("*", "MeshInstance3D", true, false):
 				(m as MeshInstance3D).material_override = U.solid(Color(1.0, 0.72, 0.2), 0.0, 0.25, 1.0)
 			world.obstacles.append(Rect2(p.x - 1.2, p.z - 1.2, 2.4, 2.4)); _static_box(p + Vector3(0, 0.6, 0), Vector3(2.4, 1.2, 2.4))
 	_beam(n, col)
 	var lab := U.label(n, info[0], Vector3(0, 6.0 if kind == "statue" else 4.2, 0), 60, col, Color(0.05, 0.03, 0, 1))
-	if kind == "statue": lab.position.y = 8.2
+	if kind == "statue": lab.position.y = 7.0
 	var ring = null
 	if kind in ["statue", "file"]:
 		ring = MeshInstance3D.new()
@@ -580,7 +635,8 @@ func _process(d: float):
 	if cam_rig == null or player == null or hud == null: return
 	var rd := minf(d, 0.05)
 	match state:
-		"loading":
+		"loading", "dying":
+			_update_camera(rd)
 			return
 		"menu":
 			cam_rig.rotation.y += rd * 0.1
@@ -983,7 +1039,8 @@ func _update_interactions(d: float):
 				rubles -= cost
 				if not c["free"]: chest_cost = int(chest_cost * 1.45) + 4
 				chests.erase(c)
-				c["n"].queue_free()
+				_chest_open_fx(c["n"])
+				player.oneshot("interact", 0.5, 1.6)
 				chests_opened += 1
 				_open_chest(c["bonus"])
 				act = false
@@ -1040,6 +1097,7 @@ func _update_interactions(d: float):
 	hud.prompt(prompt)
 
 func _use_shrine(s: Dictionary):
+	player.oneshot("interact", 0.5, 1.6)
 	if not s["used"]: shrines_used += 1
 	s["used"] = true
 	s["active"] = false
@@ -1283,6 +1341,7 @@ func _on_chosen(i: int):
 # ---------------------------------------------------------------- ultimate
 func _try_ultimate():
 	if ult_kills < ultimate_cost(): return
+	player.oneshot("cast", 0.7, 1.4)
 	ult_kills = 0
 	ult_uses += 1
 	var pw: float = 1.0 + mods.get("ult_power", 0.0) / 100.0
@@ -1353,6 +1412,7 @@ func _boss_down(e):
 	var p: Vector3 = world.resolve(e.node.position, 2.0)
 	if not world.inside(p): p = world.player_start
 	_open_door(p)
+	player.oneshot("cheer", 1.6, 1.0)
 	var nxt: Dictionary = Levels.zone(zone + 1)
 	hud.toast("%s EST BONKÉ ! LA PORTE VERS %s EST OUVERTE" % [Data.ENEMIES[e.kind]["name"].to_upper(), nxt["name"].to_upper()], 4.0)
 	player.heal(player.max_hp * 0.3)
@@ -1421,6 +1481,19 @@ func game_over(abandon := false):
 			if not e.boss and not e.invincible: enemies.kill(e)
 		hud.toast("SECONDE CHANCE · LE PARTI TE RESSUSCITE", 2.5)
 		return
+	if not abandon and state == "play":
+		# the comrade falls first, in slow motion, then the report appears
+		state = "dying"
+		player.oneshot("death", 9.0, 1.0)
+		hud.set_hud_visible(false)
+		Engine.time_scale = base_time_scale * 0.45
+		get_tree().create_timer(1.6, true, false, true).timeout.connect(func():
+			Engine.time_scale = base_time_scale
+			_finish_over())
+		return
+	_finish_over()
+
+func _finish_over():
 	state = "over"
 	get_tree().paused = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE

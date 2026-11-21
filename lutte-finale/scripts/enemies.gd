@@ -35,7 +35,9 @@ class Enemy:
 	var level := -1
 	var stun_imm := 0.0
 	var idx := 0
-	var anim_acc := 0.0       # diminishing returns: immune to new stuns while > 0           # -1 ground, otherwise index of the plateau it stands on
+	var anim_acc := 0.0
+	var act_t := 0.0          # an action animation (punch, throw, flinch...) is playing
+	var flinch_cd := 0.0       # diminishing returns: immune to new stuns while > 0           # -1 ground, otherwise index of the plateau it stands on
 	var hit_from := {}
 
 var game
@@ -98,6 +100,8 @@ func spawn(kind: String, pos: Vector3, hp_mult := 1.0, dmg_mult := 1.0) -> Enemy
 			e.tag.position = Vector3(0, (def["h"] + 0.3) / e.node.scale.y, 0)
 			e.tag.fixed_size = true
 			e.tag.pixel_size = 0.0006 if not (def.get("elite", false) or def.get("boss", false)) else 0.0009
+			if not (def.get("elite", false) or def.get("boss", false) or def.get("invincible", false)):
+				e.tag.visibility_range_end = 22.0      # support enemies: name only when close, their aura shows from afar
 		if def.get("shield_aura", false):
 			var ring := U.sprite(e.node, "circle_03.png", Vector3(0, 0.05, 0), 10.0 / e.node.scale.x, Color(0.7, 0.5, 1.0, 0.18), 1.2, false, Vector3(-PI / 2, 0, 0))
 		e.ap = U.anim_player(e.node)
@@ -124,6 +128,19 @@ func spawn(kind: String, pos: Vector3, hp_mult := 1.0, dmg_mult := 1.0) -> Enemy
 	e.alive = true
 	e.affix = ""
 	e.tp_t = 8.0 if e.boss else 0.0
+	if (e.boss or e.elite) and not game.warming:
+		# dramatic entrance: smoke burst and the model pops up from the ground
+		var base: Vector3 = e.node.get_meta("base_scale")
+		e.node.scale = base * Vector3(1.0, 0.05, 1.0)
+		var tw := e.node.create_tween()
+		tw.tween_property(e.node, "scale", base, 0.6).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		for k in 8:
+			var a2 := TAU * k / 8.0
+			var sm := U.sprite(self, "smoke_04.png", pos + Vector3(cos(a2), 0.6, sin(a2)) * 1.2, 2.5, Color(0.85, 0.8, 0.7, 0.7), 1.0)
+			var st := sm.create_tween().set_parallel()
+			st.tween_property(sm, "position", pos + Vector3(cos(a2) * 4.0, 1.5, sin(a2) * 4.0), 0.8)
+			st.tween_property(sm, "scale", Vector3.ONE * 2.0, 0.8)
+			st.chain().tween_callback(sm.queue_free)
 	if e.affix_fx: e.affix_fx.queue_free(); e.affix_fx = null
 	if not e.elite and not e.boss and not e.invincible and game.dtime() > 180.0 and not game.warming:
 		var ch := clampf(0.03 + (game.dtime() - 180.0) / 360.0 * 0.12, 0.0, 0.2)
@@ -136,6 +153,7 @@ func spawn(kind: String, pos: Vector3, hp_mult := 1.0, dmg_mult := 1.0) -> Enemy
 	e.slow_t = 0.0
 	e.hit_from.clear()
 	if e.ap:
+		e.act_t = 0.0
 		var an: String = Chars.ENEMY_ANIMS["run"] if e.speed > 3.4 else Chars.ENEMY_ANIMS["walk"]
 		if e.ap.has_animation(an):
 			e.ap.play(an, 0.0)
@@ -236,6 +254,7 @@ func _process(d: float):
 			if e.phase == "dash": spd *= 4.5
 			elif e.phase in ["aim", "wind"]: spd = 0.0
 		if do_heal and e.def.get("healer", false):
+			if e.act_t <= 0.0 and dist < 30.0: _act(e, "Wave", 0.8, 1.4)
 			for o in in_radius(p, 5.0):
 				if o != e and o.hp < o.max_hp and not o.boss:
 					o.hp = minf(o.max_hp, o.hp + o.max_hp * 0.06)
@@ -278,6 +297,7 @@ func _process(d: float):
 		p.y = ground_y
 		e.node.position = p
 		if e.ap:
+			_anim_state(e, move, spd, dist, d)
 			e.anim_acc += d
 			var step := 1 if dist < 18.0 else (2 if dist < 35.0 else 4)
 			if (_frame + e.idx) % step == 0:
@@ -292,6 +312,7 @@ func _process(d: float):
 		var py: float = game.player.global_position.y
 		if dist < e.r + 0.45 and absf(py - p.y) < 1.4 and e.stun_t <= 0.0 and e.node.visible:
 			if game.player.take_damage(e.dmg, false, p, ("un " + AFFIX_INFO[e.affix][0].to_lower() + " · " if e.affix != "" else "") + e.def["name"]):
+				_act(e, "Punch_Right" if randf() < 0.5 else "Punch_Left", 0.45, 1.6)
 				if e.affix == "vampire": e.hp = minf(e.max_hp, e.hp + e.max_hp * 0.3)
 				var eff: String = e.def.get("on_hit", "")
 				if eff != "": game.player.apply_status(eff)
@@ -337,6 +358,7 @@ func _ai_ranged(e: Enemy, dir: Vector3, dist: float, d: float, keep: float, cd: 
 	if e.t_act <= 0.0 and dist < 20.0:
 		e.t_act = cd + randf_range(-0.3, 0.3)
 		_shoot(e.node.position + Vector3(0, 1.1, 0), dir, e.dmg, e.def.get("shot", ""))
+		_act(e, "Idle_Gun_Shoot", 0.5, 1.4)
 	if dist < keep - 2.0: return -dir
 	if dist > keep + 2.0: return dir
 	return Vector3(-dir.z, 0, dir.x) * 0.6
@@ -347,6 +369,7 @@ func _ai_lobber(e: Enemy, dir: Vector3, dist: float, d: float) -> Vector3:
 		var target: Vector3 = game.player.global_position + game.player.velocity * 0.5
 		target.y = 0
 		_lob(e.node.position + Vector3(0, 1.5, 0), target, e.dmg)
+		_act(e, "Sword_Slash", 0.6, 1.5)
 	if dist < 9.0: return -dir
 	if dist > 14.0: return dir
 	return Vector3.ZERO
@@ -360,6 +383,7 @@ func _ai_summoner(e: Enemy, dir: Vector3, dist: float, d: float) -> Vector3:
 			var a := randf() * TAU
 			spawn("stagiaire", game.world.resolve(e.node.position + Vector3(cos(a), 0, sin(a)) * 1.5, 0.5), m[0], m[1])
 		_heal_fx(e.node.position)
+		_act(e, "Wave", 1.0, 1.3)
 	if dist < 10.0: return -dir
 	return dir * 0.6
 
@@ -375,6 +399,7 @@ func _ai_slammer(e: Enemy, dir: Vector3, dist: float, d: float) -> Vector3:
 			if e.t_act <= 0.0:
 				e.phase = ""; e.t_act = 4.0
 				_slam(e.node.position, 4.0, e.dmg * 1.4)
+				_act(e, "Punch_Right", 0.5, 1.2)
 			return Vector3.ZERO
 	return dir
 
@@ -385,6 +410,7 @@ func _ai_boss(e: Enemy, dir: Vector3, dist: float, d: float) -> Vector3:
 	if e.kind == "boss2" and e.tp_t <= 0.0 and e.phase == "":
 		e.tp_t = 11.0
 		game.toast("RÉUNION D'URGENCE ! Le PDG convoque ses cadres", 1.5)
+		_act(e, "Wave", 1.2, 1.2)
 		var m: Array = game.mults()
 		for i in 8:
 			var a := TAU * i / 8.0
@@ -410,6 +436,7 @@ func _ai_boss(e: Enemy, dir: Vector3, dist: float, d: float) -> Vector3:
 				e.node.position = dest
 				e.node.visible = true
 				_slam(dest, 4.5, e.dmg * 1.3, "la gifle de la Main Invisible")
+				_act(e, "Punch_Right", 0.6, 1.3)
 				for k in 8:
 					var b := TAU * k / 8.0
 					_shoot(dest + Vector3(0, 1.5, 0), Vector3(cos(b), 0, sin(b)), e.dmg * 0.35, ""))
@@ -424,6 +451,7 @@ func _ai_boss(e: Enemy, dir: Vector3, dist: float, d: float) -> Vector3:
 					game.toast("%s charge !" % e.def["name"], 1.0)
 				else:
 					e.t_act = randf_range(3.0, 5.0)
+					_act(e, "Sword_Slash", 0.7, 1.3)
 					for i in 6:
 						var a := TAU * i / 6.0
 						_lob(e.node.position + Vector3(0, 4, 0), game.player.global_position + Vector3(cos(a), 0, sin(a)) * 5.0, e.dmg * 0.4)
@@ -579,6 +607,8 @@ func damage(e: Enemy, amount: float, knock_from := Vector3.INF, knock_force := 0
 		e.knock = kv.normalized() * knock_force * (0.35 if e.elite else (0.5 if e.affix != "" or e.ai == "slammer" else 1.0))
 	if e.hp <= 0.0:
 		kill(e)
+	elif knock_force >= 6.0 or crit:
+		flinch(e)
 
 # stun with diminishing returns; big enemies are stunned less and recover immunity longer
 func stun(e: Enemy, dur: float, force := false):
@@ -644,3 +674,44 @@ func clear_all(except_boss := true):
 	for h in hazards:
 		h["n"].queue_free()
 	hazards.clear()
+
+# ---------------------------------------------------------------- animation states
+# one-shot actions (punch, shoot, throw, wave, flinch) override locomotion for a moment
+func _act(e: Enemy, anim: String, dur: float, speed := 1.0):
+	if e.ap == null or not e.ap.has_animation(anim) or not e.node.visible: return
+	e.ap.play(anim, 0.08)
+	e.ap.speed_scale = speed
+	e.act_t = dur
+
+func _anim_state(e: Enemy, move: Vector3, spd: float, dist: float, d: float):
+	e.flinch_cd = maxf(0.0, e.flinch_cd - d)
+	if e.act_t > 0.0:
+		e.act_t -= d
+		return
+	var want := ""
+	var sp := 1.0
+	if e.stun_t > 0.0:
+		want = "HitRecieve_2"; sp = 0.35
+	elif e.phase == "aim":
+		want = "Idle_Gun_Pointing"
+	elif e.phase == "wind":
+		want = "Idle_Sword"; sp = 1.5
+	elif spd <= 0.05 or move.length() < 0.05:
+		want = "Idle"
+	else:
+		var fwd := Vector3(sin(e.node.rotation.y), 0, cos(e.node.rotation.y))
+		var dt := move.normalized().dot(fwd)
+		var run := e.phase == "dash" or spd > 3.4
+		if dt < -0.4: want = "Run_Back"; sp = spd / 4.0
+		elif dt < 0.4: want = "Run_Left" if fwd.cross(move).y > 0.0 else "Run_Right"; sp = spd / 4.0
+		elif run: want = "Run"; sp = spd / 4.5
+		else: want = "Walk"; sp = spd / 1.8
+	if dist > 35.0 and want != "Idle" and e.ap.current_animation in ["Walk", "Run"]: return   # far away: keep it cheap
+	if e.ap.current_animation != want and e.ap.has_animation(want):
+		e.ap.play(want, 0.15)
+	e.ap.speed_scale = clampf(sp, 0.3, 3.0)
+
+func flinch(e: Enemy):
+	if e.ap == null or e.act_t > 0.0 or e.flinch_cd > 0.0: return
+	e.flinch_cd = 1.2 if (e.elite or e.boss) else 2.0
+	_act(e, "HitRecieve", 0.3, 1.8)

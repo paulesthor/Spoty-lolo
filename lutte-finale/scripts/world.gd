@@ -20,6 +20,7 @@ var rng := RandomNumberGenerator.new()
 var env: Environment
 var _bscale := 1.0
 var gen_tries := 0
+var decor: Node3D
 
 func build(seed_value := 1917, tpl: Dictionary = Levels.HYPERMARCHE):
 	template = tpl
@@ -34,9 +35,13 @@ func build(seed_value := 1917, tpl: Dictionary = Levels.HYPERMARCHE):
 		s += 7777
 	_env()
 	_ground()
+	_sidewalks()
 	_buildings()
 	_fill_lots()
 	_props()
+	decor = load("res://scripts/decor.gd").new()
+	add_child(decor)
+	decor.build(self)
 	_walls()
 	_pick_spots()
 
@@ -335,10 +340,14 @@ func _buildings():
 	# hypermarket facade on the back wall
 	var fz := b.position.y - 10.0
 	var fac: Array = template["facade"]
+	var steel := U.solid(Color(0.3, 0.3, 0.32), 0.0, 0.4, 0.8)
+	# the big signs stand on steel pylons (they used to hover in front of the buildings)
+	for sx in [-15.0, 15.0]: U.box(self, Vector3(0.5, 10.8, 0.5), Vector3(sx, 5.4, fz - 0.4), steel)
+	for sx in [-34.5, -25.5]: U.box(self, Vector3(0.35, 13.2, 0.35), Vector3(sx, 6.6, fz - 0.3), steel)
 	U.box(self, Vector3(34, 3.6, 0.6), Vector3(0, 12.5, fz), U.solid(fac[3]))
 	var t := U.label(self, fac[0], Vector3(0, 12.6, fz + 0.4), 340, Color(1, 1, 1), Color(0, 0, 0, 0), false, U.font_main)
 	t.outline_size = 0; t.shaded = template["id"] != "bourse"
-	var promo := U.label(self, fac[1], Vector3(14, 16.5, fz + 0.3), 360, Color(1, 0.85, 0.1) if template["id"] != "bourse" else Color(0.3, 1, 0.4), Color(0.1, 0.05, 0, 1), false, U.font_main)
+	var promo := U.label(self, fac[1], Vector3(13.5, 12.9, fz + 0.36), 220, Color(1, 0.85, 0.1) if template["id"] != "bourse" else Color(0.3, 1, 0.4), Color(0.1, 0.05, 0, 1), false, U.font_main)
 	promo.rotation_degrees = Vector3(0, 0, 8)
 	U.box(self, Vector3(12, 4, 0.3), Vector3(-30, 15, fz), U.solid(Color(0.92, 0.9, 0.86)))
 	var bt := U.label(self, fac[2], Vector3(-30, 15.1, fz + 0.2), 120, Color(0.1, 0.1, 0.12), Color(0, 0, 0, 0), false, U.font_main)
@@ -352,6 +361,11 @@ func _buildings():
 		_banner(Vector3(b.position.x - 10.5 if k % 2 == 0 else b.end.x + 10.5, 9.5, zz), PI / 2 if k % 2 == 0 else -PI / 2, Vector2(5.0, 6.5), slogans[k])
 
 func _banner(pos: Vector3, rot_y: float, size: Vector2, text: String):
+	# propaganda boards on two posts (free-standing, so they never hover)
+	var side := Vector3(cos(rot_y), 0, -sin(rot_y))
+	for sd in [-1.0, 1.0]:
+		var pp: Vector3 = pos + side * sd * (size.x * 0.5 - 0.15) - Vector3(sin(rot_y), 0, cos(rot_y)) * 0.1
+		U.box(self, Vector3(0.22, pos.y + size.y * 0.5, 0.22), Vector3(pp.x, (pos.y + size.y * 0.5) / 2.0, pp.z), U.solid(Color(0.3, 0.3, 0.32), 0.0, 0.4, 0.8))
 	U.box(self, Vector3(size.x, size.y, 0.08), pos, U.solid(Color(0.72, 0.05, 0.1), 0.0, 0.9), Vector3(0, rot_y, 0))
 	var fwd := Vector3(sin(rot_y), 0, cos(rot_y))
 	var s := Label3D.new(); s.text = "☭"; s.font = load("res://fonts/Symbols.ttf"); s.font_size = 256
@@ -404,16 +418,16 @@ func _v(x: float, z: float) -> Vector3:
 	return Vector3(x, 0, z)
 
 func _lot_parking(r: Rect2):
-	var cars := ["sedan", "suv", "taxi", "hatchback-sports", "van", "suv-luxury", "sedan-sports", "police", "delivery", "truck"]
+	var cars := ["sedan", "suv", "taxi", "hatchback-sports", "suv-luxury", "sedan-sports", "police"]
 	var lm := U.solid(Color(0.92, 0.9, 0.82), 0.0, 0.9)
 	var horizontal := r.size.x >= r.size.y
 	var rows := maxi(1, int((r.size.y if horizontal else r.size.x) / 12.0))
 	for row in rows:
 		var off := (row + 0.5) * (r.size.y if horizontal else r.size.x) / rows
 		var length := r.size.x if horizontal else r.size.y
-		var n := int(length / 2.8)
+		var n := int(length / 3.6)
 		for i in n:
-			var along := i * 2.8 + 1.4
+			var along := i * 3.6 + 1.8
 			var p := _v(r.position.x + along, r.position.y + off) if horizontal else _v(r.position.x + off, r.position.y + along)
 			if horizontal: U.box(self, Vector3(0.12, 0.02, 4.4), p + Vector3(-1.4, 0.01, 0), lm)
 			else: U.box(self, Vector3(4.4, 0.02, 0.12), p + Vector3(0, 0.01, -1.4), lm)
@@ -422,7 +436,10 @@ func _lot_parking(r: Rect2):
 			var car := U.place(self, U.CAR + cars[rng.randi() % cars.size()] + ".glb", p, 1.5, rot)
 			add_obstacle(car)
 	for i in 2:
-		U.place(self, U.SHOP + "shopping-cart.glb", _v(rng.randf_range(r.position.x, r.end.x), rng.randf_range(r.position.y, r.end.y)), 1.1, rng.randf() * TAU)
+		var cp := _v(rng.randf_range(r.position.x, r.end.x), rng.randf_range(r.position.y, r.end.y))
+		if _blocked(cp, 1.0): continue
+		U.place(self, U.SHOP + "shopping-cart.glb", cp, 1.1, rng.randf() * TAU)
+		small_obstacle(cp, 0.6)
 
 func _lot_containers(r: Rect2):
 	# a little maze: grid of container slots, randomly filled, some stacked
@@ -456,7 +473,7 @@ func _lot_market(r: Rect2):
 			for f in 3:
 				var path: String = U.FOOD + foods[rng.randi() % foods.size()] + ".glb"
 				if ResourceLoader.exists(path):
-					U.place(self, path, p + Vector3(-1.0 + f, 1.0, 0), 0.35, rng.randf() * TAU)
+					U.place(self, path, p + Vector3(-1.05 + f * 1.05, 1.0, 0), 0.3, rng.randf() * TAU)
 			add_obstacle(counter)
 
 func _lot_plaza(r: Rect2):
@@ -464,8 +481,10 @@ func _lot_plaza(r: Rect2):
 	shrine_spots.append(c)
 	for i in 4:
 		var a := TAU * i / 4.0 + PI / 4
-		var tp := c + Vector3(cos(a), 0, sin(a)) * minf(9.0, minf(r.size.x, r.size.y) * 0.4)
+		var tp := c + Vector3(cos(a), 0, sin(a)) * clampf(minf(r.size.x, r.size.y) * 0.45, 9.5, 12.0)
+		if not r.grow(-1.0).has_point(Vector2(tp.x, tp.z)): continue
 		U.place(self, U.SUB + "tree-large.glb", tp, 5.0, rng.randf() * TAU)
+		obstacles.append(Rect2(tp.x - 0.5, tp.z - 0.5, 1.0, 1.0))      # trunk: nothing else gets placed on it
 
 func _lot_square(r: Rect2):
 	var c := _v(r.get_center().x, r.get_center().y)
@@ -479,7 +498,9 @@ func _lot_square(r: Rect2):
 	for i in 6:
 		var a := rng.randf() * TAU
 		var tp := c + Vector3(cos(a), 0, sin(a)) * rng.randf_range(7.0, minf(r.size.x, r.size.y) * 0.45)
+		if _blocked(tp, 1.5): continue
 		U.place(self, U.SUB + ("tree-large.glb" if i % 2 == 0 else "tree-small.glb"), tp, 4.5 if i % 2 == 0 else 2.5, rng.randf() * TAU)
+		obstacles.append(Rect2(tp.x - 0.5, tp.z - 0.5, 1.0, 1.0))
 
 func _matryoshka(mp: Vector3):
 	var mr := U.solid(Color(0.75, 0.08, 0.1), 0.0, 0.5)
@@ -509,7 +530,10 @@ func _lot_station(r: Rect2):
 
 func _lot_empty(r: Rect2, start := false):
 	for i in (2 if start else 5):
-		U.place(self, U.CR + "construction-cone.glb", _v(rng.randf_range(r.position.x, r.end.x), rng.randf_range(r.position.y, r.end.y)), 0.7, rng.randf() * TAU)
+		var cp := _v(rng.randf_range(r.position.x, r.end.x), rng.randf_range(r.position.y, r.end.y))
+		if _blocked(cp, 0.8): continue
+		U.place(self, U.CR + "construction-cone.glb", cp, 0.7, rng.randf() * TAU)
+		small_obstacle(cp, 0.4)
 
 func _build_plateau(i: int):
 	var pl: Dictionary = plateaus[i]
@@ -518,24 +542,26 @@ func _build_plateau(i: int):
 	var col: Color = {"quai": Color(0.55, 0.53, 0.5), "chantier": Color(0.75, 0.6, 0.25), "passerelle": Color(0.45, 0.55, 0.62), "estrade": Color(0.55, 0.12, 0.14)}.get(pl["kind"], Color(0.6, 0.6, 0.6))
 	var c := Vector3(r.get_center().x, h / 2.0, r.get_center().y)
 	var mi := U.box(self, Vector3(r.size.x, h, r.size.y), c, U.solid(col))
+	_plateau_dress(r, h, pl["kind"], col)
 	_static_box(c, Vector3(r.size.x, h, r.size.y))
 	# railing posts and stripes so the edge reads clearly
 	U.box(self, Vector3(r.size.x, 0.12, r.size.y), Vector3(c.x, h + 0.06, c.z), U.solid(col.lightened(0.15)))
 	if pl["kind"] == "chantier":
 		for k in 4:
 			U.box(self, Vector3(0.2, 2.5, 0.2), Vector3(r.position.x + 0.5 + k * (r.size.x - 1.0) / 3.0, h + 1.25, r.position.y + 0.5), U.solid(Color(0.4, 0.4, 0.42), 0.0, 0.4, 0.8))
-		U.label(self, "CHANTIER DU PEUPLE", Vector3(c.x, h + 2.8, r.position.y + 0.5), 80, Color(1, 0.85, 0.3), Color(0, 0, 0, 1), false)
+		U.box(self, Vector3(r.size.x - 0.6, 0.9, 0.08), Vector3(c.x, h + 2.6, r.position.y + 0.5), U.solid(Color(0.15, 0.15, 0.17)))
+		U.label(self, "CHANTIER DU PEUPLE", Vector3(c.x, h + 2.6, r.position.y + 0.44), 80, Color(1, 0.85, 0.3), Color(0, 0, 0, 1), false)
 	elif pl["kind"] == "passerelle":
 		var glass := U.solid(Color(0.6, 0.8, 0.95, 0.35), 0.3, 0.1, 0.2)
 		U.box(self, Vector3(r.size.x, 1.0, 0.08), Vector3(c.x, h + 0.5, r.position.y), glass)
 		U.box(self, Vector3(r.size.x, 1.0, 0.08), Vector3(c.x, h + 0.5, r.end.y), glass)
-		U.label(self, "PASSERELLE DES CADRES · ACCÈS INTERDIT AU PEUPLE", Vector3(c.x, h + 1.5, r.position.y - 0.05), 60, Color(1, 1, 1), Color(0, 0, 0, 1), false)
+		U.label(self, "PASSERELLE DES CADRES · ACCÈS INTERDIT AU PEUPLE", Vector3(c.x, h * 0.3, r.position.y - 0.12), 60, Color(1, 1, 1), Color(0, 0, 0, 1), false)
 	elif pl["kind"] == "estrade":
-		U.label(self, "ESTRADE DES ACTIONNAIRES", Vector3(c.x, h + 1.0, r.position.y - 0.05), 70, Color(1, 0.85, 0.3), Color(0, 0, 0, 1), false)
+		U.label(self, "ESTRADE DES ACTIONNAIRES", Vector3(c.x, h * 0.55, r.position.y - 0.12), 70, Color(1, 0.85, 0.3), Color(0, 0, 0, 1), false)
 		for k in 2:
 			U.place(self, U.CAR + "box.glb", Vector3(r.position.x + 2.0 + k * 1.5, h, r.position.y + 2.0), 0.9, rng.randf() * TAU)
 	else:
-		U.label(self, "QUAI DE CHARGEMENT", Vector3(c.x, h + 1.2, r.position.y - 0.05), 70, Color(1, 1, 1), Color(0, 0, 0, 1), false)
+		U.label(self, "QUAI DE CHARGEMENT", Vector3(c.x, h * 0.82, r.position.y - 0.12), 70, Color(1, 1, 1), Color(0, 0, 0, 1), false)
 		for k in 3:
 			U.place(self, U.CAR + "box.glb", Vector3(r.position.x + 2.0 + k * 1.5, h, r.position.y + 2.0), 0.9, rng.randf() * TAU)
 	for rp in pl["ramps"]:
@@ -563,7 +589,9 @@ func _props():
 	for z in range(int(b.position.y) + 10, int(b.end.y), 18):
 		for x in [b.position.x + 3.0, b.end.x - 3.0]:
 			var p := Vector3(x, 0, z)
-			if not _in_cut(p): U.place(self, U.CR + "light-square.glb", p, 6.5, PI / 2 if x < 0 else -PI / 2)
+			if not _in_cut(p):
+				U.place(self, U.CR + "light-square.glb", p, 6.5, PI / 2 if x < 0 else -PI / 2)
+				small_obstacle(p, 0.6)
 	for i in 12:
 		var p := free_spot(6.0, 3.0)
 		var d := U.place(self, U.CR + "dumpster.glb", p, 1.6, rng.randf() * TAU)
@@ -610,7 +638,7 @@ func _pick_spots():
 	var tries := 0
 	while shrine_spots.size() < 9 and tries < 400:
 		tries += 1
-		var p := free_spot(18.0, 5.0)
+		var p := free_spot(18.0, 7.0)
 		var ok := true
 		for q in shrine_spots:
 			if p.distance_to(q) < 24.0: ok = false
@@ -628,7 +656,7 @@ func _pick_spots():
 		var r: Rect2 = pl["rect"]
 		chest_spots.append(Vector3(r.get_center().x + 1.5, pl["h"], r.get_center().y))
 	for i in 100:
-		breakable_spots.append(free_spot(5.0, 1.0))
+		breakable_spots.append(free_spot(5.0, 1.6))
 
 # push a point out of obstacles (for ground enemies); returns corrected position
 func resolve(p: Vector3, r: float) -> Vector3:
@@ -667,7 +695,7 @@ func _lot_bureaux(r: Rect2):
 				add_obstacle(dk)
 			x += 5.5
 	var c := _v(r.get_center().x, r.get_center().y)
-	U.label(self, "OPEN SPACE", c + Vector3(0, 3.0, 0), 120, Color(1, 1, 1), Color(0, 0, 0, 1))
+	_lot_sign(c, "OPEN SPACE", Color(1, 1, 1))
 
 # trading pit: ring of desks around a giant ticker screen
 func _lot_corbeille(r: Rect2):
@@ -705,11 +733,76 @@ func _lot_ecrans(r: Rect2):
 
 # bank vault: stacks of gold bars to hide behind
 func _lot_coffre(r: Rect2):
-	var gold := U.solid(Color(1.0, 0.75, 0.25), 0.0, 0.25, 1.0)
+	var gold := U.solid(Color(1.0, 0.75, 0.25), 0.6, 0.25, 1.0)
 	for i in int(r.size.x * r.size.y / 140.0):
 		var p := _v(rng.randf_range(r.position.x + 3, r.end.x - 3), rng.randf_range(r.position.y + 3, r.end.y - 3))
 		var h := rng.randf_range(0.6, 1.6)
 		var bx := U.box(self, Vector3(2.2, h, 1.4), p + Vector3(0, h / 2.0, 0), gold)
 		add_obstacle(bx)
 	var c := _v(r.get_center().x, r.get_center().y)
-	U.label(self, "RÉSERVES FÉDÉRALES (À REDISTRIBUER)", c + Vector3(0, 3.2, 0), 90, Color(1, 0.85, 0.3), Color(0, 0, 0, 1))
+	_lot_sign(c, "RÉSERVES FÉDÉRALES (À REDISTRIBUER)", Color(1, 0.85, 0.3))
+
+# hanging sign over a lot: readable from afar, never a giant billboard in the camera's face
+func _lot_sign(c: Vector3, text: String, col: Color):
+	# a real sign: board on two posts, text on both faces
+	var wdt := 0.42 * text.length() * 0.55 + 1.0
+	var steel := U.solid(Color(0.3, 0.3, 0.32), 0.0, 0.4, 0.8)
+	for sx in [-1.0, 1.0]:
+		U.box(self, Vector3(0.14, 3.0, 0.14), c + Vector3(sx * (wdt * 0.5 - 0.2), 1.5, 0), steel)
+	U.box(self, Vector3(wdt, 0.9, 0.1), c + Vector3(0, 3.2, 0), U.solid(Color(0.08, 0.08, 0.1)))
+	for f in [1.0, -1.0]:
+		var l := U.label(self, text, c + Vector3(0, 3.2, 0.07 * f), 52, col, Color(0, 0, 0, 0), false)
+		l.outline_size = 0
+		l.rotation.y = 0.0 if f > 0.0 else PI
+	small_obstacle(c, 0.4)
+
+# facades for raised platforms: base band, pillars, window strips or hazard stripes
+func _plateau_dress(r: Rect2, h: float, kind: String, col: Color):
+	var dark := U.solid(col.darkened(0.35), 0.0, 0.8)
+	var pil := U.solid(col.lightened(0.12), 0.0, 0.7)
+	var sides := [[Vector3(r.get_center().x, 0, r.position.y - 0.03), r.size.x, 0.0], [Vector3(r.get_center().x, 0, r.end.y + 0.03), r.size.x, 0.0],
+		[Vector3(r.position.x - 0.03, 0, r.get_center().y), r.size.y, PI / 2], [Vector3(r.end.x + 0.03, 0, r.get_center().y), r.size.y, PI / 2]]
+	for sd in sides:
+		var c: Vector3 = sd[0]
+		var length: float = sd[1]
+		var rot := Vector3(0, sd[2], 0)
+		U.box(self, Vector3(length, 0.5, 0.08), c + Vector3(0, 0.25, 0), dark, rot)
+		var n := int(length / 4.0)
+		for k in n + 1:
+			var off := -length / 2.0 + k * length / maxf(n, 1)
+			var pc: Vector3 = c + Vector3(off, 0, 0).rotated(Vector3.UP, sd[2]) + Vector3(0, h / 2.0, 0)
+			U.box(self, Vector3(0.35, h, 0.14), pc, pil, rot)
+		match kind:
+			"passerelle":
+				U.box(self, Vector3(length * 0.98, h * 0.35, 0.1), c + Vector3(0, h * 0.62, 0), U.solid(Color(0.35, 0.6, 0.85), 0.6, 0.1, 0.4), rot)
+			"chantier":
+				for k in int(length / 1.6):
+					var off2 := -length / 2.0 + 0.8 + k * 1.6
+					var stripe := U.box(self, Vector3(0.6, 0.35, 0.1), c + Vector3(off2, 0, 0).rotated(Vector3.UP, sd[2]) + Vector3(0, h - 0.3, 0), U.solid(Color(0.95, 0.75, 0.1) if k % 2 == 0 else Color(0.1, 0.1, 0.1)), rot)
+			"quai":
+				for k in int(length / 5.0):
+					var off3 := -length / 2.0 + 2.5 + k * 5.0
+					U.box(self, Vector3(2.6, h * 0.65, 0.1), c + Vector3(off3, 0, 0).rotated(Vector3.UP, sd[2]) + Vector3(0, h * 0.4, 0), U.solid(Color(0.45, 0.47, 0.5), 0.0, 0.5, 0.6), rot)
+			"estrade":
+				U.box(self, Vector3(length, 0.25, 0.1), c + Vector3(0, h - 0.2, 0), U.solid(Color(1, 0.8, 0.3), 0.5, 0.3, 1.0), rot)
+
+# sidewalks with a kerb around every lot: gives the ground a street structure
+func _sidewalks():
+	var walk := U.solid(template.get("ground", Color(0.42, 0.43, 0.46)).lightened(0.18), 0.0, 0.9)
+	var kerb := U.solid(Color(0.7, 0.7, 0.68), 0.0, 0.8)
+	for l in lots:
+		var r: Rect2 = (l[0] as Rect2).grow(1.4)
+		for e in [[Vector3(r.get_center().x, 0, r.position.y + 0.7), Vector2(r.size.x, 1.4)], [Vector3(r.get_center().x, 0, r.end.y - 0.7), Vector2(r.size.x, 1.4)],
+				[Vector3(r.position.x + 0.7, 0, r.get_center().y), Vector2(1.4, r.size.y - 2.8)], [Vector3(r.end.x - 0.7, 0, r.get_center().y), Vector2(1.4, r.size.y - 2.8)]]:
+			var c: Vector3 = e[0]
+			var sz: Vector2 = e[1]
+			var m := U.box(self, Vector3(sz.x, 0.06, sz.y), c + Vector3(0, 0.03, 0), walk)
+			m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		for e2 in [[Vector3(r.get_center().x, 0, r.position.y), Vector3(r.size.x, 0.12, 0.12)], [Vector3(r.get_center().x, 0, r.end.y), Vector3(r.size.x, 0.12, 0.12)],
+				[Vector3(r.position.x, 0, r.get_center().y), Vector3(0.12, 0.12, r.size.y)], [Vector3(r.end.x, 0, r.get_center().y), Vector3(0.12, 0.12, r.size.y)]]:
+			var k := U.box(self, e2[1], (e2[0] as Vector3) + Vector3(0, 0.06, 0), kerb)
+			k.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+# small footprint that later placements (props, chests, shrines) must avoid; enemies slide around it
+func small_obstacle(p: Vector3, half: float):
+	obstacles.append(Rect2(p.x - half, p.z - half, half * 2.0, half * 2.0))
