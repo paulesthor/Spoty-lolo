@@ -279,6 +279,23 @@ func _ring_fx(center: Vector3, area: float, col: Color):
 	ring.scale = Vector3(0.3, 0.06, 0.3)
 	var tw := create_tween().set_parallel()
 	tw.tween_property(ring, "scale", Vector3(area, 0.06, area), 0.28).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	# second, cream ring trailing the red one: poster two-tone shockwave
+	var ring2 := MeshInstance3D.new()
+	var tm2 := TorusMesh.new(); tm2.inner_radius = 0.82; tm2.outer_radius = 0.9
+	ring2.mesh = tm2
+	var m2 := StandardMaterial3D.new()
+	m2.albedo_color = Color(1.0, 0.93, 0.78, 0.9)
+	m2.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m2.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	ring2.material_override = m2
+	ring2.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(ring2)
+	ring2.global_position = Vector3(center.x, 0.1, center.z)
+	ring2.scale = Vector3(0.2, 0.05, 0.2)
+	var tw3 := create_tween().set_parallel()
+	tw3.tween_property(ring2, "scale", Vector3(area * 0.92, 0.05, area * 0.92), 0.34).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUART)
+	tw3.tween_property(m2, "albedo_color:a", 0.0, 0.38)
+	tw3.chain().tween_callback(ring2.queue_free)
 	tw.tween_property(m, "albedo_color:a", 0.0, 0.32)
 	tw.chain().tween_callback(ring.queue_free)
 	var flash := _fx(self, "circle_05.png", Vector3(center.x, 0.06, center.z), area * 2.0, Color(col.r, col.g, col.b, 0.35), 2.0, false, Vector3(-PI / 2, 0, 0))

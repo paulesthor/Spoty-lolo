@@ -100,7 +100,7 @@ func spawn(kind: String, pos: Vector3, hp_mult := 1.0, dmg_mult := 1.0) -> Enemy
 			e.tag = U.label(e.node, def["name"].to_upper(), Vector3.ZERO, 44 if not (def.get("elite", false) or def.get("boss", false)) else 56, col, Color(0.05, 0.03, 0, 1))
 			e.tag.position = Vector3(0, (def["h"] + 0.3) / e.node.scale.y, 0)
 			e.tag.fixed_size = true
-			e.tag.pixel_size = 0.0006 if not (def.get("elite", false) or def.get("boss", false)) else 0.0009
+			e.tag.pixel_size = 0.0005 if not (def.get("elite", false) or def.get("boss", false)) else 0.00062
 			if not (def.get("elite", false) or def.get("boss", false) or def.get("invincible", false)):
 				e.tag.visibility_range_end = 22.0      # support enemies: name only when close, their aura shows from afar
 		if def.get("shield_aura", false):

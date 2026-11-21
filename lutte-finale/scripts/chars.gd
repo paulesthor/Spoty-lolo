@@ -47,6 +47,7 @@ static func build_hero(parent: Node, char_id: String, skin := 0) -> Node3D:
 	var acc: Array = def["acc"].duplicate()
 	acc.append_array(sk[2])
 	attach(n, acc)
+	rim(n, Color(1, 0.9, 0.75), 0.6)
 	hammer(n)
 	return n
 
@@ -102,7 +103,26 @@ static func build_enemy(parent: Node, kind: String, pos: Vector3, h: float) -> N
 	var path: String = (QM if look[1] == "M" else QF) + look[0] + ".glb"
 	var n := U.place(parent, path, pos, h, 0.0)
 	recolor(n, ENEMY_COLORS.get(kind, {}))
+	rim(n, Color(1.0, 0.85, 0.7), 0.45)
 	return n
+
+# rim light: a soft bright edge that detaches characters from the ground (cached per source material)
+static var _rim_mats := {}
+static func rim(n: Node, tint: Color, amount: float):
+	for m in n.find_children("*", "MeshInstance3D", true, false):
+		var mi: MeshInstance3D = m
+		if mi.mesh == null or not (mi.get_parent() is Skeleton3D): continue
+		for i in mi.mesh.get_surface_count():
+			var src = mi.get_active_material(i)
+			if not (src is StandardMaterial3D): continue
+			var key := "%d_%f" % [src.get_instance_id(), amount]
+			if not _rim_mats.has(key):
+				var d: StandardMaterial3D = src.duplicate()
+				d.rim_enabled = true
+				d.rim = amount
+				d.rim_tint = 0.6
+				_rim_mats[key] = d
+			mi.set_surface_override_material(i, _rim_mats[key])
 
 static func recolor(n: Node, colors: Dictionary):
 	if colors.is_empty(): return
