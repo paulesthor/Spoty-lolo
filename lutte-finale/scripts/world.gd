@@ -327,16 +327,16 @@ func _buildings():
 	var i := rng.randi() % 14
 	var z := b.end.y + 4.0
 	while z > b.position.y - 6.0:
-		_bld(U.CC + BNAMES[i % 14] + ".glb", Vector3(b.position.x - 16, 0, z), PI / 2); i += 1
-		_bld(U.CC + BNAMES[(i + 5) % 14] + ".glb", Vector3(b.end.x + 16, 0, z), -PI / 2); i += 1
+		_dress(_bld(U.CC + BNAMES[i % 14] + ".glb", Vector3(b.position.x - 16, 0, z), PI / 2), Vector3(1, 0, 0)); i += 1
+		_dress(_bld(U.CC + BNAMES[(i + 5) % 14] + ".glb", Vector3(b.end.x + 16, 0, z), -PI / 2), Vector3(-1, 0, 0)); i += 1
 		z -= 11.0
 	var x := b.position.x - 6.0
 	var j := rng.randi() % 5
 	while x < b.end.x + 8.0:
 		var back: String = SKY[j % 5] if rng.randf() < template.get("sky_ratio", 0.33) else BNAMES[(j * 3) % 14]
-		_bld(U.CC + back + ".glb", Vector3(x, 0, b.position.y - 16 - (6 if "sky" in back else 0)), 0.0)
+		_dress(_bld(U.CC + back + ".glb", Vector3(x, 0, b.position.y - 16 - (6 if "sky" in back else 0)), 0.0), Vector3(0, 0, 1))
 		var front_b: String = SKY[(j + 2) % 5] if rng.randf() < template.get("sky_ratio", 0.33) * 0.6 else BNAMES[(j * 5 + 2) % 14]
-		_bld(U.CC + front_b + ".glb", Vector3(x, 0, b.end.y + 16 + (6 if "sky" in front_b else 0)), PI)
+		_dress(_bld(U.CC + front_b + ".glb", Vector3(x, 0, b.end.y + 16 + (6 if "sky" in front_b else 0)), PI), Vector3(0, 0, -1))
 		x += 11.0; j += 1
 	# cut areas: blocks of buildings facing the arena
 	for c in cuts:
@@ -874,3 +874,51 @@ func _skyline():
 			ch.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			U.cyl(self, 1.7, 1.2, p + Vector3(0, h * 1.4, 0), U.solid(Color(0.85, 0.85, 0.82)))
 			far_smokes.append({"p": p + Vector3(0, h * 1.62, 0), "t": 0.0, "s": 9.0})
+
+# building dressing on the face that looks at the arena: giant painted murals, shop signs,
+# rooftop stars, water tanks, antennas and neon at night. Everything sits on the building's box.
+func _dress(n: Node3D, face: Vector3):
+	var a := U.world_aabb(n)
+	if a.size.y < 4.0: return
+	var c := a.get_center()
+	var half: float = (a.size.x if absf(face.x) > 0.5 else a.size.z) * 0.5
+	var depth: float = (a.size.z if absf(face.x) > 0.5 else a.size.x) * 0.5
+	var front: Vector3 = Vector3(c.x, 0, c.z) + face * (depth + 0.06)
+	var rot := atan2(face.x, face.z)
+	var roll := rng.randf()
+	var bid: String = template.get("id", "hypermarche")
+	var ad_ratio: float = {"hypermarche": 0.25, "quartier": 0.5, "bourse": 0.6}.get(bid, 0.3)
+	if roll < 0.32 and a.size.y > 9.0:
+		# mural: a poster painted over most of the facade
+		var mh := minf(a.size.y * 0.55, 11.0)
+		var mw := minf(mh / 1.5, half * 1.6)
+		mh = mw * 1.5
+		var tex: String = U.ad_tex(rng.randi()) if rng.randf() < ad_ratio else U.propaganda_tex(rng.randi())
+		U.poster(self, tex, front + Vector3(0, a.position.y + a.size.y * 0.55, 0), Vector2(mw, mh), rot)
+	elif roll < 0.6:
+		# shop / office sign over the ground floor
+		var names := {"hypermarche": ["BOULANGERIE D'ÉTAT", "COOPÉRATIVE N°7", "LAVERIE DU PEUPLE", "KIOSQUE PRAVDA", "PHARMACIE CENTRALE"],
+			"quartier": ["CABINET DE CONSEIL", "STARTUP NATION", "COWORKING PREMIUM", "BANQUE PRIVÉE", "AGENCE DE NOTATION"],
+			"bourse": ["COURTIER 24/7", "PARADIS FISCAL VOYAGES", "BIJOUTERIE", "CLUB PRIVÉ", "MONTRES DE LUXE"]}
+		var txt: String = names[bid][rng.randi() % 5]
+		var col: Color = [Color(0.72, 0.08, 0.1), Color(0.12, 0.25, 0.45), Color(0.15, 0.35, 0.22), Color(0.1, 0.1, 0.12)][rng.randi() % 4]
+		var sp := front + Vector3(0, a.position.y + 3.4, 0) + face * 0.08
+		U.box(self, Vector3(minf(half * 1.7, 8.0), 1.0, 0.16), sp, U.solid(col, 0.25 if ambiance == "nuit" else 0.0, 0.6), Vector3(0, rot, 0))
+		var l := U.label(self, txt, sp + face * 0.1, 64, Color(1, 0.95, 0.85), Color(0, 0, 0, 0), false, U.font_main)
+		l.rotation.y = rot; l.outline_size = 0; l.pixel_size = 0.009
+		l.width = minf(half * 1.6, 7.6) / l.pixel_size; l.autowrap_mode = TextServer.AUTOWRAP_OFF
+	# rooftop
+	var top := Vector3(c.x, a.end.y, c.z)
+	var r2 := rng.randf()
+	if r2 < 0.25:
+		var st := Label3D.new(); st.text = "★"; st.font = load("res://fonts/Symbols.ttf"); st.font_size = 256; st.pixel_size = 0.012
+		st.modulate = Color(0.95, 0.12, 0.12); st.outline_size = 0; st.shaded = ambiance != "nuit"
+		st.position = top + Vector3(0, 1.9, 0) + face * (depth * 0.6); st.rotation.y = rot
+		add_child(st)
+		U.box(self, Vector3(0.2, 1.0, 0.2), top + Vector3(0, 0.5, 0) + face * (depth * 0.6), U.solid(Color(0.3, 0.3, 0.32), 0.0, 0.4, 0.8))
+	elif r2 < 0.45:
+		var tk := U.place(self, U.IND + "detail-tank.glb", top + face * (-depth * 0.3), 3.2, rng.randf() * TAU)
+	elif r2 < 0.6:
+		U.cyl(self, 0.05, 4.0, top + Vector3(0, 2.0, 0), U.solid(Color(0.2, 0.2, 0.22), 0.0, 0.4, 0.8))
+		U.cyl(self, 0.04, 1.6, top + Vector3(0, 3.2, 0), U.solid(Color(0.2, 0.2, 0.22), 0.0, 0.4, 0.8)).rotation.z = PI / 2
+		if ambiance == "nuit": U.sphere(self, 0.15, top + Vector3(0, 4.05, 0), U.solid(Color(1, 0.1, 0.1), 5.0))
