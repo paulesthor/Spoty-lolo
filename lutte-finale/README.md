@@ -1,6 +1,6 @@
 # Lutte Finale — prototype
 
-Survivor-like 3D satirique (Godot 4.5). Des camarades en chapka contre des hordes de capitalistes en haut-de-forme.
+Survivor-like 3D satirique (Godot 4.5, renderer Compatibilité par défaut pour marcher sur un maximum de PC). Des camarades en chapka contre des hordes de capitalistes en haut-de-forme.
 
 ## Lancer le jeu
 

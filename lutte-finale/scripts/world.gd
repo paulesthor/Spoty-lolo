@@ -36,7 +36,8 @@ func _env():
 	env.ambient_light_energy = 0.7
 	env.tonemap_mode = Environment.TONE_MAPPER_AGX
 	env.tonemap_exposure = 1.05
-	env.ssao_enabled = true
+	if RenderingServer.get_current_rendering_method() == "forward_plus":
+		env.ssao_enabled = true
 	env.ssao_radius = 1.5
 	env.ssao_intensity = 3.0
 	env.glow_enabled = true
