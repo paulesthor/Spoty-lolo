@@ -152,8 +152,9 @@ func _load_meta():
 func dirl(id: String) -> int:
 	return int(dirs.get(id, 0))
 
+var ult_uses := 0
 func ultimate_cost() -> int:
-	return int(140.0 * (1.0 - mods.get("ult_charge", 0.0) / 100.0))
+	return int(220.0 * (1.0 + 0.3 * ult_uses) * (1.0 - mods.get("ult_charge", 0.0) / 100.0))
 
 # effective stat: in-run décrets + permanent bonuses (+ Stakhanov's passive)
 func dv(id: String) -> float:
@@ -161,8 +162,8 @@ func dv(id: String) -> float:
 	if id == "endurance": return v
 	v += mods.get(id, 0.0)
 	if id == "cadence":
-		if char_id == "stakhanov": v += minf(30.0, floorf(kills / 100.0) * 3.0)
-		if ult_t > 0.0 and char_id == "stakhanov": v = (1.0 + v / 100.0) * (3.0 * (1.0 + mods.get("ult_power", 0.0) / 100.0)) * 100.0 - 100.0
+		if char_id == "stakhanov": v += minf(20.0, floorf(kills / 150.0) * 2.0)
+		if ult_t > 0.0 and char_id == "stakhanov": v = (1.0 + v / 100.0) * (2.0 * (1.0 + mods.get("ult_power", 0.0) / 100.0)) * 100.0 - 100.0
 	return v
 
 func weapon_slots() -> int:
@@ -511,7 +512,7 @@ func spawn_point(min_d: float, max_d: float) -> Vector3:
 
 func mults() -> Array:
 	var tm := time / 60.0
-	var hp := (1.0 + 0.25 * tm + 0.09 * tm * tm) * (1.0 + 0.2 * bets) * (1.0 + 0.25 * dirl("productivisme"))
+	var hp := (1.0 + 0.33 * tm + 0.12 * tm * tm) * (1.0 + 0.2 * bets) * (1.0 + 0.25 * dirl("productivisme"))
 	return [hp, (1.0 + 0.07 * tm) * (1.0 + 0.25 * dirl("sans_pitie"))]
 
 func enemy_speed_mult() -> float:
@@ -535,7 +536,7 @@ func _director(d: float):
 	var tm := time / 60.0
 	var m := mults()
 	var cap := 240 if not krach else 300
-	var rate := (0.8 + 0.65 * tm + 0.14 * tm * tm) * (1.0 + 0.15 * bets) * (1.0 + 0.25 * dirl("cadence"))
+	var rate := (0.9 + 0.75 * tm + 0.16 * tm * tm) * (1.0 + 0.15 * bets) * (1.0 + 0.25 * dirl("cadence"))
 	if krach: rate *= 2.2
 	spawn_acc += rate * d
 	while spawn_acc >= 1.0:
@@ -1026,11 +1027,12 @@ func _on_chosen(i: int):
 func _try_ultimate():
 	if ult_kills < ultimate_cost(): return
 	ult_kills = 0
+	ult_uses += 1
 	var pw: float = 1.0 + mods.get("ult_power", 0.0) / 100.0
 	var pp: Vector3 = player.global_position
 	match char_id:
 		"stakhanov":
-			ult_t = 8.0
+			ult_t = 6.0
 			hud.toast("SURPRODUCTION !", 1.5)
 		"ilitch":
 			var dur: float = (3.0 + mods.get("ult_stun", 0.0)) * pw

@@ -9,6 +9,8 @@ var tab := "lancer"
 var bot := false
 var runs_target := 0
 var bot_dirs := false
+var bot_char := ""
+var bot_nospend := false
 
 func _ready():
 	font = load("res://fonts/Oswald.woff2")
@@ -16,6 +18,8 @@ func _ready():
 		if a == "bot": bot = true
 		elif a.begins_with("runs="): runs_target = int(a.substr(5))
 		elif a == "botdirs": bot_dirs = true
+		elif a.begins_with("char="): bot_char = a.substr(5)
+		elif a == "nospend": bot_nospend = true
 	var bg := ColorRect.new()
 	bg.color = Color(0.09, 0.07, 0.06)
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -84,7 +88,9 @@ func _clear():
 
 func _refresh():
 	var d: Dictionary = Meta.data
-	header.text = "%d MÉDAILLES\nRuns : %d · Victoires : %d · Record : %02d:%02d" % [d["medals"], d["runs"], d["wins"], int(d["best_time"]) / 60, int(d["best_time"]) % 60]
+	var g := Meta.grade()
+	var gnext: String = ("\nProchain grade : %d médailles gagnées au total (%d)" % [Meta.grade_req(g + 1), int(d.get("lifetime", 0))]) if g < 10 else ""
+	header.text = "%d MÉDAILLES\nGrade %d : %s%s\nRuns : %d · Victoires : %d · Record : %02d:%02d" % [d["medals"], g, Meta.GRADE_NAMES[g - 1], gnext, d["runs"], d["wins"], int(d["best_time"]) / 60, int(d["best_time"]) % 60]
 	_clear()
 	match tab:
 		"lancer": _tab_lancer()
@@ -140,7 +146,9 @@ func _tab_bureau():
 		var purged: bool = Meta.data["bureau_purged"] == id
 		var txt := "%s · rang %d/%d · %s par rang" % [b["name"], r, b["max"], Meta.stat_text(b["stat"], b["per"])]
 		if purged: txt += " · PURGÉ"
-		var btn := _btn("ACHETER (%d)" % cost if not maxed else "MAX", 20, not maxed and Meta.data["medals"] >= cost)
+		var greq := Meta.bureau_grade_req(id, r)
+		var locked := Meta.grade() < greq
+		var btn := _btn(("GRADE %d REQUIS" % greq) if (locked and not maxed) else ("ACHETER (%d)" % cost if not maxed else "MAX"), 20, not maxed and not locked and Meta.data["medals"] >= cost)
 		btn.pressed.connect(func(): Meta.buy_bureau(id); _refresh())
 		content.add_child(_row([btn, _lbl(txt, 22, Color(1, 0.5, 0.4) if purged else Color(0.9, 0.88, 0.84))]))
 
@@ -152,7 +160,8 @@ func _tab_caserne():
 		var cd: Dictionary = Meta.data["chars"][c]
 		content.add_child(_lbl(" ", 6))
 		if not cd["unlocked"]:
-			var ub := _btn("RECRUTER %s (%d médailles)" % [def["name"].to_upper(), def["cost"]], 24, Meta.data["medals"] >= def["cost"])
+			var cg: int = Meta.CHAR_GRADE.get(c, 1)
+			var ub := _btn("RECRUTER %s (%d médailles%s)" % [def["name"].to_upper(), def["cost"], (", grade %d requis" % cg) if Meta.grade() < cg else ""], 24, Meta.data["medals"] >= def["cost"] and Meta.grade() >= cg)
 			ub.pressed.connect(func(): Meta.unlock_char(c); _refresh())
 			content.add_child(ub)
 			content.add_child(_lbl("     Arme : %s · %s · Ultime : %s" % [Data.WEAPONS[def["weapon"]]["name"], def["passive"], def["ult_desc"]], 18, Color(0.7, 0.7, 0.7)))
@@ -167,7 +176,8 @@ func _tab_caserne():
 			for i in 5:
 				var node: Array = br[1][i]
 				parts.append(("✔ " if i < have else "· ") + Meta.stat_text(node[0], node[1]))
-			var can := have < 5 and Meta.talent_points_free(c) > 0
+			var can := have < 5 and Meta.talent_points_free(c) > 0 and lv >= Meta.talent_level_req(have)
+			if have < 5 and lv < Meta.talent_level_req(have): parts[have] += " (niv %d)" % Meta.talent_level_req(have)
 			var tb := _btn("+", 22, can)
 			tb.pressed.connect(func(): Meta.buy_talent(c, bi); _refresh())
 			content.add_child(_row([tb, _lbl("%s : %s" % [br[0], "  →  ".join(parts)], 18)]))
@@ -179,7 +189,8 @@ func _tab_usine():
 		content.add_child(_lbl(" ", 4))
 		var name: String = Data.WEAPONS[w]["name"]
 		if not Meta.weapon_unlocked(w):
-			var ub := _btn("DÉBLOQUER %s (%d médailles)" % [name.to_upper(), Meta.WEAPON_UNLOCK[w]], 22, Meta.data["medals"] >= Meta.WEAPON_UNLOCK[w])
+			var wg: int = Meta.WEAPON_GRADE.get(w, 1)
+			var ub := _btn("DÉBLOQUER %s (%d médailles%s)" % [name.to_upper(), Meta.WEAPON_UNLOCK[w], (", grade %d requis" % wg) if Meta.grade() < wg else ""], 22, Meta.data["medals"] >= Meta.WEAPON_UNLOCK[w] and Meta.grade() >= wg)
 			ub.pressed.connect(func(): Meta.unlock_weapon(w); _refresh())
 			content.add_child(ub)
 			continue
@@ -209,6 +220,9 @@ func _tab_plan():
 
 func _tab_directives():
 	content.add_child(_lbl("DIRECTIVES DU PARTI · rends la run plus dure, gagne plus", 30, Color.WHITE))
+	if Meta.grade() < Meta.DIRECTIVES_GRADE:
+		content.add_child(_lbl("Accessible au grade %d." % Meta.DIRECTIVES_GRADE, 24, Color(1, 0.5, 0.4)))
+		return
 	content.add_child(_lbl("Chaque niveau de directive ajoute de la ferveur : +15 % de médailles par point. Meilleure victoire : ferveur %d." % Meta.data["directives_best"], 20, Color(0.75, 0.75, 0.75)))
 	for id in Meta.DIRECTIVES:
 		var dd: Dictionary = Meta.DIRECTIVES[id]
@@ -232,11 +246,14 @@ func _bot_step():
 		_bot_summary()
 		get_tree().quit()
 		return
-	_bot_spend()
+	if not bot_nospend: _bot_spend()
+	if bot_char != "":
+		Meta.data["chars"][bot_char]["unlocked"] = true
+		for w in Meta.WEAPON_UNLOCK: Meta.data["weapons"][w] = true
 	var unlocked := []
 	for c in Meta.CHARACTERS:
 		if Meta.data["chars"][c]["unlocked"]: unlocked.append(c)
-	Meta.run_char = unlocked[int(Meta.data["runs"]) % unlocked.size()]
+	Meta.run_char = bot_char if bot_char != "" else unlocked[int(Meta.data["runs"]) % unlocked.size()]
 	Meta.run_directives = {}
 	if bot_dirs:
 		var f := int(Meta.data["wins"]) - 1
@@ -253,13 +270,13 @@ func _bot_spend():
 		var best_cost := 1 << 30
 		for id in Meta.BUREAU:
 			var r := Meta.bureau_rank(id)
-			if r < Meta.BUREAU[id]["max"] and Meta.bureau_cost(id, r) < best_cost:
+			if r < Meta.BUREAU[id]["max"] and Meta.grade() >= Meta.bureau_grade_req(id, r) and Meta.bureau_cost(id, r) < best_cost:
 				best_cost = Meta.bureau_cost(id, r); best = ["bureau", id]
 		for c in Meta.CHARACTERS:
-			if not Meta.data["chars"][c]["unlocked"] and Meta.CHARACTERS[c]["cost"] < best_cost:
+			if not Meta.data["chars"][c]["unlocked"] and Meta.grade() >= int(Meta.CHAR_GRADE.get(c, 1)) and Meta.CHARACTERS[c]["cost"] < best_cost:
 				best_cost = Meta.CHARACTERS[c]["cost"]; best = ["char", c]
 		for w in Meta.WEAPON_UNLOCK:
-			if not Meta.weapon_unlocked(w) and Meta.WEAPON_UNLOCK[w] < best_cost:
+			if not Meta.weapon_unlocked(w) and Meta.grade() >= int(Meta.WEAPON_GRADE.get(w, 1)) and Meta.WEAPON_UNLOCK[w] < best_cost:
 				best_cost = Meta.WEAPON_UNLOCK[w]; best = ["weapon", w]
 		if best != null and best_cost <= int(Meta.data["medals"]):
 			match best[0]:
@@ -271,10 +288,10 @@ func _bot_spend():
 		while Meta.talent_points_free(c) > 0 and guard < 20:
 			guard += 1
 			var t: Array = Meta.data["chars"][c]["talents"]
-			var bi := 0
+			var bi := -1
 			for i in 3:
-				if int(t[i]) < int(t[bi]): bi = i
-			if not Meta.buy_talent(c, bi): break
+				if int(t[i]) < 5 and Meta.char_level(c) >= Meta.talent_level_req(int(t[i])) and (bi < 0 or int(t[i]) < int(t[bi])): bi = i
+			if bi < 0 or not Meta.buy_talent(c, bi): break
 	for m in Meta.MODULES:
 		if Meta.module_available(m):
 			Meta.equip_module(Meta.MODULES[m][0], m)

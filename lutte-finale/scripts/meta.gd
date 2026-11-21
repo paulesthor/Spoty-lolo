@@ -75,20 +75,42 @@ static func stat_text(k: String, v) -> String:
 
 # ---------------------------------------------------------------- Bureau du Plan
 const BUREAU := {
-	"rations": {"name": "Rations doublées", "stat": "endurance", "per": 10.0, "max": 5, "base": 15},
-	"discipline": {"name": "Discipline de fer", "stat": "productivite", "per": 4.0, "max": 5, "base": 20},
-	"cadence": {"name": "Cadences infernales", "stat": "cadence", "per": 3.0, "max": 5, "base": 20},
-	"formation": {"name": "Formation politique", "stat": "propagande", "per": 5.0, "max": 5, "base": 15},
-	"portee": {"name": "Grands travaux", "stat": "expansion", "per": 4.0, "max": 5, "base": 20},
-	"chance": {"name": "Trèfle soviétique", "stat": "chance", "per": 4.0, "max": 5, "base": 20},
-	"logistique": {"name": "Logistique", "stat": "aimant", "per": 15.0, "max": 3, "base": 10},
-	"blindage": {"name": "Chapkas renforcées", "stat": "armure", "per": 0.5, "max": 4, "base": 25},
-	"regen": {"name": "Soupe au chou", "stat": "regen", "per": 0.15, "max": 3, "base": 25},
-	"tresor": {"name": "Caisse noire", "stat": "rubles_pct", "per": 10.0, "max": 3, "base": 15},
-	"relance": {"name": "Recours administratif", "stat": "reroll", "per": 1.0, "max": 3, "base": 40},
-	"seconde_chance": {"name": "Seconde chance", "stat": "revive", "per": 1.0, "max": 1, "base": 300},
-	"cinquieme_arme": {"name": "Cinquième arme", "stat": "weapon_slot", "per": 1.0, "max": 1, "base": 400},
+	"rations": {"name": "Rations doublées", "stat": "endurance", "per": 10.0, "max": 5, "base": 22},
+	"discipline": {"name": "Discipline de fer", "stat": "productivite", "per": 4.0, "max": 5, "base": 30},
+	"cadence": {"name": "Cadences infernales", "stat": "cadence", "per": 3.0, "max": 5, "base": 30},
+	"formation": {"name": "Formation politique", "stat": "propagande", "per": 5.0, "max": 5, "base": 22},
+	"portee": {"name": "Grands travaux", "stat": "expansion", "per": 4.0, "max": 5, "base": 30},
+	"chance": {"name": "Trèfle soviétique", "stat": "chance", "per": 4.0, "max": 5, "base": 30},
+	"logistique": {"name": "Logistique", "stat": "aimant", "per": 15.0, "max": 3, "base": 15},
+	"blindage": {"name": "Chapkas renforcées", "stat": "armure", "per": 0.5, "max": 4, "base": 38},
+	"regen": {"name": "Soupe au chou", "stat": "regen", "per": 0.15, "max": 3, "base": 38},
+	"tresor": {"name": "Caisse noire", "stat": "rubles_pct", "per": 10.0, "max": 3, "base": 22},
+	"relance": {"name": "Recours administratif", "stat": "reroll", "per": 1.0, "max": 3, "base": 60},
+	"seconde_chance": {"name": "Seconde chance", "stat": "revive", "per": 1.0, "max": 1, "base": 450},
+	"cinquieme_arme": {"name": "Cinquième arme", "stat": "weapon_slot", "per": 1.0, "max": 1, "base": 600},
 }
+
+# ---------------------------------------------------------------- Grade au Parti (account level gating)
+const GRADE_NAMES := ["Sympathisant", "Militant", "Camarade", "Délégué", "Commissaire", "Secrétaire de cellule", "Membre du Comité", "Héros du Travail", "Héros de l'Union", "Père des Peuples"]
+const BUREAU_GRADE := {"blindage": 2, "regen": 3, "relance": 4, "seconde_chance": 7, "cinquieme_arme": 9}
+const WEAPON_GRADE := {"matriochka": 2, "samovar": 3, "hautparleur": 3, "spoutnik": 4}
+const CHAR_GRADE := {"stakhanov": 1, "ilitch": 2, "moustache": 4, "babouchka": 6}
+const DIRECTIVES_GRADE := 3
+
+static func grade_req(g: int) -> int:
+	return 0 if g <= 1 else int(100 * pow(g, 1.6))
+
+func grade() -> int:
+	var life := int(data.get("lifetime", 0))
+	var g := 1
+	while g < 10 and life >= grade_req(g + 1): g += 1
+	return g
+
+func bureau_grade_req(id: String, rank: int) -> int:
+	return maxi(int(BUREAU_GRADE.get(id, 1)), 1 + 2 * rank)
+
+static func talent_level_req(i: int) -> int:
+	return 1 + 3 * i
 
 static func bureau_cost(id: String, rank: int) -> int:
 	return int(round(BUREAU[id]["base"] * pow(1.7, rank)))
@@ -159,7 +181,7 @@ func default_save() -> Dictionary:
 		"chars": {"stakhanov": {"unlocked": true, "xp": 0, "talents": [0, 0, 0]}},
 		"weapons": {"marteau": true, "kalach": true, "faucille": true, "molotov": true},
 		"mastery": {}, "modules": {}, "kills": {},
-		"plan": {}, "plan_no": 0, "directives_best": 0, "last_char": "stakhanov",
+		"plan": {}, "plan_no": 0, "directives_best": 0, "last_char": "stakhanov", "lifetime": 0,
 	}
 
 func load_save():
@@ -201,6 +223,7 @@ func talent_points_free(c: String) -> int:
 func buy_talent(c: String, branch: int) -> bool:
 	var t: Array = data["chars"][c]["talents"]
 	if talent_points_free(c) <= 0 or int(t[branch]) >= 5: return false
+	if char_level(c) < talent_level_req(int(t[branch])): return false
 	t[branch] = int(t[branch]) + 1
 	save()
 	return true
@@ -208,6 +231,7 @@ func buy_talent(c: String, branch: int) -> bool:
 func unlock_char(c: String) -> bool:
 	var cost: int = CHARACTERS[c]["cost"]
 	if data["chars"][c]["unlocked"] or data["medals"] < cost: return false
+	if grade() < int(CHAR_GRADE.get(c, 1)): return false
 	data["medals"] -= cost
 	data["chars"][c]["unlocked"] = true
 	save()
@@ -220,6 +244,7 @@ func bureau_rank(id: String) -> int:
 func buy_bureau(id: String) -> bool:
 	var r := bureau_rank(id)
 	if r >= BUREAU[id]["max"]: return false
+	if grade() < bureau_grade_req(id, r): return false
 	var cost := bureau_cost(id, r)
 	if data["medals"] < cost: return false
 	data["medals"] -= cost
@@ -232,6 +257,7 @@ func weapon_unlocked(w: String) -> bool:
 
 func unlock_weapon(w: String) -> bool:
 	if weapon_unlocked(w) or data["medals"] < WEAPON_UNLOCK[w]: return false
+	if grade() < int(WEAPON_GRADE.get(w, 1)): return false
 	data["medals"] -= WEAPON_UNLOCK[w]
 	data["weapons"][w] = true
 	save()
@@ -330,7 +356,7 @@ func new_plan():
 func end_run(r: Dictionary) -> Dictionary:
 	var out := {"lines": [], "medals": 0}
 	var f: int = r["ferveur"]
-	var base := int(r["kills"] / 20.0 + r["time"] / 60.0 * 6.0 + r["elites"] * 4 + (80 if r["boss"] else 0))
+	var base := int(r["kills"] / 45.0 + r["time"] / 60.0 * 5.0 + r["elites"] * 3 + (50 if r["boss"] else 0))
 	var mult := 1.0 + 0.15 * f
 	var medals := int(base * mult)
 	out["lines"].append("Médailles de la run : %d%s" % [medals, (" (ferveur %d : x%.2f)" % [f, mult]) if f > 0 else ""])
@@ -362,7 +388,7 @@ func end_run(r: Dictionary) -> Dictionary:
 			"char_time": if r["char"] == q["target_id"]: q["progress"] = maxi(int(q["progress"]), int(r["time"]))
 		if int(q["progress"]) >= int(q["target"]):
 			q["done"] = true
-			var reward := int(60 * _quota_scale())
+			var reward := int(30 * _quota_scale())
 			medals += reward
 			out["lines"].append("QUOTA RÉALISÉ : %s (+%d médailles)" % [q["text"], reward])
 	plan["runs_left"] = int(plan["runs_left"]) - 1
@@ -372,7 +398,7 @@ func end_run(r: Dictionary) -> Dictionary:
 	if all_done or int(plan["runs_left"]) <= 0:
 		data["bureau_purged"] = ""
 		if all_done:
-			var bonus := int(150 * _quota_scale())
+			var bonus := int(80 * _quota_scale())
 			medals += bonus
 			out["lines"].append("PLAN QUINQUENNAL ACCOMPLI ! +%d médailles" % bonus)
 			var locked := []
@@ -401,7 +427,11 @@ func end_run(r: Dictionary) -> Dictionary:
 	var lv_after := char_level(c)
 	if lv_after > lv_before:
 		out["lines"].append("%s passe niveau %d (+%d point(s) de talent)" % [CHARACTERS[c]["name"], lv_after, lv_after - lv_before])
+	var g_before := grade()
 	data["medals"] = int(data["medals"]) + medals
+	data["lifetime"] = int(data.get("lifetime", 0)) + medals
+	if grade() > g_before:
+		out["lines"].append("PROMOTION : tu es maintenant %s (grade %d) ! De nouvelles améliorations sont accessibles." % [GRADE_NAMES[grade() - 1], grade()])
 	data["runs"] = int(data["runs"]) + 1
 	if r["win"]: data["wins"] = int(data["wins"]) + 1
 	data["best_time"] = maxf(float(data["best_time"]), float(r["time"]))
