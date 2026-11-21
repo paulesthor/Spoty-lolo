@@ -39,6 +39,13 @@ Ce fichier garde en mémoire les décisions prises avec le créateur du jeu, pou
 - [x] Équilibrage des 20 armes au banc (bot seul avec une arme, 4 min) : Faucille, Spoutnik, Ours réduits ; Piolet, Haut-parleur (vise maintenant l'ennemi le plus proche), Balalaïka, Tracts, Samovar, Goulag, Orgue renforcés.
 - À faire : modules d'Usine pour les 12 nouvelles armes ; vérifier l'équilibrage des zones 2 et 3 avec de vrais joueurs (le bot meurt encore en zone 1 après 8 runs).
 
+## Lot 3 — animations, décor, refonte visuelle (21/11/2026)
+- [x] Animations : ennemis qui frappent, tirent, lancent, saluent, encaissent, reculent et se déplacent en crabe ; mort du héros au ralenti ; acclamation, sort et interaction ; coffres qui s'ouvrent ; entrées des élites et boss.
+- [x] Décor vivant par zone : drapeaux, pigeons qui s'envolent, dirigeable à slogan, écrans boursiers animés, mascotte gonflable, taureau d'or, néons, fumées, mobilier urbain.
+- [x] Vérificateur automatique d'objets flottants ou superposés (`-- layoutcheck zone=N seed=S`) : 0 défaut réel sur 12 cartes testées.
+- [x] Refonte visuelle (demande du créateur : « un vrai rendu professionnel avec une identité forte ») : sols PBR texturés (asphalte, pavés, béton, marbre, ambientCG CC0), végétation stylisée Quaternius (feuillage texturé), relief de crépi et de briques sur les immeubles, affiches de propagande constructivistes et publicités détournées générées pour le jeu, palissades d'affiches, étalonnage « affiche » (papier chaud, ombres froides, rouges poussés, vignettage, grain), contours encrés sur le héros, les élites et les boss, écran de chargement et Kolkhoze illustrés, HUD aux panneaux inclinés.
+- À poursuivre (identité visuelle) : effets des armes plus graphiques, ciel et lointains, plus de variété de façades, vérifier les performances sur le PC du créateur (FPS en fin de partie).
+
 ## Réponses du créateur (questionnaire du 21/11/2026)
 **À faire maintenant :**
 - Personnages : taille des capitalistes inchangée ; ennemis tués = **disparition immédiate** (pas de cadavre) ; pas d'animation de frappe du héros ; je propose les 5e/6e camarades ; **skins débloquables** oui.
