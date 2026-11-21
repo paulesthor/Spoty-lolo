@@ -11,8 +11,8 @@ var game
 var model: Node3D
 var ap: AnimationPlayer
 var cam_yaw := 0.0
-var max_hp := 100.0
-var hp := 100.0
+var max_hp := 120.0
+var hp := 120.0
 var base_speed := 7.5
 var jumps_left := 1
 var slide_t := 0.0
@@ -23,6 +23,8 @@ var was_on_floor := true
 var last_vy := 0.0
 var facing := Vector3.FORWARD
 var cur_anim := ""
+var status := {}      # name -> remaining seconds (slow, debt, blind, seize)
+var seized_weapon := ""
 # bot (automated test) state
 var bot := false
 var bot_angle := 0.0
@@ -65,11 +67,38 @@ func _anim(a: String, speed := 1.0):
 	ap.speed_scale = speed
 
 func stat_speed() -> float:
-	return base_speed * (1.0 + 0.08 * game.decret_lv("vitesse"))
+	var sp: float = base_speed * (1.0 + game.dv("vitesse") / 100.0)
+	if status.get("slow", 0.0) > 0.0: sp *= 0.62
+	if status.get("debt", 0.0) > 0.0: sp *= 0.55
+	return sp
+
+func apply_status(name: String):
+	match name:
+		"slow":
+			if status.get("slow", 0.0) <= 0.0: game.toast("PAPERASSE · TU ES RALENTI", 1.2)
+			status["slow"] = 2.5
+		"debt":
+			status["debt"] = 0.25
+		"blind":
+			if status.get("blind", 0.0) <= 0.0: game.hud.blind()
+			status["blind"] = 1.6
+		"seize":
+			if status.get("seize", 0.0) > 0.0 or game.weapons.owned.is_empty(): return
+			var ids: Array = game.weapons.owned.keys()
+			seized_weapon = ids[randi() % ids.size()]
+			status["seize"] = 5.0
+			game.toast("SAISIE ! %s CONFISQUÉ 5 S" % Data.WEAPONS[seized_weapon]["name"].to_upper(), 1.8)
+
+func _tick_status(d: float):
+	for k in status.keys():
+		status[k] = maxf(0.0, status[k] - d)
+	if status.get("seize", 0.0) <= 0.0: seized_weapon = ""
 
 func _physics_process(d: float):
 	if game == null or game.state != "play": return
 	invuln = maxf(0.0, invuln - d)
+	_tick_status(d)
+	hp = minf(max_hp, hp + 0.4 * d)
 	slide_cd = maxf(0.0, slide_cd - d)
 	var input := Vector2.ZERO
 	var want_jump := false
@@ -127,10 +156,10 @@ func _physics_process(d: float):
 	if global_position.y < -5.0:
 		global_position = Vector3(0, 1, 0)
 
-func take_damage(amount: float) -> bool:
-	if invuln > 0.0 or hp <= 0.0: return false
-	hp -= amount
-	invuln = 0.45
+func take_damage(amount: float, dot := false) -> bool:
+	if hp <= 0.0 or (invuln > 0.0 and not dot): return false
+	hp -= maxf(amount - game.dv("armure"), amount * 0.25)
+	if not dot: invuln = 0.6
 	game.on_player_hit(amount)
 	if hp <= 0.0:
 		hp = 0.0
@@ -154,6 +183,14 @@ func _bot_input(d: float) -> Array:
 		var dist := v.length()
 		if dist < 4.5 and dist > 0.01:
 			flee += v / dist * (4.5 - dist) * (3.0 if e.boss else 1.0)
+	var best_c = null
+	var bd := 40.0
+	for c in game.chests:
+		var cost: int = 0 if c["free"] else game.chest_cost
+		var dd: float = c["n"].global_position.distance_to(global_position)
+		if cost <= game.rubles and dd < bd: bd = dd; best_c = c["n"].global_position
+	if best_c != null:
+		want = (best_c - global_position)
 	var g = game.nearest_gem(global_position, 14.0)
 	if g != null:
 		want = want * 0.3 + (g - global_position) * 1.5

@@ -1,6 +1,6 @@
 extends Node3D
 # Lutte Finale — prototype. Game loop for one zone ("Hypermarché").
-# Test flags (after "--"): bot  speed=4  dur=600  shots=60  shotdir=res://proto_shots  seed=1
+# Test flags (after "--"): bot  speed=4  dur=600  shots=60  shotdir=res://proto_shots  seed=1  warp=300  pos=x,z yaw=deg
 
 const ZONE_TIME := 600.0      # 10:00, then the Krach
 const BOSS_TIME := 480.0      # 08:00
@@ -13,13 +13,14 @@ var level := 1
 var xp := 0
 var rubles := 0
 var kills := 0
-var decrets := {}
+var decrets := {}          # id -> {"n": picks, "v": accumulated value}
 var krach := false
 var boss = null
 var boss_spawned := false
 var pending_levels := 0
 var choice_source := ""
-
+var choice_ctx = null
+var bets := 0              # Bourse aux paris accepted
 var world
 var player
 var enemies
@@ -31,18 +32,20 @@ var shake_amt := 0.0
 var cam_k := 1.0
 var spawn_acc := 0.0
 var next_wave := 60.0
-var elite_times := [120.0, 240.0, 360.0, 450.0, 540.0]
+var elite_times := [120.0, 240.0, 330.0, 420.0, 540.0]
+var next_event := 85.0
+var event_name := ""
+var event_t := 0.0
 var gems: Array = []
 var coins: Array = []
 var chests: Array = []
-var chest_cost := 15
-var statue_charge := 0.0
-var statue_used := false
-var statue_ring: MeshInstance3D
+var chest_cost := 12
+var shrines: Array = []
+var breakables: Array = []
+var market_buys := 0
 var dmg_labels: Array = []
 var dmg_idx := 0
 var rng := RandomNumberGenerator.new()
-
 # test / bot
 var bot := false
 var warp := 0.0
@@ -93,8 +96,7 @@ func _ready():
 	for n in [world, player, enemies, weapons]:
 		n.process_mode = Node.PROCESS_MODE_PAUSABLE
 	_setup_camera()
-	_setup_chests()
-	_setup_statue()
+	_setup_map_objects()
 	for i in 40:
 		var l := U.label(self, "", Vector3(0, -100, 0), 64, Color.WHITE, Color(0.08, 0.04, 0.02, 1))
 		l.visible = false
@@ -114,22 +116,31 @@ func _ready():
 	else:
 		_show_menu()
 
-# debug: jump to a later moment of the zone with a plausible build (used for screenshots)
+func dv(id: String) -> float:
+	return decrets[id]["v"] if decrets.has(id) else 0.0
+
+func decret_lv(id: String) -> int:
+	return decrets[id]["n"] if decrets.has(id) else 0
+
+# debug: jump to a later moment of the zone with a plausible build (used for screenshots/tests)
 func _do_warp():
 	time = warp
 	while next_wave <= warp: next_wave += 60.0
 	while not elite_times.is_empty() and elite_times[0] < warp: elite_times.pop_front()
-	level = int(5 + warp / 20.0)
-	var lv := clampi(int(warp / 70.0) + 1, 1, 8)
-	for id in ["marteau", "kalach", "faucille", "molotov"]:
-		for i in (lv if id != "marteau" else lv + 1):
-			weapons.add_weapon(id)
-		weapons.owned[id] = mini(weapons.owned[id], 8)
-	decrets = {"productivite": 3, "cadence": 2, "endurance": 3, "vitesse": 2}
-	player.max_hp = 175; player.hp = 150
-	var m := _mults()
-	for i in 110:
-		enemies.spawn(["stagiaire", "cadre", "trader"][i % 3], spawn_point(6.0, 24.0), m[0], m[1])
+	next_event = warp + 10.0
+	level = int(4 + warp / 30.0)
+	var ups := int(warp / 60.0)
+	for id in ["kalach", "molotov", "matriochka"]:
+		weapons.add_weapon(id)
+	for id in weapons.owned:
+		for i in ups:
+			weapons.upgrade(id, {"dmg": 0.2, "cd": 0.06})
+	for id in ["productivite", "cadence", "endurance", "expansion"]:
+		for i in maxi(1, ups / 2):
+			_apply({"kind": "decret", "id": id, "rarity": 1})
+	var m := mults()
+	for i in 100:
+		enemies.spawn(_pick_kind(), spawn_point(8.0, 26.0), m[0], m[1])
 
 func _setup_input():
 	var acts := {
@@ -138,7 +149,7 @@ func _setup_input():
 		"jump": [KEY_SPACE], "slide": [KEY_SHIFT, KEY_CTRL], "interact": [KEY_F, KEY_E],
 		"cam_left": [KEY_Q], "cam_right": [KEY_R],
 		"pause": [KEY_ESCAPE, KEY_P], "confirm": [KEY_ENTER, KEY_KP_ENTER],
-		"choose_1": [KEY_1, KEY_KP_1], "choose_2": [KEY_2, KEY_KP_2], "choose_3": [KEY_3, KEY_KP_3],
+		"choose_1": [KEY_1, KEY_KP_1], "choose_2": [KEY_2, KEY_KP_2], "choose_3": [KEY_3, KEY_KP_3], "choose_4": [KEY_4, KEY_KP_4],
 		"restart": [KEY_BACKSPACE],
 	}
 	for a in acts:
@@ -147,7 +158,7 @@ func _setup_input():
 			var ev := InputEventKey.new()
 			ev.physical_keycode = k
 			InputMap.action_add_event(a, ev)
-	var pads := {"jump": JOY_BUTTON_A, "slide": JOY_BUTTON_B, "interact": JOY_BUTTON_X, "pause": JOY_BUTTON_START, "confirm": JOY_BUTTON_A, "restart": JOY_BUTTON_BACK}
+	var pads := {"jump": JOY_BUTTON_A, "slide": JOY_BUTTON_B, "interact": JOY_BUTTON_X, "pause": JOY_BUTTON_START, "confirm": JOY_BUTTON_A, "restart": JOY_BUTTON_BACK, "choose_4": JOY_BUTTON_Y}
 	for a in pads:
 		var ev := InputEventJoypadButton.new(); ev.button_index = pads[a]
 		InputMap.action_add_event(a, ev)
@@ -161,43 +172,168 @@ func _setup_camera():
 	add_child(cam_rig)
 	cam = Camera3D.new()
 	cam.fov = 55
+	cam.far = 400.0
 	cam_rig.add_child(cam)
 	cam.position = CAM_OFFSET
 	cam.basis = Basis.looking_at(CAM_LOOK - CAM_OFFSET, Vector3.UP)
 	cam.make_current()
 
-func _setup_chests():
+# ---------------------------------------------------------------- map objects
+func _beam(parent: Node3D, col: Color, h := 30.0):
+	var m := MeshInstance3D.new()
+	var c := CylinderMesh.new(); c.top_radius = 0.35; c.bottom_radius = 0.35; c.height = h
+	m.mesh = c
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(col.r, col.g, col.b, 0.22)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	m.material_override = mat
+	m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	m.position = Vector3(0, h / 2.0, 0)
+	parent.add_child(m)
+	return m
+
+func _setup_map_objects():
 	for p in world.chest_spots:
 		_make_chest(p, false)
+	var kinds := ["statue", "file", "statue", "pari", "goulag", "marche", "aimant", "defi", "file"]
+	for i in world.shrine_spots.size():
+		_make_shrine(kinds[i % kinds.size()], world.shrine_spots[i])
+	for p in world.breakable_spots:
+		_make_breakable(p)
 
-func _make_chest(p: Vector3, free: bool):
+func _make_chest(p: Vector3, free: bool, rarity_bonus := 0):
 	var n := Node3D.new()
 	add_child(n)
 	n.global_position = p
 	n.rotation.y = rng.randf() * TAU
-	U.box(n, Vector3(1.2, 0.8, 0.8), Vector3(0, 0.4, 0), U.solid(Color(0.95, 0.68, 0.15), 0.0, 0.4, 0.6))
+	U.box(n, Vector3(1.2, 0.8, 0.8), Vector3(0, 0.4, 0), U.solid(Color(0.95, 0.68, 0.15) if rarity_bonus == 0 else Color(0.75, 0.4, 1.0), 0.0, 0.4, 0.6))
 	U.box(n, Vector3(1.24, 0.12, 0.84), Vector3(0, 0.62, 0), U.solid(Color(0.35, 0.2, 0.1)))
-	var l := OmniLight3D.new(); l.light_color = Color(1, 0.8, 0.3); l.light_energy = 1.2; l.omni_range = 3.0; l.position = Vector3(0, 1.2, 0)
-	n.add_child(l)
+	_beam(n, Color(1, 0.8, 0.3) if rarity_bonus == 0 else Color(0.8, 0.5, 1.0), 14.0)
 	var lab := U.label(n, "GRATUIT" if free else "", Vector3(0, 1.6, 0), 48, Color(1, 0.88, 0.4), Color(0, 0, 0, 1))
-	chests.append({"n": n, "free": free, "label": lab})
+	chests.append({"n": n, "free": free, "label": lab, "bonus": rarity_bonus})
 
-func _setup_statue():
-	statue_ring = MeshInstance3D.new()
-	var tm := TorusMesh.new(); tm.inner_radius = 4.3; tm.outer_radius = 4.5
-	statue_ring.mesh = tm
-	statue_ring.scale = Vector3(1, 0.05, 1)
-	statue_ring.material_override = U.solid(Color(1, 0.75, 0.15), 3.0)
-	add_child(statue_ring)
-	statue_ring.global_position = world.statue_pos + Vector3(0, 0.05, 0)
-	U.label(self, "STATUE DU LEADER", world.statue_pos + Vector3(0, 8.2, 0), 64, Color(1, 0.85, 0.35), Color(0.1, 0, 0, 1))
+const SHRINE_INFO := {
+	"statue": ["STATUE DU LEADER", Color(1, 0.75, 0.15), "Reste dans le cercle 5 s : une faveur rare ou mieux."],
+	"file": ["FILE D'ATTENTE", Color(0.4, 0.7, 1.0), "Défi : tiens 20 s dans le cercle pendant l'assaut. Récompense : coffre épique."],
+	"pari": ["BOURSE AUX PARIS", Color(0.3, 1.0, 0.4), "Ennemis +20 % de PV pour toute la zone, mais +35 % d'XP et de roubles."],
+	"goulag": ["GOULAG", Color(0.6, 0.6, 0.7), "Sacrifie 20 PV max. En échange : une amélioration épique ou légendaire."],
+	"marche": ["MARCHÉ NOIR", Color(0.9, 0.5, 1.0), "Achète une amélioration avec tes roubles."],
+	"aimant": ["DISTRIBUTEUR DE PROPAGANDE", Color(0.2, 0.95, 0.5), "Attire toute l'XP de la carte."],
+	"defi": ["OPA HOSTILE", Color(1.0, 0.85, 0.3), "Défi : 3 Golden Boys arrivent. Chacun lâche un coffre."],
+}
+
+func _make_shrine(kind: String, p: Vector3):
+	var info: Array = SHRINE_INFO[kind]
+	var n := Node3D.new()
+	add_child(n)
+	n.global_position = p
+	var col: Color = info[1]
+	match kind:
+		"statue":
+			U.box(n, Vector3(3, 2.2, 3), Vector3(0, 1.1, 0), U.solid(Color(0.55, 0.52, 0.5)))
+			var st := U.place(n, U.CH + "character-male-b.glb", p + Vector3(0, 2.2, 0), 5.2, 0.4)
+			U.play_anim(st, "emote-yes", 0.25, 0.0)
+			var ap := U.anim_player(st)
+			if ap: ap.pause()
+			for m in st.find_children("*", "MeshInstance3D", true, false):
+				(m as MeshInstance3D).material_override = U.solid(Color(0.75, 0.12, 0.12), 0.0, 0.45, 0.3)
+			world.obstacles.append(Rect2(p.x - 1.5, p.z - 1.5, 3, 3))
+			_static_box(p + Vector3(0, 1.1, 0), Vector3(3, 2.2, 3))
+			for fx in [-3.0, 3.0]:
+				U.box(n, Vector3(0.15, 7, 0.15), Vector3(fx, 3.5, 0), U.solid(Color(0.3, 0.3, 0.32), 0.0, 0.4, 0.8))
+				U.box(n, Vector3(2.4, 1.5, 0.05), Vector3(fx + 1.25, 6.2, 0), U.solid(Color(0.72, 0.05, 0.1)))
+				var s2 := Label3D.new(); s2.text = "☭"; s2.font = load("res://fonts/Symbols.ttf"); s2.font_size = 128; s2.pixel_size = 0.008
+				s2.modulate = Color(1, 0.8, 0.25); s2.outline_size = 0; s2.position = Vector3(fx + 1.25, 6.2, 0.05); s2.shaded = true
+				n.add_child(s2)
+		"file":
+			for i in 6:
+				U.cyl(n, 0.08, 1.0, Vector3(-3.5 + i * 1.4, 0.5, 2.5), U.solid(Color(0.75, 0.75, 0.78), 0.0, 0.3, 0.9))
+			U.box(n, Vector3(7.0, 0.08, 0.05), Vector3(0, 0.85, 2.5), U.solid(Color(0.8, 0.1, 0.1)))
+			U.box(n, Vector3(2.2, 1.6, 0.15), Vector3(0, 2.4, 0), U.solid(Color(0.9, 0.88, 0.8)))
+			U.label(n, "PRENEZ UN\nNUMÉRO", Vector3(0, 2.4, 0.1), 56, Color(0.1, 0.1, 0.1), Color(0, 0, 0, 0), false)
+		"pari":
+			U.box(n, Vector3(2.6, 2.6, 2.0), Vector3(0, 1.3, 0), U.solid(Color(0.12, 0.35, 0.18)))
+			U.box(n, Vector3(2.2, 1.2, 0.1), Vector3(0, 3.4, 0), U.solid(Color(0.05, 0.05, 0.06)))
+			U.label(n, "▲ +312 %", Vector3(0, 3.4, 0.08), 70, Color(0.3, 1, 0.4), Color(0, 0, 0, 0), false)
+			world.obstacles.append(Rect2(p.x - 1.3, p.z - 1.0, 2.6, 2.0)); _static_box(p + Vector3(0, 1.3, 0), Vector3(2.6, 2.6, 2.0))
+		"goulag":
+			U.box(n, Vector3(4, 2.6, 3), Vector3(0, 1.3, 0), U.solid(Color(0.32, 0.3, 0.3)))
+			U.box(n, Vector3(4.4, 0.3, 3.4), Vector3(0, 2.75, 0), U.solid(Color(0.2, 0.2, 0.22)))
+			for i in 5:
+				U.box(n, Vector3(0.06, 1.6, 0.06), Vector3(-2.4 + i * 1.2, 0.8, 2.2), U.solid(Color(0.4, 0.4, 0.4), 0.0, 0.3, 0.8))
+			U.box(n, Vector3(5.0, 0.04, 0.04), Vector3(0, 1.4, 2.2), U.solid(Color(0.5, 0.5, 0.5), 0.0, 0.3, 0.8))
+			world.obstacles.append(Rect2(p.x - 2.0, p.z - 1.5, 4, 3)); _static_box(p + Vector3(0, 1.3, 0), Vector3(4, 2.6, 3))
+		"marche":
+			U.box(n, Vector3(3.2, 1.0, 1.2), Vector3(0, 0.5, 0), U.solid(Color(0.3, 0.2, 0.25)))
+			U.box(n, Vector3(3.6, 0.12, 2.0), Vector3(0, 2.6, 0.2), U.solid(Color(0.35, 0.15, 0.45)))
+			var gm := U.place(n, U.SHOP + "gacha-machine.glb", p + Vector3(2.4, 0, 0), 1.8, 0.0)
+			var lamp := OmniLight3D.new(); lamp.light_color = col; lamp.light_energy = 1.5; lamp.omni_range = 5.0; lamp.position = Vector3(0, 2.2, 0.6)
+			n.add_child(lamp)
+			world.obstacles.append(Rect2(p.x - 1.6, p.z - 0.6, 3.2, 1.2)); _static_box(p + Vector3(0, 0.5, 0), Vector3(3.2, 1.0, 1.2))
+		"aimant":
+			var fr := U.place(n, U.SHOP + "freezer.glb", p, 2.2, 0.0)
+			U.box(n, Vector3(1.6, 0.6, 0.1), Vector3(0, 2.6, 0.5), U.solid(Color(0.72, 0.05, 0.1)))
+			world.obstacles.append(Rect2(p.x - 0.8, p.z - 0.6, 1.6, 1.2))
+		"defi":
+			U.box(n, Vector3(2.4, 1.2, 2.4), Vector3(0, 0.6, 0), U.solid(Color(0.3, 0.28, 0.25)))
+			var g := U.place(n, U.CH + "character-male-d.glb", p + Vector3(0, 1.2, 0), 3.2, 0.0)
+			U.play_anim(g, "emote-yes", 0.3, 0.0)
+			var ap2 := U.anim_player(g)
+			if ap2: ap2.pause()
+			for m in g.find_children("*", "MeshInstance3D", true, false):
+				(m as MeshInstance3D).material_override = U.solid(Color(1.0, 0.72, 0.2), 0.0, 0.25, 1.0)
+			world.obstacles.append(Rect2(p.x - 1.2, p.z - 1.2, 2.4, 2.4)); _static_box(p + Vector3(0, 0.6, 0), Vector3(2.4, 1.2, 2.4))
+	_beam(n, col)
+	var lab := U.label(n, info[0], Vector3(0, 6.0 if kind == "statue" else 4.2, 0), 60, col, Color(0.05, 0.03, 0, 1))
+	if kind == "statue": lab.position.y = 8.2
+	var ring = null
+	if kind in ["statue", "file"]:
+		ring = MeshInstance3D.new()
+		var tm := TorusMesh.new(); tm.inner_radius = 4.3 if kind == "statue" else 5.8; tm.outer_radius = tm.inner_radius + 0.2
+		ring.mesh = tm
+		ring.scale = Vector3(1, 0.05, 1)
+		var rm := StandardMaterial3D.new(); rm.albedo_color = col; rm.emission_enabled = true; rm.emission = col; rm.emission_energy_multiplier = 2.0
+		ring.material_override = rm
+		n.add_child(ring)
+		ring.position = Vector3(0, 0.05, 0 if kind == "statue" else 0)
+	shrines.append({"kind": kind, "n": n, "pos": p, "used": false, "charge": 0.0, "ring": ring, "label": lab, "active": false, "t": 0.0, "out": 0.0, "cd": 0.0})
+
+func _static_box(center: Vector3, size: Vector3):
+	var body := StaticBody3D.new(); var cs := CollisionShape3D.new(); var bs := BoxShape3D.new(); bs.size = size
+	cs.shape = bs; body.add_child(cs); body.position = center; add_child(body)
+
+func _make_breakable(p: Vector3):
+	var path := U.CAR + "box.glb" if rng.randf() < 0.65 else U.SHOP + "bottle-return.glb"
+	var n := U.place(self, path, p, 0.9 if path.ends_with("box.glb") else 1.4, rng.randf() * TAU)
+	breakables.append({"n": n, "pos": p})
+
+func break_in_radius(c: Vector3, r: float):
+	for b in breakables.duplicate():
+		var v: Vector3 = b["pos"] - c
+		v.y = 0
+		if v.length() < r: _break(b)
+
+func _break(b: Dictionary):
+	breakables.erase(b)
+	var p: Vector3 = b["pos"]
+	var n: Node3D = b["n"]
+	var tw := n.create_tween()
+	tw.tween_property(n, "scale", n.scale * 0.05, 0.15)
+	tw.tween_callback(n.queue_free)
+	spark(p + Vector3(0, 0.6, 0))
+	var r := rng.randf() * (1.0 + dv("chance") / 100.0)
+	if r < 0.08: _drop_heal(p)
+	elif r < 0.45: _drop_gem(p, 3)
+	else: _drop_coin(p, rng.randi_range(2, 5))
 
 # ---------------------------------------------------------------- flow
 func _show_menu():
 	state = "menu"
 	hud.set_hud_visible(false)
 	hud.show_screen("LUTTE FINALE",
-		"Le capitalisme a gagné. Pas pour longtemps.\n\nDéplacement : ZQSD / flèches / stick gauche     Caméra : souris / A et R / stick droit\nSaut (double saut) : Espace / A     Glissade : Maj / B     Ouvrir un coffre : F / X\n\nTes armes tirent toutes seules. Survis, monte de niveau, bats le Directeur à 08:00.",
+		"Le capitalisme a gagné. Pas pour longtemps.\n\nDéplacement : ZQSD / flèches / stick gauche     Caméra : souris / A et R / stick droit\nSaut (double saut) : Espace / A     Glissade : Maj / B     Interagir : F / X\n\nTes armes tirent toutes seules. Casse les cartons, ouvre les coffres, active les sanctuaires.\nBats le Directeur à 08:00. À 10:00, c'est le Krach.",
 		"ENTRÉE ou A pour commencer", Color(0.9, 0.15, 0.15))
 
 func start():
@@ -234,10 +370,9 @@ func _process(d: float):
 		"choice":
 			if bot:
 				choice_wait -= d / maxf(Engine.time_scale, 0.001)
-				if choice_wait <= 0.0: _on_chosen(0)
+				if choice_wait <= 0.0: _on_chosen(_bot_pick())
 			_bot_tick(d)
 			return
-	# --- play
 	if Input.is_action_just_pressed("pause"):
 		_pause(); return
 	time += rd
@@ -245,9 +380,9 @@ func _process(d: float):
 	player.cam_yaw -= yaw_in * 2.2 * rd
 	_update_camera(rd)
 	_director(rd)
+	_events(rd)
 	_update_pickups(rd)
-	_update_chests(rd)
-	_update_statue(rd)
+	_update_interactions(rd)
 	_bot_tick(d)
 
 func _update_camera(d: float):
@@ -261,8 +396,6 @@ func _update_camera(d: float):
 	cam_rig.global_position = cam_rig.global_position.lerp(target, 1.0 - exp(-10.0 * d))
 	cam_rig.rotation.y = player.cam_yaw
 	shake_amt = maxf(0.0, shake_amt - d * 1.5)
-	# pull the camera in when a building is between it and the player
-	var local := CAM_OFFSET
 	var head: Vector3 = player.global_position + Vector3(0, 1.6, 0)
 	var want: Vector3 = cam_rig.global_transform * CAM_OFFSET
 	var q := PhysicsRayQueryParameters3D.create(head, want, 2)
@@ -272,7 +405,7 @@ func _update_camera(d: float):
 		k = clampf((head.distance_to(hit["position"]) - 0.8) / head.distance_to(want), 0.15, 1.0)
 	cam_k = minf(k, cam_k + d * 2.0) if k > cam_k else k
 	var pivot := Vector3(0, 1.6, 0)
-	local = pivot + (CAM_OFFSET - pivot) * cam_k
+	var local := pivot + (CAM_OFFSET - pivot) * cam_k
 	cam.position = local + Vector3(randf_range(-1, 1), randf_range(-1, 1), 0) * shake_amt
 	cam.basis = Basis.looking_at(CAM_LOOK.lerp(Vector3(0, 1.0, -3.0), 1.0 - cam_k) - local, Vector3.UP)
 
@@ -283,7 +416,14 @@ func _pause():
 	state = "paused"
 	get_tree().paused = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-	hud.show_screen("PAUSE", "Niveau %d · %d KO · %s" % [level, kills, _fmt(time)], "ÉCHAP pour reprendre · RETOUR ARRIÈRE pour recommencer")
+	var lines := []
+	for id in weapons.owned:
+		var w: Dictionary = weapons.owned[id]
+		lines.append("%s niv %d%s" % [Data.WEAPONS[id]["evo_name"] if w["evo"] else Data.WEAPONS[id]["name"], w["lv"], " ★" if w["evo"] else ""])
+	var dl := []
+	for id in decrets:
+		dl.append("%s (%s)" % [Data.DECRETS[id]["name"], Data.decret_text(id, dv(id))])
+	hud.show_screen("PAUSE", "Niveau %d · %d KO · %s\n\nArmes : %s\nDécrets : %s" % [level, kills, _fmt(time), ", ".join(lines), ", ".join(dl) if not dl.is_empty() else "aucun"], "ÉCHAP pour reprendre · RETOUR ARRIÈRE pour recommencer")
 
 func _unpause():
 	state = "play"
@@ -294,7 +434,7 @@ func _unpause():
 func _fmt(t: float) -> String:
 	return "%02d:%02d" % [int(t) / 60, int(t) % 60]
 
-# ---------------------------------------------------------------- spawning
+# ---------------------------------------------------------------- spawning / difficulty
 func spawn_point(min_d: float, max_d: float) -> Vector3:
 	var pp: Vector3 = player.global_position
 	for i in 12:
@@ -305,28 +445,42 @@ func spawn_point(min_d: float, max_d: float) -> Vector3:
 			return world.resolve(p, 0.6)
 	return world.resolve(Vector3(pp.x + min_d, 0, pp.z), 0.6)
 
-func _mults() -> Array:
+func mults() -> Array:
 	var tm := time / 60.0
-	return [1.0 + 0.3 * tm + 0.03 * tm * tm, 1.0 + 0.12 * tm]
+	var hp := (1.0 + 0.22 * tm + 0.08 * tm * tm) * (1.0 + 0.2 * bets)
+	return [hp, 1.0 + 0.07 * tm]
+
+func enemy_speed_mult() -> float:
+	return 0.55 if event_name == "greve" else 1.0
+
+func _pick_kind() -> String:
+	var tm := time / 60.0
+	var total := 0.0
+	var pool := []
+	for row in Data.SPAWN_TABLE:
+		if time < row[1]: continue
+		var w: float = row[2] + row[3] * maxf(0.0, tm - row[1] / 60.0)
+		pool.append([row[0], w]); total += w
+	var r := rng.randf() * total
+	for p in pool:
+		r -= p[1]
+		if r <= 0.0: return p[0]
+	return "stagiaire"
 
 func _director(d: float):
 	var tm := time / 60.0
-	var m := _mults()
-	var cap := 220 if not krach else 280
-	var rate := 1.6 + 0.9 * tm + 0.08 * tm * tm
+	var m := mults()
+	var cap := 240 if not krach else 300
+	var rate := (0.7 + 0.6 * tm + 0.13 * tm * tm) * (1.0 + 0.15 * bets)
 	if krach: rate *= 2.2
 	spawn_acc += rate * d
 	while spawn_acc >= 1.0:
 		spawn_acc -= 1.0
 		if enemies.count() >= cap: break
-		var r := rng.randf() * (6.0 + 2.0 * tm + (1.2 * tm if tm > 1.5 else 0.0))
-		var kind := "stagiaire"
-		if r > 6.0: kind = "cadre"
-		if r > 6.0 + 2.0 * tm: kind = "trader"
-		enemies.spawn(kind, spawn_point(20.0, 28.0), m[0], m[1])
+		enemies.spawn(_pick_kind(), spawn_point(20.0, 30.0), m[0], m[1])
 	if time >= next_wave and time < ZONE_TIME:
 		next_wave += 60.0
-		var n := int(18 + tm * 4)
+		var n := int(12 + tm * 5)
 		hud.toast("VAGUE DE STAGIAIRES", 1.5)
 		for i in n:
 			if enemies.count() >= cap + 40: break
@@ -335,11 +489,11 @@ func _director(d: float):
 			enemies.spawn("stagiaire", world.resolve(p, 0.5), m[0], m[1])
 	if not elite_times.is_empty() and time >= elite_times[0]:
 		elite_times.pop_front()
-		enemies.spawn("golden", spawn_point(18.0, 22.0), m[0] * 0.8, m[1])
+		enemies.spawn("golden", spawn_point(18.0, 22.0), m[0] * 0.7, m[1])
 		hud.toast("UN GOLDEN BOY APPROCHE · IL TRANSPORTE UN COFFRE", 2.5)
 	if not boss_spawned and time >= BOSS_TIME:
 		boss_spawned = true
-		boss = enemies.spawn("boss", spawn_point(20.0, 24.0), 1.0, 1.0)
+		boss = enemies.spawn("boss", spawn_point(20.0, 24.0), 1.0 + 0.2 * bets, 1.0)
 		hud.toast("LE DIRECTEUR BLACK FRIDAY ARRIVE", 3.0)
 		shake(0.4)
 	if not krach and time >= ZONE_TIME:
@@ -347,15 +501,57 @@ func _director(d: float):
 		enemies.spawn("fisc", spawn_point(24.0, 28.0))
 		hud.toast("LE KRACH · LE CONTRÔLEUR FISCAL TE TROUVERA", 3.5)
 
-# ---------------------------------------------------------------- events
+# ---------------------------------------------------------------- random events
+func _events(d: float):
+	if event_t > 0.0:
+		event_t -= d
+		if event_t <= 0.0:
+			if event_name == "greve": hud.toast("FIN DE LA GRÈVE", 1.5)
+			event_name = ""
+	if time < next_event or krach: return
+	next_event = time + rng.randf_range(70.0, 105.0)
+	var evs := ["black_friday", "pluie", "greve", "opa", "livraison", "soldes"]
+	var ev: String = evs[rng.randi() % evs.size()]
+	var m := mults()
+	match ev:
+		"black_friday":
+			hud.toast("ÉVÉNEMENT · BLACK FRIDAY ! UNE RUÉE DE CLIENTS ARRIVE", 3.0)
+			var a := rng.randf() * TAU
+			for i in int(30 + time / 20.0):
+				var p: Vector3 = player.global_position + Vector3(cos(a), 0, sin(a)) * 24.0 + Vector3(rng.randf_range(-6, 6), 0, rng.randf_range(-6, 6))
+				var e = enemies.spawn("trader" if i % 4 == 0 else "stagiaire", world.resolve(p, 0.5), m[0] * 0.7, m[1])
+		"pluie":
+			hud.toast("ÉVÉNEMENT · PLUIE DE BILLETS ! RAMASSE VITE", 3.0)
+			for i in 30:
+				var p: Vector3 = player.global_position + Vector3(rng.randf_range(-14, 14), 0, rng.randf_range(-14, 14))
+				_drop_coin(world.resolve(p, 0.3), rng.randi_range(2, 4))
+		"greve":
+			hud.toast("ÉVÉNEMENT · GRÈVE GÉNÉRALE ! LES ENNEMIS RALENTISSENT 15 S", 3.0)
+			event_name = "greve"; event_t = 15.0
+		"opa":
+			hud.toast("ÉVÉNEMENT · OPA HOSTILE ! DEUX GOLDEN BOYS", 3.0)
+			for i in 2:
+				enemies.spawn("golden", spawn_point(16.0, 22.0), m[0] * 0.6, m[1])
+		"livraison":
+			var p: Vector3 = world.free_spot(0.0, 1.5)
+			var tries := 0
+			while p.distance_to(player.global_position) > 35.0 and tries < 30:
+				p = world.free_spot(0.0, 1.5); tries += 1
+			_make_chest(p, true, 1)
+			hud.toast("ÉVÉNEMENT · LIVRAISON EXPRESS ! UN COFFRE RARE EST TOMBÉ (FAISCEAU VIOLET)", 3.5)
+		"soldes":
+			chest_cost = maxi(8, int(chest_cost * 0.5))
+			hud.toast("ÉVÉNEMENT · SOLDES ! LES COFFRES COÛTENT MOITIÉ PRIX", 3.0)
+
+# ---------------------------------------------------------------- kills, drops
 func on_enemy_killed(e):
 	kills += 1
 	spark(e.node.position + Vector3(0, 1.0, 0), true)
-	var val: int = e.xp
-	_drop_gem(e.node.position, val)
-	if rng.randf() < 0.012:
+	_drop_gem(e.node.position, e.xp)
+	var luck := 1.0 + dv("chance") / 100.0
+	if rng.randf() < 0.012 * luck:
 		_drop_heal(e.node.position + Vector3(-0.5, 0, 0.3))
-	if rng.randf() < 0.07 or e.elite:
+	if rng.randf() < 0.06 * luck or e.elite:
 		_drop_coin(e.node.position + Vector3(0.6, 0, 0), 30 if e.elite else rng.randi_range(2, 5))
 	if e.elite:
 		_make_chest(e.node.position + Vector3(-0.8, 0, 0), true)
@@ -370,18 +566,15 @@ func on_player_hit(amount: float):
 func _on_landed(fall_speed: float):
 	weapons.on_landed(fall_speed)
 
-func decret_lv(id: String) -> int:
-	return decrets.get(id, 0)
-
-func damage_number(pos: Vector3, amt: float, crit: bool):
+func damage_number(pos: Vector3, amt: float, crit: bool, resisted := false):
 	var l: Label3D = dmg_labels[dmg_idx]
 	dmg_idx = (dmg_idx + 1) % dmg_labels.size()
 	if l.has_meta("tw"):
 		var old: Tween = l.get_meta("tw")
 		if old and old.is_valid(): old.kill()
 	l.visible = true
-	l.text = ("CRIT %d" if crit else "%d") % int(amt)
-	l.modulate = Color(1, 0.3, 0.2, 1) if crit else Color(1, 1, 1, 1)
+	l.text = ("CRIT %d" if crit else "%d") % maxi(1, int(amt))
+	l.modulate = Color(1, 0.3, 0.2, 1) if crit else (Color(0.6, 0.65, 0.75, 1) if resisted else Color(1, 1, 1, 1))
 	l.outline_modulate = Color(0.08, 0.04, 0.02, 1)
 	l.font_size = 64 if crit else 44
 	l.global_position = pos + Vector3(randf_range(-0.4, 0.4), 0, randf_range(-0.4, 0.4))
@@ -401,7 +594,6 @@ func spark(pos: Vector3, big := false):
 func toast(t: String, dur := 2.0):
 	hud.toast(t, dur)
 
-# ---------------------------------------------------------------- pickups
 func _drop_gem(p: Vector3, val: int):
 	if gems.size() > 350:
 		var g0: Dictionary = gems[rng.randi() % gems.size()]
@@ -410,7 +602,7 @@ func _drop_gem(p: Vector3, val: int):
 	var mi := MeshInstance3D.new()
 	var sm := SphereMesh.new(); sm.radius = 0.16 + 0.04 * minf(val, 5); sm.height = sm.radius * 2.4; sm.radial_segments = 4; sm.rings = 2
 	mi.mesh = sm
-	mi.material_override = U.solid(Color(0.2, 0.95, 0.45) if val < 5 else Color(0.3, 0.6, 1.0), 2.5)
+	mi.material_override = U.solid(Color(0.2, 0.95, 0.45) if val < 4 else Color(0.3, 0.6, 1.0), 2.5)
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(mi)
 	mi.global_position = Vector3(p.x, 0.35, p.z)
@@ -444,7 +636,7 @@ func nearest_gem(p: Vector3, maxd: float):
 
 func _update_pickups(d: float):
 	var pp: Vector3 = player.global_position + Vector3(0, 0.6, 0)
-	var magnet := 4.0 * (1.0 + 0.4 * decret_lv("aimant"))
+	var magnet := 4.0 * (1.0 + dv("aimant") / 100.0)
 	var t := Time.get_ticks_msec() / 1000.0
 	for arr in [gems, coins]:
 		for g in arr.duplicate():
@@ -453,7 +645,7 @@ func _update_pickups(d: float):
 			var dist := v.length()
 			if dist < magnet: g["pull"] = true
 			if g["pull"]:
-				g["spd"] = minf(g["spd"] + 40.0 * d, 30.0)
+				g["spd"] = minf(g["spd"] + 40.0 * d, 34.0)
 				n.global_position += v.normalized() * minf(g["spd"] * d, dist)
 				if dist < 0.7:
 					arr.erase(g)
@@ -463,13 +655,17 @@ func _update_pickups(d: float):
 						player.heal(g["heal"])
 						hud.toast("TARTINE · +25 PV", 1.0)
 					else:
-						rubles += g["v"]
+						rubles += int(ceil(g["v"] * (1.0 + 0.35 * bets)))
 			else:
 				n.rotation.y = t * 2.0
 				n.position.y = 0.35 + sin(t * 3.0 + n.position.x) * 0.08
+	for b in breakables.duplicate():
+		var v2: Vector3 = b["pos"] - player.global_position
+		v2.y = 0
+		if v2.length() < 1.3: _break(b)
 
 func add_xp(v: int):
-	xp += int(ceil(v * (1.0 + 0.15 * decret_lv("propagande"))))
+	xp += int(ceil(v * (1.0 + dv("propagande") / 100.0) * (1.0 + 0.35 * bets)))
 	while xp >= Data.xp_to_next(level):
 		xp -= Data.xp_to_next(level)
 		level += 1
@@ -477,69 +673,156 @@ func add_xp(v: int):
 	if pending_levels > 0 and state == "play":
 		_open_levelup()
 
-# ---------------------------------------------------------------- chests & statue
-func _update_chests(d: float):
+# ---------------------------------------------------------------- interactions (chests, shrines)
+func _update_interactions(d: float):
 	var pp: Vector3 = player.global_position
-	var near = null
+	var prompt := ""
+	var act := Input.is_action_just_pressed("interact") or (bot and rng.randf() < 0.3)
+	# chests
 	for c in chests:
-		if c["n"].global_position.distance_to(pp) < 2.4: near = c
 		if not c["free"]: c["label"].text = "%d RBL" % chest_cost
-	if near == null:
-		hud.prompt("")
-	else:
-		var cost := 0 if near["free"] else chest_cost
-		hud.prompt("F / X : OUVRIR LE COFFRE" + ("" if cost == 0 else " (%d RBL)" % cost) + ("" if rubles >= cost else " · PAS ASSEZ DE ROUBLES"))
-		if (Input.is_action_just_pressed("interact") or bot) and rubles >= cost:
-			rubles -= cost
-			if not near["free"]: chest_cost = int(chest_cost * 1.6) + 5
-			chests.erase(near)
-			near["n"].queue_free()
-			hud.prompt("")
-			var opts := _roll_options(1)
-			if opts.is_empty():
-				player.heal(40); hud.toast("COFFRE : +40 PV", 2.0)
-			else:
-				_apply(opts[0])
-				hud.toast("COFFRE : " + opts[0]["title"] + " " + opts[0]["lv"], 2.5)
-			shake(0.1)
+	for c in chests:
+		if c["n"].global_position.distance_to(pp) < 2.4:
+			var cost := 0 if c["free"] else chest_cost
+			prompt = "F / X : OUVRIR LE COFFRE" + ("" if cost == 0 else " (%d RBL)" % cost) + ("" if rubles >= cost else " · PAS ASSEZ DE ROUBLES")
+			if act and rubles >= cost:
+				rubles -= cost
+				if not c["free"]: chest_cost = int(chest_cost * 1.45) + 4
+				chests.erase(c)
+				c["n"].queue_free()
+				_open_chest(c["bonus"])
+				act = false
+			break
+	# shrines
+	for s in shrines:
+		s["cd"] = maxf(0.0, s["cd"] - d)
+		var v: Vector3 = pp - s["pos"]
+		v.y = 0
+		var dist := v.length()
+		match s["kind"]:
+			"statue":
+				if s["used"]: continue
+				if dist < 4.5 and player.is_on_floor():
+					s["charge"] += d / 5.0
+					prompt = "STATUE DU LEADER · RESTE DANS LE CERCLE (%d %%)" % int(s["charge"] * 100)
+					if s["charge"] >= 1.0:
+						_use_shrine(s)
+						var opts := _roll_options(3, 1)
+						if not opts.is_empty(): _open_choice("LE LEADER T'ACCORDE UNE FAVEUR", opts, "shrine")
+				else:
+					s["charge"] = maxf(0.0, s["charge"] - d / 10.0)
+			"file":
+				if s["used"]: continue
+				if s["active"]:
+					s["t"] -= d
+					if dist > 6.0:
+						s["out"] += d
+						prompt = "REVIENS DANS LA FILE ! (%.1f s)" % maxf(0.0, 2.0 - s["out"])
+						if s["out"] > 2.0:
+							_use_shrine(s)
+							hud.toast("DÉFI ÉCHOUÉ · TU AS QUITTÉ LA FILE", 2.0)
+					else:
+						s["out"] = 0.0
+						prompt = "FILE D'ATTENTE · TIENS ENCORE %d S" % ceili(s["t"])
+					if s["active"] and s["t"] <= 0.0:
+						_use_shrine(s)
+						_make_chest(s["pos"] + Vector3(0, 0, 3), true, 2)
+						hud.toast("DÉFI RÉUSSI · COFFRE ÉPIQUE OFFERT", 2.5)
+				elif dist < 3.5:
+					prompt = "F / X : PRENDRE UN NUMÉRO (défi : tenir 20 s dans le cercle)"
+					if act:
+						s["active"] = true; s["t"] = 20.0; s["out"] = 0.0
+						hud.toast("DÉFI · FILE D'ATTENTE · NE QUITTE PAS LE CERCLE", 2.5)
+						var m := mults()
+						for i in int(14 + time / 25.0):
+							var a := TAU * i / (14 + time / 25.0)
+							enemies.spawn(_pick_kind(), world.resolve(s["pos"] + Vector3(cos(a), 0, sin(a)) * 15.0, 0.5), m[0], m[1])
+			_:
+				if s["used"] and s["kind"] != "marche": continue
+				if dist < 3.5 and s["cd"] <= 0.0:
+					prompt = "F / X : " + SHRINE_INFO[s["kind"]][0] + " · " + SHRINE_INFO[s["kind"]][2]
+					if act: _activate(s)
+	hud.prompt(prompt)
 
-func _update_statue(d: float):
-	if statue_used: return
-	var v: Vector3 = player.global_position - world.statue_pos
-	v.y = 0
-	if v.length() < 4.5 and player.is_on_floor():
-		statue_charge += d / 5.0
-		hud.prompt("STATUE DU LEADER · RESTE DANS LE CERCLE (%d %%)" % int(statue_charge * 100))
-		if statue_charge >= 1.0:
-			statue_used = true
-			statue_ring.visible = false
-			hud.prompt("")
-			var opts := _roll_options(3)
-			if not opts.is_empty():
-				_open_choice("LE LEADER T'ACCORDE UNE FAVEUR", opts, "statue")
-	else:
-		statue_charge = maxf(0.0, statue_charge - d / 10.0)
-	var m: StandardMaterial3D = statue_ring.material_override
-	m.emission_energy_multiplier = 2.0 + statue_charge * 6.0
+func _use_shrine(s: Dictionary):
+	s["used"] = true
+	s["active"] = false
+	if s["ring"]: s["ring"].visible = false
+	s["label"].modulate = Color(0.5, 0.5, 0.5)
+	for c in s["n"].get_children():
+		if c is MeshInstance3D and c.mesh is CylinderMesh and (c.mesh as CylinderMesh).height >= 14.0:
+			c.visible = false
 
-# ---------------------------------------------------------------- level-up / options
-func _roll_options(n: int) -> Array:
+func _activate(s: Dictionary):
+	match s["kind"]:
+		"pari":
+			_use_shrine(s)
+			bets += 1
+			hud.toast("PARI ACCEPTÉ · ENNEMIS +20 % PV · XP ET ROUBLES +35 %", 3.0)
+		"goulag":
+			_use_shrine(s)
+			player.max_hp = maxf(40.0, player.max_hp - 20.0)
+			player.hp = minf(player.hp, player.max_hp)
+			var opts := _roll_options(3, 2)
+			if not opts.is_empty(): _open_choice("LE GOULAG · TON SACRIFICE SERA RÉCOMPENSÉ", opts, "shrine")
+		"aimant":
+			_use_shrine(s)
+			for g in gems: g["pull"] = true
+			hud.toast("DISTRIBUTEUR · TOUTE L'XP ARRIVE", 2.0)
+		"defi":
+			_use_shrine(s)
+			var m := mults()
+			for i in 3:
+				enemies.spawn("golden", world.resolve(s["pos"] + Vector3(cos(TAU * i / 3.0), 0, sin(TAU * i / 3.0)) * 8.0, 1.0), m[0] * 0.6, m[1])
+			hud.toast("OPA HOSTILE · 3 GOLDEN BOYS", 2.5)
+		"marche":
+			s["cd"] = 2.0
+			var opts := _roll_options(3, 0)
+			for o in opts:
+				o["cost"] = int((22 + 14 * market_buys) * (1.0 + 0.5 * o["rarity"]))
+			_open_choice("MARCHÉ NOIR · TU AS %d ROUBLES" % rubles, opts, "market", "PARTIR")
+
+func _open_chest(bonus: int):
+	var opts := _roll_options(1, 0, bonus)
+	if opts.is_empty():
+		player.heal(40); hud.toast("COFFRE : +40 PV", 2.0)
+		return
+	var o: Dictionary = opts[0]
+	_apply(o)
+	hud.toast("COFFRE %s : %s · %s" % [Data.RARITIES[o["rarity"]], o["title"], o["short"]], 3.0)
+	shake(0.1)
+
+# ---------------------------------------------------------------- options & upgrades
+func roll_rarity(min_r := 0, bonus := 0) -> int:
+	var luck := dv("chance") / 100.0
+	var w := [60.0, 27.0 * (1.0 + luck), 10.0 * (1.0 + 2.0 * luck), 3.0 * (1.0 + 3.0 * luck)]
+	var total := 0.0
+	for i in range(min_r, 4): total += w[i]
+	var r := rng.randf() * total
+	var res := 3
+	for i in range(min_r, 4):
+		r -= w[i]
+		if r <= 0.0: res = i; break
+	return mini(3, res + bonus)
+
+func _roll_options(n: int, min_r := 0, bonus := 0) -> Array:
 	var pool := []
 	for id in weapons.owned:
-		var lv: int = weapons.owned[id]
-		if lv < Data.MAX_WEAPON_LV:
-			pool.append({"type": "weapon", "id": id, "lv_n": lv + 1, "w": 1.3})
+		if weapons.can_evolve(id):
+			pool.append({"kind": "evo", "id": id, "w": 4.0})
+		elif weapons.level(id) < Data.MAX_WEAPON_LV:
+			pool.append({"kind": "weapon_up", "id": id, "w": 1.3})
 	if weapons.owned.size() < Data.WEAPON_SLOTS:
 		for id in Data.WEAPONS:
 			if not weapons.owned.has(id):
-				pool.append({"type": "weapon", "id": id, "lv_n": 1, "w": 1.6})
+				pool.append({"kind": "weapon_new", "id": id, "w": 0.7})
 	for id in decrets:
-		if decrets[id] < Data.DECRETS[id]["max"]:
-			pool.append({"type": "decret", "id": id, "lv_n": decrets[id] + 1, "w": 1.0})
+		if decrets[id]["n"] < Data.DECRET_MAX_PICKS:
+			pool.append({"kind": "decret", "id": id, "w": 1.0})
 	if decrets.size() < Data.DECRET_SLOTS:
 		for id in Data.DECRETS:
 			if not decrets.has(id):
-				pool.append({"type": "decret", "id": id, "lv_n": 1, "w": 0.8})
+				pool.append({"kind": "decret", "id": id, "w": 0.45})
 	var out := []
 	while out.size() < n and not pool.is_empty():
 		var total := 0.0
@@ -550,19 +833,76 @@ func _roll_options(n: int) -> Array:
 			if r <= 0.0:
 				out.append(o); pool.erase(o); break
 	for o in out:
-		if o["type"] == "weapon":
+		o["rarity"] = roll_rarity(min_r, bonus) if o["kind"] != "evo" else 3
+		_describe(o)
+	return out
+
+func _describe(o: Dictionary):
+	var r: int = o["rarity"]
+	match o["kind"]:
+		"evo":
+			var w: Dictionary = Data.WEAPONS[o["id"]]
+			o["title"] = w["evo_name"]
+			o["tag"] = "ÉVOLUTION · %s + %s" % [w["name"].to_upper(), Data.DECRETS[w["evo"]]["name"].to_upper()]
+			o["lv"] = "Arme ultime"
+			o["desc"] = w["evo_desc"]
+			o["short"] = "évolution"
+		"weapon_new":
 			var w: Dictionary = Data.WEAPONS[o["id"]]
 			o["title"] = w["name"]
-			o["tag"] = "NOUVELLE ARME" if o["lv_n"] == 1 else "ARME"
-			o["lv"] = "Niveau %d" % o["lv_n"]
-			o["desc"] = w["desc"] if o["lv_n"] == 1 else Data.weapon_level_text(o["id"], o["lv_n"])
-		else:
+			o["tag"] = "NOUVELLE ARME"
+			o["lv"] = "Niveau 1"
+			o["desc"] = w["desc"] + "\n\nÉvolue avec : " + Data.DECRETS[w["evo"]]["name"]
+			o["short"] = "nouvelle arme"
+		"weapon_up":
+			var w: Dictionary = Data.WEAPONS[o["id"]]
+			var ups: Array = w["ups"].duplicate()
+			ups.shuffle()
+			var k := 3 if r == 3 else 2
+			var mods := {}
+			var parts := []
+			for i in mini(k, ups.size()):
+				var st: String = ups[i]
+				var v := Data.weapon_up_value(st, r)
+				mods[st] = v
+				parts.append(Data.weapon_up_text(st, v))
+			o["mods"] = mods
+			o["title"] = w["name"]
+			o["tag"] = "ARME · " + Data.RARITIES[r]
+			o["lv"] = "Niveau %d" % (weapons.level(o["id"]) + 1)
+			o["desc"] = "\n".join(parts)
+			o["short"] = ", ".join(parts)
+		"decret":
 			var dd: Dictionary = Data.DECRETS[o["id"]]
+			var v := Data.decret_value(o["id"], r)
+			o["value"] = v
 			o["title"] = dd["name"]
-			o["tag"] = "NOUVEAU DÉCRET" if o["lv_n"] == 1 else "DÉCRET"
-			o["lv"] = "Niveau %d / %d" % [o["lv_n"], dd["max"]]
-			o["desc"] = dd["desc"]
-	return out
+			o["tag"] = ("NOUVEAU DÉCRET · " if not decrets.has(o["id"]) else "DÉCRET · ") + Data.RARITIES[r]
+			o["lv"] = "Niveau %d / %d" % [decret_lv(o["id"]) + 1, Data.DECRET_MAX_PICKS]
+			o["desc"] = Data.decret_text(o["id"], v)
+			for wid in Data.WEAPONS:
+				if Data.WEAPONS[wid]["evo"] == o["id"]:
+					o["desc"] += "\n\nFait évoluer : " + Data.WEAPONS[wid]["name"]
+			o["short"] = Data.decret_text(o["id"], v)
+
+func _apply(o: Dictionary):
+	match o["kind"]:
+		"evo":
+			weapons.evolve(o["id"])
+			hud.toast("ÉVOLUTION : " + Data.WEAPONS[o["id"]]["evo_name"].to_upper(), 3.0)
+		"weapon_new":
+			weapons.add_weapon(o["id"])
+		"weapon_up":
+			if not o.has("mods"): _describe(o)
+			weapons.upgrade(o["id"], o["mods"])
+		"decret":
+			var v: float = o.get("value", Data.decret_value(o["id"], o["rarity"]))
+			if not decrets.has(o["id"]): decrets[o["id"]] = {"n": 0, "v": 0.0}
+			decrets[o["id"]]["n"] += 1
+			decrets[o["id"]]["v"] += v
+			if o["id"] == "endurance":
+				player.max_hp += v
+				player.heal(v)
 
 func _open_levelup():
 	var opts := _roll_options(3)
@@ -572,13 +912,13 @@ func _open_levelup():
 		return
 	_open_choice("NIVEAU %d · LE PARTI TE RÉCOMPENSE" % (level - pending_levels + 1), opts, "level")
 
-func _open_choice(title: String, opts: Array, source: String):
+func _open_choice(title: String, opts: Array, source: String, leave := ""):
 	state = "choice"
 	choice_source = source
 	choice_wait = 0.4
 	get_tree().paused = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-	hud.show_choices(title, opts)
+	hud.show_choices(title, opts, leave)
 	if bot and shot_every > 0.0 and not shot_choice_done:
 		shot_choice_done = true
 		await get_tree().process_frame
@@ -587,8 +927,19 @@ func _open_choice(title: String, opts: Array, source: String):
 
 func _on_chosen(i: int):
 	if state != "choice": return
-	var o: Dictionary = hud.options[i]
-	_apply(o)
+	if i >= 0 and i < hud.options.size():
+		var o: Dictionary = hud.options[i]
+		if choice_source == "market":
+			if rubles < o["cost"]:
+				hud.toast("PAS ASSEZ DE ROUBLES", 1.2)
+				if not bot: return
+			else:
+				rubles -= o["cost"]
+				market_buys += 1
+				_apply(o)
+				hud.toast("ACHAT : %s" % o["title"], 1.5)
+		else:
+			_apply(o)
 	hud.hide_choices()
 	if choice_source == "level":
 		pending_levels -= 1
@@ -598,15 +949,6 @@ func _on_chosen(i: int):
 	state = "play"
 	get_tree().paused = false
 	if not bot: Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-
-func _apply(o: Dictionary):
-	if o["type"] == "weapon":
-		weapons.add_weapon(o["id"])
-	else:
-		decrets[o["id"]] = decrets.get(o["id"], 0) + 1
-		if o["id"] == "endurance":
-			player.max_hp += 25
-			player.heal(25)
 
 # ---------------------------------------------------------------- end
 func game_over():
@@ -629,21 +971,40 @@ func _win():
 	print("[game] WIN t=%s level=%d kills=%d" % [_fmt(time), level, kills])
 
 # ---------------------------------------------------------------- automated test hooks
+func _bot_pick() -> int:
+	var best := 0
+	var bs := -1.0
+	for i in hud.options.size():
+		var o: Dictionary = hud.options[i]
+		var sc: float = 1.0 + o["rarity"] * 0.6
+		match o["kind"]:
+			"evo": sc += 10.0
+			"weapon_new": sc += 3.0 if weapons.owned.size() < 3 else 1.0
+			"weapon_up": sc += 2.0
+			"decret":
+				sc += 2.5 if o["id"] in ["productivite", "cadence", "endurance", "armure", "collectivisation", "expansion"] else 0.5
+		if choice_source == "market" and rubles < o.get("cost", 0): sc = -1.0
+		if sc > bs: bs = sc; best = i
+	if choice_source == "market" and bs < 0.0: return -1
+	return best
+
 func _bot_tick(d: float):
 	if not bot: return
-	var real := d / maxf(Engine.time_scale, 0.001)
 	log_t += d
 	if log_t >= 10.0:
 		log_t = 0.0
-		print("[bot] t=%s lvl=%d hp=%d/%d kills=%d enemies=%d fps=%d weapons=%s decrets=%s state=%s" % [_fmt(time), level, player.hp, player.max_hp, kills, enemies.count(), Engine.get_frames_per_second(), str(weapons.owned), str(decrets), state])
+		var wl := []
+		for id in weapons.owned: wl.append("%s%d%s" % [id.substr(0, 4), weapons.owned[id]["lv"], "*" if weapons.owned[id]["evo"] else ""])
+		var dl := []
+		for id in decrets: dl.append("%s%d" % [id.substr(0, 4), decrets[id]["n"]])
+		print("[bot] t=%s lvl=%d hp=%d/%d kills=%d enemies=%d rub=%d fps=%d w=%s d=%s bets=%d state=%s" % [_fmt(time), level, player.hp, player.max_hp, kills, enemies.count(), rubles, Engine.get_frames_per_second(), ",".join(wl), ",".join(dl), bets, state])
 	if shot_every > 0.0:
 		shot_t += d
 		if shot_t >= shot_every:
 			shot_t = 0.0
 			_screenshot()
 	if test_dur > 0.0 and (time >= test_dur or state in ["over", "win"]):
-		if state in ["over", "win"]:
-			_screenshot()
+		if state in ["over", "win"]: _screenshot()
 		print("[bot] END state=%s t=%s lvl=%d kills=%d" % [state, _fmt(time), level, kills])
 		get_tree().quit()
 
@@ -651,6 +1012,5 @@ func _screenshot():
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(shot_dir))
 	var img := get_viewport().get_texture().get_image()
 	if img == null: return
-	var path := "%s/shot_%03d_%s.png" % [shot_dir, shot_n, state]
-	img.save_png(path)
+	img.save_png("%s/shot_%03d_%s.png" % [shot_dir, shot_n, state])
 	shot_n += 1

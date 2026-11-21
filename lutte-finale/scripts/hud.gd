@@ -193,9 +193,11 @@ func _process(d: float):
 	for i in weapon_slots.size():
 		var s: Array = weapon_slots[i]
 		if i < wids.size():
-			s[1].text = Data.WEAPONS[wids[i]]["name"].to_upper().replace("COCKTAIL ", "")
-			s[2].text = "NV %d" % game.weapons.owned[wids[i]]
-			(s[0] as Panel).modulate = Color(1, 1, 1, 1)
+			var w: Dictionary = game.weapons.owned[wids[i]]
+			var nm: String = Data.WEAPONS[wids[i]]["evo_name"] if w["evo"] else Data.WEAPONS[wids[i]]["name"]
+			s[1].text = nm.to_upper().replace("COCKTAIL ", "").replace("RÉVOLUTION ", "RÉVOL. ")
+			s[2].text = ("NV %d ★" if w["evo"] else "NV %d") % w["lv"]
+			(s[0] as Panel).modulate = Color(1, 0.35, 0.35, 1) if wids[i] == game.player.seized_weapon else Color(1, 1, 1, 1)
 		else:
 			s[1].text = "+"
 			s[2].text = ""
@@ -205,7 +207,7 @@ func _process(d: float):
 		var s: Array = decret_slots[i]
 		var sb: StyleBoxFlat = (s[0] as Panel).get_theme_stylebox("panel")
 		if i < dids.size():
-			s[1].text = "%s %d" % [Data.DECRETS[dids[i]]["name"].to_upper(), game.decrets[dids[i]]]
+			s[1].text = "%s %d" % [Data.DECRETS[dids[i]]["name"].to_upper(), game.decrets[dids[i]]["n"]]
 			sb.bg_color = C_ACC
 		else:
 			s[1].text = ""
@@ -218,7 +220,8 @@ func _process(d: float):
 	toast_t -= d
 	toast_label.modulate.a = clampf(toast_t * 2.0, 0.0, 1.0)
 	hurt_a = maxf(0.0, hurt_a - d * 1.5)
-	hurt_rect.color.a = hurt_a
+	blind_a = maxf(0.0, blind_a - d * 0.6)
+	hurt_rect.color = Color(0.7, 0.0, 0.0, hurt_a) if blind_a <= 0.0 else Color(0.97, 0.95, 0.88, minf(blind_a, 0.85))
 	fps_label.text = "%d FPS · %d ennemis" % [Engine.get_frames_per_second(), game.enemies.count()]
 	if choice_root.visible:
 		_choice_input()
@@ -233,6 +236,10 @@ func prompt(t: String):
 func hurt():
 	hurt_a = 0.28
 
+var blind_a := 0.0
+func blind():
+	blind_a = 1.2
+
 # ---------------------------------------------------------------- level-up cards
 func _build_choices():
 	choice_root = Control.new()
@@ -246,7 +253,8 @@ func _build_choices():
 	choice_title = _label(choice_root, "", 54, Color.WHITE)
 	_at(choice_title, Control.PRESET_CENTER, Vector2(-600, -330), Vector2(1200, 80))
 	choice_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	var hint := _label(choice_root, "1 · 2 · 3, clic, ou manette (gauche/droite + A)", 20, Color(1, 1, 1, 0.6))
+	hint_label = _label(choice_root, "1 · 2 · 3, clic, ou manette (gauche/droite + A)", 20, Color(1, 1, 1, 0.6))
+	var hint := hint_label
 	_at(hint, Control.PRESET_CENTER, Vector2(-600, 250), Vector2(1200, 30))
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	for i in 3:
@@ -273,10 +281,16 @@ func _build_choices():
 		desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		var key := _label(card, str(i + 1), 26, Color(1, 1, 1, 0.35))
 		key.position = Vector2(318, 392)
-		cards.append({"card": card, "sb": sb, "tag": tag, "title": title, "lv": lv, "desc": desc})
+		var price := _label(card, "", 26, Color(1, 0.85, 0.35))
+		price.position = Vector2(24, 392)
+		cards.append({"card": card, "sb": sb, "tag": tag, "title": title, "lv": lv, "desc": desc, "price": price})
 
-func show_choices(title: String, opts: Array):
+var hint_label: Label
+var leave_label := ""
+func show_choices(title: String, opts: Array, leave := ""):
 	options = opts
+	leave_label = leave
+	hint_label.text = "1 · 2 · 3, clic, ou manette (gauche/droite + A)" + ("   ·   4 / Y : " + leave if leave != "" else "")
 	choice_title.text = title
 	sel = 0
 	for i in 3:
@@ -288,6 +302,9 @@ func show_choices(title: String, opts: Array):
 			c["title"].text = o["title"]
 			c["lv"].text = o["lv"]
 			c["desc"].text = o["desc"]
+			c["price"].text = ("%d RBL" % o["cost"]) if o.has("cost") else ""
+			c["rcol"] = Data.RARITY_COLORS[o["rarity"]]
+			c["tag"].add_theme_color_override("font_color", c["rcol"])
 	_highlight()
 	choice_root.visible = true
 
@@ -297,7 +314,9 @@ func hide_choices():
 func _highlight():
 	for i in cards.size():
 		var sb: StyleBoxFlat = cards[i]["sb"]
-		sb.border_color = Color(0.95, 0.75, 0.3) if i == sel else C_BORDER
+		var rc: Color = cards[i].get("rcol", C_BORDER)
+		sb.border_color = Color(1, 1, 1) if i == sel else Color(rc.r, rc.g, rc.b, 0.8)
+		sb.set_border_width_all(5 if i == sel else 3)
 		sb.bg_color = Color(0.14, 0.1, 0.09, 0.97) if i == sel else Color(0.08, 0.08, 0.09, 0.95)
 
 func _on_card_input(ev: InputEvent, i: int):
@@ -315,6 +334,8 @@ func _choice_input():
 		sel = (sel + 1) % options.size(); _highlight()
 	if Input.is_action_just_pressed("confirm"):
 		chosen.emit(sel)
+	if leave_label != "" and (Input.is_action_just_pressed("choose_4") or Input.is_action_just_pressed("pause")):
+		chosen.emit(-1)
 
 # ---------------------------------------------------------------- overlays
 func _build_screen():

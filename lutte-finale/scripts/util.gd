@@ -8,6 +8,7 @@ const CAR := "res://assets/car-kit/"
 const SHOP := "res://assets/mini-shop/"
 const SUB := "res://assets/city-kit-suburban/"
 const IND := "res://assets/city-kit-industrial/"
+const FOOD := "res://assets/food-kit/"
 
 static var _scenes := {}
 static var _mats := {}

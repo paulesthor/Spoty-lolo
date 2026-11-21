@@ -21,11 +21,14 @@ Survivor-like 3D satirique (Godot 4.5, renderer Compatibilité par défaut pour 
 
 ## Ce que contient le prototype
 
-- Zone 1 « Hypermarché » : 10 minutes, vagues de stagiaires toutes les minutes, Golden Boys (élites qui lâchent un coffre), boss **Directeur Black Friday** à 08:00, puis **le Krach** et le Contrôleur Fiscal invincible à 10:00.
-- 4 armes automatiques (Marteau, Kalach, Faucille, Cocktail Molotov), niveaux 1 à 8. Le Marteau frappe deux fois plus fort quand on retombe d'un saut.
-- 8 Décrets (stats), 4 emplacements.
-- XP, montées de niveau avec choix de 3 cartes, coffres payants en roubles, tartines qui soignent, Statue du Leader (reste dans le cercle pour obtenir une faveur).
-- Conteneurs sur lesquels sauter, voitures et décor comme obstacles.
+- **Zone 1 « Hypermarché »**, environ 4 fois plus grande qu'au début : parkings, dépôts de conteneurs, marchés, places. 10 minutes, boss **Directeur Black Friday** à 08:00, **Krach** et Contrôleur Fiscal invincible à 10:00.
+- **12 types d'ennemis** : stagiaires (horde), cadres (blindés), traders (chargent après un temps de visée), influenceurs (tirent de loin, aveuglent), banquiers (lancent des sacs qui laissent une zone de Dette), crypto-bros (explosent), avocats (très blindés, ralentissent), huissiers (saisissent une arme 5 s), coachs (soignent), lobbyistes (protègent leurs voisins), DRH (invoquent des stagiaires), actionnaires (tanks avec coup de zone). Plus le Golden Boy (élite à coffre).
+- **8 armes** avec 8 **évolutions** (arme niveau 6 + le bon Décret) : Marteau, Kalach, Faucille, Molotov, Matriochka, Spoutnik, Samovar, Haut-parleur.
+- **13 Décrets** pour 4 emplacements.
+- **Raretés** (commun, rare, épique, légendaire) sur toutes les améliorations. Le Décret Chance les améliore.
+- **Sanctuaires et défis** : Statue du Leader, File d'attente (défi), Bourse aux paris, Goulag, Marché noir, Distributeur de propagande, OPA hostile (défi).
+- **Événements aléatoires** : Black Friday, pluie de billets, grève générale, OPA hostile, livraison express, soldes.
+- Cartons et consignes à casser, coffres payants (prix croissant), tartines.
 
 Pas encore : sons et musique, familiers et gacha, autres personnages, zones 2 et 3, progression entre les runs.
 

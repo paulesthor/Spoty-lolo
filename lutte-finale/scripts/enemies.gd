@@ -1,15 +1,19 @@
 extends Node3D
-# Enemy manager: pooled capitalists chasing the player, with separation and obstacle avoidance.
+# Enemy manager: pooled capitalists with several behaviours (chase, charge, ranged, lob,
+# summon, slam), armour, healers, shield auras, exploders, plus enemy hazards.
 
 class Enemy:
 	var node: Node3D
 	var kind := ""
+	var def: Dictionary
 	var hp := 1.0
 	var max_hp := 1.0
 	var speed := 3.0
 	var dmg := 5.0
+	var armor := 0.0
 	var r := 0.5
 	var xp := 1
+	var ai := "chase"
 	var elite := false
 	var boss := false
 	var invincible := false
@@ -17,17 +21,24 @@ class Enemy:
 	var knock := Vector3.ZERO
 	var ap: AnimationPlayer
 	var tag: Label3D
-	var dash_t := 0.0
-	var dash_cd := 5.0
+	var t_act := 0.0       # behaviour timer
+	var phase := ""        # charger: "", "aim", "dash" ; slammer: "", "wind"
 	var dash_dir := Vector3.ZERO
-	var hit_from := {}  # weapon hit cooldowns
+	var stun_t := 0.0
+	var slow_t := 0.0
+	var shielded := false
+	var hit_from := {}
 
 var game
 var list: Array = []
 var pools := {}
+var hazards: Array = []    # enemy projectiles, lobs, ground zones, telegraphs
 var gold_mat: StandardMaterial3D
 var boss_mat: StandardMaterial3D
 var _alive_cache: Array = []
+var _tint_mats := {}
+var heal_t := 0.0
+var aura_t := 0.0
 
 func setup(g):
 	game = g
@@ -39,6 +50,14 @@ func alive_list() -> Array:
 
 func count() -> int:
 	return _alive_cache.size()
+
+func _tint(n: Node3D, col: Color):
+	var key := col.to_html()
+	if not _tint_mats.has(key): _tint_mats[key] = U.solid(col, 0.0, 0.6)
+	var body = null
+	for c in n.find_children("*", "MeshInstance3D", true, false):
+		if c.name == "body-mesh": body = c
+	if body: (body as MeshInstance3D).material_override = _tint_mats[key]
 
 func spawn(kind: String, pos: Vector3, hp_mult := 1.0, dmg_mult := 1.0) -> Enemy:
 	var def: Dictionary = Data.ENEMIES[kind]
@@ -60,33 +79,46 @@ func spawn(kind: String, pos: Vector3, hp_mult := 1.0, dmg_mult := 1.0) -> Enemy
 		if kind == "cadre" and randf() < 0.3: acc.append("cigar")
 		if kind == "stagiaire" and randf() < 0.15: acc = ["sunglasses"]
 		if not acc.is_empty(): U.attach_head(e.node, acc)
+		if def.has("tint"): _tint(e.node, def["tint"])
 		if kind == "golden" or kind == "boss":
 			var mat := gold_mat if kind == "golden" else boss_mat
 			for m in e.node.find_children("*", "MeshInstance3D", true, false):
 				if m.get_parent() is BoneAttachment3D or m.get_parent().get_parent() is BoneAttachment3D: continue
 				if m.name == "head-mesh" and kind == "boss": continue
 				(m as MeshInstance3D).material_override = mat
-		if def.get("elite", false) or def.get("boss", false) or def.get("invincible", false):
-			e.tag = U.label(e.node, def["name"].to_upper(), Vector3(0, 0, 0), 56, Color(1, 0.82, 0.3) if not def.get("invincible", false) else Color(0.6, 0.8, 1), Color(0.05, 0.03, 0, 1))
-			e.tag.position = Vector3(0, def["h"] / e.node.scale.y + 0.3 / e.node.scale.y, 0)
+		var show_tag: bool = def.get("elite", false) or def.get("boss", false) or def.get("invincible", false) or kind in ["coach", "lobbyiste", "drh"]
+		if show_tag:
+			var col := Color(1, 0.82, 0.3)
+			if def.get("invincible", false): col = Color(0.6, 0.8, 1)
+			elif kind == "coach": col = Color(0.5, 1, 0.5)
+			elif kind == "lobbyiste": col = Color(0.8, 0.65, 1)
+			e.tag = U.label(e.node, def["name"].to_upper(), Vector3.ZERO, 44 if not (def.get("elite", false) or def.get("boss", false)) else 56, col, Color(0.05, 0.03, 0, 1))
+			e.tag.position = Vector3(0, (def["h"] + 0.3) / e.node.scale.y, 0)
 			e.tag.pixel_size = 0.01 / e.node.scale.y
+		if def.get("shield_aura", false):
+			var ring := U.sprite(e.node, "circle_03.png", Vector3(0, 0.05, 0), 10.0 / e.node.scale.x, Color(0.7, 0.5, 1.0, 0.18), 1.2, false, Vector3(-PI / 2, 0, 0))
 		e.ap = U.anim_player(e.node)
+	e.def = def
 	e.hp = def["hp"] * hp_mult
 	e.max_hp = e.hp
 	e.speed = def["speed"] * randf_range(0.92, 1.08)
 	e.dmg = def["dmg"] * dmg_mult
+	e.armor = def.get("armor", 0.0) * (1.0 + 0.12 * game.time / 60.0)
 	e.r = def["r"]
 	e.xp = def["xp"]
+	e.ai = def.get("ai", "chase")
 	e.elite = def.get("elite", false)
 	e.boss = def.get("boss", false)
 	e.invincible = def.get("invincible", false)
 	e.alive = true
 	e.knock = Vector3.ZERO
-	e.dash_t = 0.0
-	e.dash_cd = 5.0
+	e.t_act = randf_range(1.0, 3.0)
+	e.phase = ""
+	e.stun_t = 0.0
+	e.slow_t = 0.0
 	e.hit_from.clear()
 	if e.ap:
-		e.ap.play("walk" if not e.boss else "walk", 0.0)
+		e.ap.play("walk", 0.0)
 		e.ap.seek(randf() * e.ap.current_animation_length, true)
 		e.ap.speed_scale = e.speed / 3.0
 	list.append(e)
@@ -102,45 +134,67 @@ func _process(d: float):
 	var pp: Vector3 = game.player.global_position
 	var grid := {}
 	const CELL := 1.6
+	var slow_world: float = game.enemy_speed_mult()
+	# support auras
+	heal_t -= d
+	aura_t -= d
+	var do_heal := heal_t <= 0.0
+	if do_heal: heal_t = 2.0
+	if aura_t <= 0.0:
+		aura_t = 0.3
+		for e in _alive_cache: e.shielded = false
+		for s in _alive_cache:
+			if s.def.get("shield_aura", false):
+				for o in in_radius(s.node.position, 5.0):
+					if o != s: o.shielded = true
 	for e in _alive_cache:
 		var p: Vector3 = e.node.position
 		var to := Vector3(pp.x - p.x, 0, pp.z - p.z)
 		var dist := to.length()
 		var dir := to / maxf(dist, 0.001)
-		var spd: float = e.speed
-		if e.boss:
-			e.dash_cd -= d
-			if e.dash_t > 0.0:
-				e.dash_t -= d
-				dir = e.dash_dir
-				spd *= 4.0
-			elif e.dash_cd <= 0.0 and dist < 22.0:
-				e.dash_t = 0.8
-				e.dash_cd = randf_range(4.5, 7.0)
-				e.dash_dir = dir
-				game.toast("Le Directeur charge !", 1.2)
-		p += dir * spd * d + e.knock * d
+		e.stun_t = maxf(0.0, e.stun_t - d)
+		e.slow_t = maxf(0.0, e.slow_t - d)
+		var spd: float = e.speed * slow_world * (0.6 if e.slow_t > 0.0 else 1.0)
+		var move := dir
+		if e.stun_t > 0.0:
+			spd = 0.0
+		else:
+			match e.ai:
+				"charger": move = _ai_charger(e, dir, dist, d)
+				"ranged": move = _ai_ranged(e, dir, dist, d, 11.0, 2.6)
+				"lobber": move = _ai_lobber(e, dir, dist, d)
+				"summoner": move = _ai_summoner(e, dir, dist, d)
+				"slammer": move = _ai_slammer(e, dir, dist, d)
+			if e.boss: move = _ai_boss(e, dir, dist, d)
+			if e.phase == "dash": spd *= 4.5
+			elif e.phase in ["aim", "wind"]: spd = 0.0
+		if do_heal and e.def.get("healer", false):
+			for o in in_radius(p, 5.0):
+				if o != e and o.hp < o.max_hp and not o.boss:
+					o.hp = minf(o.max_hp, o.hp + o.max_hp * 0.06)
+					_heal_fx(o.node.position)
+		p += move * spd * d + e.knock * d
 		e.knock = e.knock.move_toward(Vector3.ZERO, 30.0 * d)
 		if not e.invincible:
 			p = game.world.resolve(p, e.r)
 		p.y = 0.0
 		e.node.position = p
+		var face: Vector3 = dir if e.phase != "dash" else e.dash_dir
 		if dist > 0.1:
-			e.node.rotation.y = lerp_angle(e.node.rotation.y, atan2(dir.x, dir.z), 10.0 * d)
+			e.node.rotation.y = lerp_angle(e.node.rotation.y, atan2(face.x, face.z), 10.0 * d)
 		var key := Vector2i(floori(p.x / CELL), floori(p.z / CELL))
 		if not grid.has(key): grid[key] = []
 		grid[key].append(e)
-		# contact damage
 		var py: float = game.player.global_position.y
-		if dist < e.r + 0.45 and py < 1.4:
-			game.player.take_damage(e.dmg)
-		# keep pressure: recycle stragglers far away
-		if dist > 48.0 and not e.boss and not e.invincible:
-			e.node.position = game.spawn_point(22.0, 28.0)
+		if dist < e.r + 0.45 and py < 1.4 and e.stun_t <= 0.0:
+			if game.player.take_damage(e.dmg):
+				var eff: String = e.def.get("on_hit", "")
+				if eff != "": game.player.apply_status(eff)
+		if dist > 55.0 and not e.boss and not e.invincible:
+			e.node.position = game.spawn_point(22.0, 30.0)
 	# separation
 	for key in grid:
-		var cell: Array = grid[key]
-		for e in cell:
+		for e in grid[key]:
 			for ox in range(-1, 2):
 				for oz in range(-1, 2):
 					var k2 := Vector2i(key.x + ox, key.y + oz)
@@ -151,11 +205,214 @@ func _process(d: float):
 						v.y = 0
 						var dd := v.length()
 						var minr: float = e.r + o.r
-						if dd < minr and dd > 0.0001:
-							var push := v / dd * (minr - dd) * 0.5
-							if not e.boss: e.node.position += push * (0.3 if o.boss else 1.0)
+						if dd < minr and dd > 0.0001 and not e.boss:
+							e.node.position += v / dd * (minr - dd) * 0.5 * (0.3 if o.boss else 1.0)
+	_update_hazards(d)
 
-func damage(e: Enemy, amount: float, knock_from := Vector3.INF, knock_force := 0.0, src := "", show_num := true):
+# ---------------------------------------------------------------- behaviours
+func _ai_charger(e: Enemy, dir: Vector3, dist: float, d: float) -> Vector3:
+	e.t_act -= d
+	match e.phase:
+		"":
+			if e.t_act <= 0.0 and dist < 14.0 and dist > 3.0:
+				e.phase = "aim"; e.t_act = 0.7
+				e.dash_dir = dir
+				_telegraph_line(e.node.position, dir, 12.0, 0.7)
+			return dir
+		"aim":
+			if e.t_act <= 0.0: e.phase = "dash"; e.t_act = 0.55
+			return dir
+		"dash":
+			if e.t_act <= 0.0: e.phase = ""; e.t_act = randf_range(2.5, 4.0)
+			return e.dash_dir
+	return dir
+
+func _ai_ranged(e: Enemy, dir: Vector3, dist: float, d: float, keep: float, cd: float) -> Vector3:
+	e.t_act -= d
+	if e.t_act <= 0.0 and dist < 20.0:
+		e.t_act = cd + randf_range(-0.3, 0.3)
+		_shoot(e.node.position + Vector3(0, 1.1, 0), dir, e.dmg, e.def.get("shot", ""))
+	if dist < keep - 2.0: return -dir
+	if dist > keep + 2.0: return dir
+	return Vector3(-dir.z, 0, dir.x) * 0.6
+func _ai_lobber(e: Enemy, dir: Vector3, dist: float, d: float) -> Vector3:
+	e.t_act -= d
+	if e.t_act <= 0.0 and dist < 18.0:
+		e.t_act = randf_range(3.5, 4.5)
+		var target: Vector3 = game.player.global_position + game.player.velocity * 0.5
+		target.y = 0
+		_lob(e.node.position + Vector3(0, 1.5, 0), target, e.dmg)
+	if dist < 9.0: return -dir
+	if dist > 14.0: return dir
+	return Vector3.ZERO
+
+func _ai_summoner(e: Enemy, dir: Vector3, dist: float, d: float) -> Vector3:
+	e.t_act -= d
+	if e.t_act <= 0.0 and dist < 24.0:
+		e.t_act = 6.0
+		var m: Array = game.mults()
+		for i in 3:
+			var a := randf() * TAU
+			spawn("stagiaire", game.world.resolve(e.node.position + Vector3(cos(a), 0, sin(a)) * 1.5, 0.5), m[0], m[1])
+		_heal_fx(e.node.position)
+	if dist < 10.0: return -dir
+	return dir * 0.6
+
+func _ai_slammer(e: Enemy, dir: Vector3, dist: float, d: float) -> Vector3:
+	e.t_act -= d
+	match e.phase:
+		"":
+			if e.t_act <= 0.0 and dist < 5.0:
+				e.phase = "wind"; e.t_act = 0.9
+				_telegraph_circle(e.node.position, 4.0, 0.9)
+			return dir
+		"wind":
+			if e.t_act <= 0.0:
+				e.phase = ""; e.t_act = 4.0
+				_slam(e.node.position, 4.0, e.dmg * 1.4)
+			return Vector3.ZERO
+	return dir
+
+func _ai_boss(e: Enemy, dir: Vector3, dist: float, d: float) -> Vector3:
+	e.t_act -= d
+	match e.phase:
+		"":
+			if e.t_act <= 0.0:
+				if dist < 22.0 and randf() < 0.6:
+					e.phase = "aim"; e.t_act = 0.9; e.dash_dir = dir
+					_telegraph_line(e.node.position, dir, 18.0, 0.9)
+					game.toast("Le Directeur charge !", 1.0)
+				else:
+					e.t_act = randf_range(3.0, 5.0)
+					for i in 6:
+						var a := TAU * i / 6.0
+						_lob(e.node.position + Vector3(0, 4, 0), game.player.global_position + Vector3(cos(a), 0, sin(a)) * 5.0, e.dmg * 0.4)
+			return dir
+		"aim":
+			if e.t_act <= 0.0: e.phase = "dash"; e.t_act = 0.8
+			return dir
+		"dash":
+			if e.t_act <= 0.0: e.phase = ""; e.t_act = randf_range(3.5, 5.5)
+			return e.dash_dir
+	return dir
+
+# ---------------------------------------------------------------- hazards
+func _shoot(from: Vector3, dir: Vector3, dmg: float, effect: String):
+	var n := Node3D.new()
+	add_child(n)
+	n.global_position = from
+	U.sphere(n, 0.2, Vector3.ZERO, U.solid(Color(1.0, 0.95, 0.7), 4.0))
+	U.sprite(n, "flare_01.png" if ResourceLoader.exists("res://fx/flare_01.png") else "light_01.png", Vector3.ZERO, 0.9, Color(1, 0.9, 0.6), 2.0)
+	hazards.append({"t": "shot", "n": n, "v": dir * 11.0, "life": 2.5, "dmg": dmg, "eff": effect})
+
+func _lob(from: Vector3, to: Vector3, dmg: float):
+	to = game.world.resolve(to, 0.3)
+	var tele := _telegraph_circle(to, 2.4, 1.0)
+	var n := Node3D.new()
+	add_child(n)
+	n.global_position = from
+	U.cyl(n, 0.3, 0.45, Vector3.ZERO, U.solid(Color(0.3, 0.45, 0.25), 0.0, 0.8))
+	U.label(n, "$", Vector3(0, 0, 0.32), 48, Color(1, 0.85, 0.3), Color(0, 0, 0, 1), false)
+	hazards.append({"t": "lob", "n": n, "from": from, "to": to, "age": 0.0, "dur": 1.0, "dmg": dmg})
+
+func _debt_zone(p: Vector3, dmg: float):
+	var root := Node3D.new()
+	add_child(root)
+	root.global_position = p
+	U.sprite(root, "circle_05.png", Vector3(0, 0.05, 0), 5.0, Color(0.3, 0.8, 0.3, 0.5), 1.6, false, Vector3(-PI / 2, 0, 0))
+	hazards.append({"t": "zone", "n": root, "life": 4.0, "r": 2.4, "dmg": dmg, "tick": 0.0})
+
+func _telegraph_circle(p: Vector3, r: float, dur: float) -> Node3D:
+	var s := U.sprite(self, "circle_03.png", Vector3(p.x, 0.06, p.z), r * 2.0, Color(1, 0.15, 0.1, 0.8), 2.0, false, Vector3(-PI / 2, 0, 0))
+	var tw := s.create_tween()
+	tw.tween_property(s, "scale", Vector3.ONE * 1.05, dur)
+	tw.tween_callback(s.queue_free)
+	return s
+
+func _telegraph_line(p: Vector3, dir: Vector3, length: float, dur: float):
+	var m := MeshInstance3D.new()
+	var q := PlaneMesh.new(); q.size = Vector2(1.2, length)
+	m.mesh = q
+	m.material_override = U.solid(Color(1, 0.15, 0.1, 0.35), 1.5)
+	m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(m)
+	m.global_position = Vector3(p.x, 0.07, p.z) + dir * length * 0.5
+	m.rotation.y = atan2(dir.x, dir.z)
+	var tw := m.create_tween()
+	tw.tween_interval(dur)
+	tw.tween_callback(m.queue_free)
+
+func _slam(p: Vector3, r: float, dmg: float):
+	var v: Vector3 = game.player.global_position - p
+	v.y = 0
+	if v.length() < r and game.player.global_position.y < 1.5:
+		game.player.take_damage(dmg)
+		game.player.velocity += v.normalized() * 12.0 + Vector3(0, 6, 0)
+	var s := U.sprite(self, "circle_05.png", Vector3(p.x, 0.07, p.z), r * 2.2, Color(1, 0.5, 0.2, 0.7), 2.5, false, Vector3(-PI / 2, 0, 0))
+	var tw := s.create_tween()
+	tw.tween_property(s, "scale", Vector3.ONE * 1.3, 0.25)
+	tw.tween_callback(s.queue_free)
+	game.shake(0.15)
+
+func _explode(p: Vector3, dmg: float):
+	_telegraph_circle(p, 2.8, 0.7)
+	get_tree().create_timer(0.7, false).timeout.connect(func():
+		var v: Vector3 = game.player.global_position - p
+		v.y = 0
+		if v.length() < 2.8: game.player.take_damage(dmg)
+		for o in in_radius(p, 2.8):
+			damage(o, dmg * 2.0, p, 8.0)
+		var s := U.sprite(self, "star_04.png", p + Vector3(0, 0.8, 0), 5.5, Color(0.4, 1.0, 0.5), 3.0)
+		var tw := s.create_tween()
+		tw.tween_property(s, "scale", Vector3.ONE * 0.1, 0.3)
+		tw.tween_callback(s.queue_free)
+		game.shake(0.12))
+
+func _heal_fx(p: Vector3):
+	var s := U.sprite(self, "magic_02.png" if ResourceLoader.exists("res://fx/magic_02.png") else "spark_04.png", p + Vector3(0, 1.2, 0), 1.2, Color(0.3, 1, 0.4), 2.5)
+	var tw := s.create_tween()
+	tw.tween_property(s, "position:y", p.y + 2.4, 0.5)
+	tw.tween_callback(s.queue_free)
+
+func _update_hazards(d: float):
+	var pp: Vector3 = game.player.global_position + Vector3(0, 1.0, 0)
+	for h in hazards.duplicate():
+		var n: Node3D = h["n"]
+		match h["t"]:
+			"shot":
+				n.global_position += h["v"] * d
+				h["life"] -= d
+				if n.global_position.distance_to(pp) < 0.75:
+					if game.player.take_damage(h["dmg"]) and h["eff"] != "":
+						game.player.apply_status(h["eff"])
+					h["life"] = 0.0
+				if h["life"] <= 0.0:
+					hazards.erase(h); n.queue_free()
+			"lob":
+				h["age"] += d
+				var k: float = clampf(h["age"] / h["dur"], 0.0, 1.0)
+				var pos: Vector3 = h["from"].lerp(h["to"], k)
+				pos.y = lerpf(h["from"].y, 0.2, k) + sin(k * PI) * 4.0
+				n.global_position = pos
+				n.rotation.x += d * 8.0
+				if k >= 1.0:
+					hazards.erase(h); n.queue_free()
+					_debt_zone(h["to"], h["dmg"])
+			"zone":
+				h["life"] -= d
+				h["tick"] -= d
+				var v: Vector3 = game.player.global_position - n.global_position
+				v.y = 0
+				if v.length() < h["r"] and game.player.global_position.y < 1.0:
+					game.player.apply_status("debt")
+					if h["tick"] <= 0.0:
+						h["tick"] = 0.5
+						game.player.take_damage(h["dmg"], true)
+				if h["life"] <= 0.0:
+					hazards.erase(h); n.queue_free()
+
+# ---------------------------------------------------------------- damage
+func damage(e: Enemy, amount: float, knock_from := Vector3.INF, knock_force := 0.0, src := "", show_num := true, ignore_armor := false, crit_chance := 0.05):
 	if not e.alive: return
 	if src != "":
 		var now := Time.get_ticks_msec() / 1000.0
@@ -165,12 +422,15 @@ func damage(e: Enemy, amount: float, knock_from := Vector3.INF, knock_force := 0
 			var kv0: Vector3 = e.node.position - knock_from; kv0.y = 0
 			e.knock = kv0.normalized() * knock_force * 0.3
 		return
-	var crit := randf() < 0.08
+	var crit := randf() < crit_chance
 	var amt := amount * (2.0 if crit else 1.0)
+	if not ignore_armor:
+		amt = maxf(amt - e.armor, amt * 0.15)
+	if e.shielded: amt *= 0.6
 	e.hp -= amt
 	if show_num or crit:
-		game.damage_number(e.node.position + Vector3(0, Data.ENEMIES[e.kind]["h"] + 0.3, 0), amt, crit)
-	if knock_from != Vector3.INF and not e.boss:
+		game.damage_number(e.node.position + Vector3(0, e.def["h"] + 0.3, 0), amt, crit, e.armor > 0.0 and not ignore_armor and amt < amount * 0.6)
+	if knock_from != Vector3.INF and not e.boss and e.ai != "slammer":
 		var kv: Vector3 = e.node.position - knock_from
 		kv.y = 0
 		e.knock = kv.normalized() * knock_force * (0.35 if e.elite else 1.0)
@@ -181,8 +441,11 @@ func set_hit_cd(e: Enemy, src: String, cd: float):
 	e.hit_from[src] = Time.get_ticks_msec() / 1000.0 + cd
 
 func kill(e: Enemy):
+	if not e.alive: return
 	e.alive = false
 	list.erase(e)
+	if e.def.has("explode"):
+		_explode(e.node.position, e.def["explode"] * game.mults()[1])
 	game.on_enemy_killed(e)
 	var n := e.node
 	var tw := create_tween()
@@ -217,3 +480,6 @@ func clear_all(except_boss := true):
 		if e.invincible: continue
 		if except_boss and e.boss: continue
 		kill(e)
+	for h in hazards:
+		h["n"].queue_free()
+	hazards.clear()
