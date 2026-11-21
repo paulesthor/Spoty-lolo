@@ -96,28 +96,42 @@ func _buildings():
 	var s := 12.0 / maxf(h0, 0.001)
 	var names := ["building-a", "building-b", "building-c", "building-d", "building-e", "building-f", "building-g", "building-h", "building-i", "building-j", "building-k", "building-l", "building-m", "building-n"]
 	var i := 0
-	for z in range(30, -62, -11):
-		U.place(self, U.CC + names[i % names.size()] + ".glb", Vector3(-46, 0, z), -1, PI / 2, s); i += 1
-		U.place(self, U.CC + names[(i + 5) % names.size()] + ".glb", Vector3(46, 0, z), -1, -PI / 2, s); i += 1
+	for z in range(42, -78, -11):
+		_bld(U.CC + names[i % names.size()] + ".glb", Vector3(-56, 0, z), -1, PI / 2, s); i += 1
+		_bld(U.CC + names[(i + 5) % names.size()] + ".glb", Vector3(56, 0, z), -1, -PI / 2, s); i += 1
 	var back := ["building-skyscraper-a", "building-c", "building-h", "building-skyscraper-c", "building-e", "building-k", "building-skyscraper-b", "building-g"]
 	for j in back.size():
-		U.place(self, U.CC + back[j] + ".glb", Vector3(-35 + j * 10, 0, -66 - (8 if "sky" in back[j] else 0)), -1, 0.0, s)
-		U.place(self, U.CC + back[(j + 3) % back.size()] + ".glb", Vector3(-35 + j * 10, 0, 46), -1, PI, s)
+		_bld(U.CC + back[j] + ".glb", Vector3(-45 + j * 12, 0, -76 - (8 if "sky" in back[j] else 0)), -1, 0.0, s)
+		_bld(U.CC + back[(j + 3) % back.size()] + ".glb", Vector3(-45 + j * 12, 0, 56), -1, PI, s)
 	# hypermarket facade sign
-	U.box(self, Vector3(28, 3.4, 0.6), Vector3(0, 12.0, -60.5), U.solid(Color(0.15, 0.5, 0.28)))
-	var t := U.label(self, "HYPERMARCHÉ", Vector3(0, 12.1, -60.1), 300, Color(1, 1, 1), Color(0, 0, 0, 0), false, U.font_main)
+	U.box(self, Vector3(28, 3.4, 0.6), Vector3(0, 12.0, -70.5), U.solid(Color(0.15, 0.5, 0.28)))
+	var t := U.label(self, "HYPERMARCHÉ", Vector3(0, 12.1, -70.1), 300, Color(1, 1, 1), Color(0, 0, 0, 0), false, U.font_main)
 	t.outline_size = 0; t.shaded = true
-	var promo := U.label(self, "-70 %", Vector3(11, 16, -60.2), 320, Color(1, 0.85, 0.1), Color(0.1, 0.05, 0, 1), false, U.font_main)
+	var promo := U.label(self, "-70 %", Vector3(11, 16, -70.2), 320, Color(1, 0.85, 0.1), Color(0.1, 0.05, 0, 1), false, U.font_main)
 	promo.rotation_degrees = Vector3(0, 0, 8)
-	var bb := U.box(self, Vector3(10, 4, 0.3), Vector3(-14, 15, -62), U.solid(Color(0.92, 0.9, 0.86)))
-	var bt := U.label(self, "ACHETEZ.  CONSOMMEZ.  RECOMMENCEZ.", Vector3(-14, 15.1, -61.8), 110, Color(0.1, 0.1, 0.12), Color(0, 0, 0, 0), false, U.font_main)
+	var bb := U.box(self, Vector3(10, 4, 0.3), Vector3(-14, 15, -72), U.solid(Color(0.92, 0.9, 0.86)))
+	var bt := U.label(self, "ACHETEZ.  CONSOMMEZ.  RECOMMENCEZ.", Vector3(-14, 15.1, -71.8), 110, Color(0.1, 0.1, 0.12), Color(0, 0, 0, 0), false, U.font_main)
 	bt.outline_size = 0; bt.shaded = true
 	# propaganda banners on side buildings
-	_banner(Vector3(-41.5, 9.0, -6.0), PI / 2, Vector2(5.0, 6.5), "TRAVAILLEURS DE TOUS LES PAYS, BONKEZ-VOUS")
-	_banner(Vector3(41.5, 9.5, -14.0), -PI / 2, Vector2(5.0, 6.5), "LE PLAN QUINQUENNAL SERA BONKÉ EN 4 ANS")
-	_banner(Vector3(-41.5, 10.0, -30.0), PI / 2, Vector2(4.0, 5.5), "")
-	_banner(Vector3(41.5, 10.0, 8.0), -PI / 2, Vector2(4.0, 5.5), "")
-	_banner(Vector3(-41.5, 9.0, 18.0), PI / 2, Vector2(5.0, 6.5), "LE CAPITAL EST UN TIGRE DE PAPIER. BONKEZ LE PAPIER.")
+	_banner(Vector3(-51.5, 9.0, -6.0), PI / 2, Vector2(5.0, 6.5), "TRAVAILLEURS DE TOUS LES PAYS, BONKEZ-VOUS")
+	_banner(Vector3(51.5, 9.5, -14.0), -PI / 2, Vector2(5.0, 6.5), "LE PLAN QUINQUENNAL SERA BONKÉ EN 4 ANS")
+	_banner(Vector3(-51.5, 10.0, -30.0), PI / 2, Vector2(4.0, 5.5), "")
+	_banner(Vector3(51.5, 10.0, 8.0), -PI / 2, Vector2(4.0, 5.5), "")
+	_banner(Vector3(-51.5, 9.0, 18.0), PI / 2, Vector2(5.0, 6.5), "LE CAPITAL EST UN TIGRE DE PAPIER. BONKEZ LE PAPIER.")
+
+func _bld(path: String, pos: Vector3, h: float, rot: float, sc: float) -> Node3D:
+	var n := U.place(self, path, pos, h, rot, sc)
+	var a := U.world_aabb(n)
+	var body := StaticBody3D.new()
+	body.collision_layer = 2
+	body.collision_mask = 0
+	var cs := CollisionShape3D.new()
+	var bs := BoxShape3D.new(); bs.size = a.size
+	cs.shape = bs
+	body.add_child(cs)
+	body.position = a.get_center()
+	add_child(body)
+	return n
 
 func _banner(pos: Vector3, rot_y: float, size: Vector2, text: String):
 	var b := U.box(self, Vector3(size.x, size.y, 0.08), pos, U.solid(Color(0.72, 0.05, 0.1), 0.0, 0.9), Vector3(0, rot_y, 0))

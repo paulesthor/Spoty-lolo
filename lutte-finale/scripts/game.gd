@@ -28,6 +28,7 @@ var hud
 var cam_rig: Node3D
 var cam: Camera3D
 var shake_amt := 0.0
+var cam_k := 1.0
 var spawn_acc := 0.0
 var next_wave := 60.0
 var elite_times := [120.0, 240.0, 360.0, 450.0, 540.0]
@@ -45,6 +46,8 @@ var rng := RandomNumberGenerator.new()
 # test / bot
 var bot := false
 var warp := 0.0
+var test_pos := Vector3.INF
+var test_yaw := 0.0
 var test_dur := 0.0
 var shot_every := 0.0
 var shot_t := 0.0
@@ -64,6 +67,10 @@ func _ready():
 		elif a.begins_with("shotdir="): shot_dir = a.substr(8)
 		elif a.begins_with("seed="): seed_v = int(a.substr(5))
 		elif a.begins_with("warp="): warp = float(a.substr(5))
+		elif a.begins_with("pos="):
+			var xz := a.substr(4).split(",")
+			test_pos = Vector3(float(xz[0]), 0, float(xz[1]))
+		elif a.begins_with("yaw="): test_yaw = deg_to_rad(float(a.substr(4)))
 	rng.seed = seed_v
 	seed(seed_v)
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -99,6 +106,11 @@ func _ready():
 	if bot:
 		start()
 		if warp > 0.0: _do_warp()
+		if test_pos != Vector3.INF:
+			player.global_position = test_pos
+			player.cam_yaw = test_yaw
+			player.bot = false
+			cam_rig.global_position = test_pos
 	else:
 		_show_menu()
 
@@ -197,7 +209,7 @@ func start():
 
 func _unhandled_input(ev: InputEvent):
 	if ev is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and state == "play":
-		player.cam_yaw -= ev.relative.x * 0.004
+		player.cam_yaw -= clampf(ev.relative.x, -60.0, 60.0) * 0.0025
 
 func _process(d: float):
 	var rd := minf(d, 0.05)
@@ -239,12 +251,30 @@ func _process(d: float):
 	_bot_tick(d)
 
 func _update_camera(d: float):
+	if not player.global_position.is_finite() or not is_finite(player.cam_yaw):
+		player.global_position = Vector3(0, 1, 0)
+		player.velocity = Vector3.ZERO
+		player.cam_yaw = 0.0
+	player.cam_yaw = fmod(player.cam_yaw, TAU)
 	var target: Vector3 = player.global_position
 	target.y = lerpf(0.0, target.y, 0.6)
 	cam_rig.global_position = cam_rig.global_position.lerp(target, 1.0 - exp(-10.0 * d))
 	cam_rig.rotation.y = player.cam_yaw
 	shake_amt = maxf(0.0, shake_amt - d * 1.5)
-	cam.position = CAM_OFFSET + Vector3(randf_range(-1, 1), randf_range(-1, 1), 0) * shake_amt
+	# pull the camera in when a building is between it and the player
+	var local := CAM_OFFSET
+	var head: Vector3 = player.global_position + Vector3(0, 1.6, 0)
+	var want: Vector3 = cam_rig.global_transform * CAM_OFFSET
+	var q := PhysicsRayQueryParameters3D.create(head, want, 2)
+	var hit := get_world_3d().direct_space_state.intersect_ray(q)
+	var k := 1.0
+	if not hit.is_empty():
+		k = clampf((head.distance_to(hit["position"]) - 0.8) / head.distance_to(want), 0.15, 1.0)
+	cam_k = minf(k, cam_k + d * 2.0) if k > cam_k else k
+	var pivot := Vector3(0, 1.6, 0)
+	local = pivot + (CAM_OFFSET - pivot) * cam_k
+	cam.position = local + Vector3(randf_range(-1, 1), randf_range(-1, 1), 0) * shake_amt
+	cam.basis = Basis.looking_at(CAM_LOOK.lerp(Vector3(0, 1.0, -3.0), 1.0 - cam_k) - local, Vector3.UP)
 
 func shake(a: float):
 	shake_amt = minf(0.5, shake_amt + a)

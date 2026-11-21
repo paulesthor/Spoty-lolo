@@ -121,7 +121,9 @@ func _bullet(from: Vector3, dir: Vector3, s: Dictionary):
 	b.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var tr := U.sprite(n, "trace_01.png", Vector3(0, 0, 0.6), 1.2, Color(1, 0.75, 0.3), 3.0, false, Vector3(PI / 2, 0, 0))
 	tr.scale = Vector3(0.3, 1.8, 1)
-	n.look_at(from + dir, Vector3.UP)
+	var flat := Vector3(dir.x, 0, dir.z)
+	if flat.length() > 0.05:
+		n.look_at(from + flat, Vector3.UP)
 	projectiles.append({"t": "bullet", "n": n, "v": dir * float(s["speed"]), "life": 1.2, "dmg": s["dmg"], "pierce": s["pierce"], "hits": []})
 
 # ---------------------------------------------------------------- faucille
