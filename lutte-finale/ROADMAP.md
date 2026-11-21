@@ -6,7 +6,8 @@ Ce fichier garde en mémoire les décisions prises avec le créateur du jeu, pou
 - Priorité au **gameplay pur et dur**. Le visuel reste minimal tant que le gameplay n'est pas solide (sauf menus lisibles).
 - Seul le **niveau 1 (Hypermarché)** existe et il est loin d'être fini. Les idées liées aux niveaux suivants se décident en fonction des niveaux créés.
 - Le bot de test joue comme un **très mauvais joueur** : un vrai joueur aura beaucoup plus de facilité. Cibles d'équilibrage avec le bot : mort vers 3-4 min sans progression, premières victoires après une vingtaine de runs.
-- Ton : sérieux dans le rendu, humour noir dans les éléments (chapkas, marteaux et faucilles, capitalistes caricaturés). Pas de vraies marques ni de vraies personnes : caricatures sous surnoms.
+- **« Sérieux » = un jeu soigné, complet, bien fini** (qualité de production). Le **ton du thème est humoristique** : vannes sur le communisme et le capitalisme, caricatures assumées, humour noir. Pas de vraies marques ni de vraies personnes : caricatures sous surnoms.
+- Direction visuelle validée : éclairage de fin de journée, caméra mi-hauteur. Personnages : passage à des packs libres de droits avec de vraies animations (choix du style en cours).
 
 ## Lot 1 (fait, équilibrage en cours)
 - [x] Esquive (dash invulnérable, clic droit / C / LB) + glissade qui laisse une **traînée de feu** qui brûle les ennemis (inspiré de PhD Slider, Call of Duty Zombies).
