@@ -144,9 +144,7 @@ func _refresh_settings():
 func _cycle(k: String):
 	match k:
 		"zone":
-			var z: int = settings["zone"] % Levels.count() + 1
-			while not Meta.zone_unlocked(z): z = z % Levels.count() + 1
-			settings["zone"] = z
+			settings["zone"] = Levels.next_zone(int(settings["zone"]))
 		"tier":
 			var tr: int = settings["tier"] % 3 + 1
 			while not Meta.tier_unlocked(tr): tr = tr % 3 + 1

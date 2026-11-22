@@ -109,7 +109,8 @@ var test_yaw := 0.0
 var test_dur := 0.0
 var shot_every := 0.0
 var test_endshot := false
-var test_bph := 0           # test: jump the Berlin map straight to this phase   # test: at the end of dur, die on purpose to capture the end report
+var test_bph := 0
+var test_nocatch := false   # test: no catch-up level picks when starting in a later zone           # test: jump the Berlin map straight to this phase   # test: at the end of dur, die on purpose to capture the end report
 var shot_t := 0.0
 var shot_dir := "res://proto_shots"
 var shot_n := 0
@@ -141,6 +142,7 @@ func _ready():
 		elif a == "killboss": test_killboss = true
 		elif a == "endshot": test_endshot = true
 		elif a.begins_with("bph="): test_bph = int(a.substr(4))
+		elif a == "nocatch": test_nocatch = true
 		elif a == "god": test_god = true
 		elif a.begins_with("give="): test_give = a.substr(5)
 		elif a.begins_with("coop="): coop_test = int(a.substr(5))
@@ -827,7 +829,7 @@ func start():
 				for f in Data.FUSIONS:
 					if pw.can_fuse(f): pw.fuse(f)
 	var sl := int(mods.get("start_level", 0.0))
-	if carried: sl = 0
+	if carried or test_nocatch: sl = 0
 	elif zone > 1: sl += 12 * Levels.slot(zone) + 6 * Levels.act(zone)     # starting directly in a later zone: catch-up levels
 	if sl > 0:
 		level += sl

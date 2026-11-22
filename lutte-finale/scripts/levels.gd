@@ -395,6 +395,15 @@ static func zone(n: int) -> Dictionary:
 static func count() -> int:
 	return ZONES.size()
 
+# next zone in the menus' cycle: 1..9, then the special level, then back to 1 (locked zones skipped)
+static func next_zone(z: int) -> int:
+	var order: Array = range(1, ZONES.size() + 1) + [SPECIAL]
+	var i: int = order.find(z)
+	for k in order.size():
+		var n: int = order[(i + 1 + k) % order.size()]
+		if Meta.zone_unlocked(n): return n
+	return 1
+
 static func special(n: int) -> bool:
 	return n == SPECIAL
 

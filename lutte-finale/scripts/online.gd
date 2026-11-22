@@ -168,9 +168,7 @@ func _name() -> String:
 	return n if n != "" else "Camarade"
 
 func _cycle_zone():
-	var z: int = int(Net.settings.get("zone", 1)) % Levels.count() + 1
-	while not Meta.zone_unlocked(z): z = z % Levels.count() + 1
-	Net.set_setting("zone", z)
+	Net.set_setting("zone", Levels.next_zone(int(Net.settings.get("zone", 1))))
 
 func _cycle_tier():
 	var tr: int = int(Net.settings.get("tier", 1)) % 3 + 1

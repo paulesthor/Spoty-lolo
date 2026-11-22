@@ -1179,7 +1179,7 @@ func _lot_bunker(r: Rect2):
 	_static_box(c + Vector3(0, 0.45, -inner * 0.25), Vector3(5.0, 0.9, 2.6))
 	var lights := []
 	for k in 4:
-		var lp := c + Vector3((k % 2) * 2.0 - 1.0, 0, (k / 2) * 2.0 - 1.0) * inner * 0.3 + Vector3(0, 3.6, 0)
+		var lp := c + Vector3((k % 2) * 2.0 - 1.0, 0, (k / 2) * 2.0 - 1.0) * inner * 0.3 + Vector3(0, 2.0, 0)
 		U.sphere(self, 0.2, lp, U.solid(Color(1.0, 0.2, 0.1), 4.0))
 		var ol := OmniLight3D.new(); ol.light_color = Color(1.0, 0.25, 0.15); ol.light_energy = 2.5; ol.omni_range = inner * 0.7
 		ol.position = lp; ol.visible = false
@@ -1188,23 +1188,25 @@ func _lot_bunker(r: Rect2):
 	for e in 4:
 		var ax := e < 2
 		var sgn := 1.0 if e % 2 == 0 else -1.0
-		var size := Vector3(side, h, th) if ax else Vector3(th, h, side)
-		var pos := c + (Vector3(0, h * 0.5, sgn * (side - th) * 0.5) if ax else Vector3(sgn * (side - th) * 0.5, h * 0.5, 0))
-		var wl := U.box(self, size, pos, conc)
-		register_occluder(wl)
-		_static_box(pos, size)
+		# low visible walls (the camera sees over them), a tall invisible collider (nobody climbs out)
+		var vh := 1.0      # cut-away walls: the camera sees the whole room
+		var size := Vector3(side, vh, th) if ax else Vector3(th, vh, side)
+		var pos := c + (Vector3(0, vh * 0.5, sgn * (side - th) * 0.5) if ax else Vector3(sgn * (side - th) * 0.5, vh * 0.5, 0))
+		U.box(self, size, pos, conc)
+		_static_box(pos + Vector3(0, 4.0, 0), size + Vector3(0, 8.0, 0))
 		obstacles.append(Rect2(pos.x - size.x * 0.5, pos.z - size.z * 0.5, size.x, size.z))
-		var txt := U.label(self, ["MILLE ANS (ENVIRON)", "ICI COMMANDE UN GÉNIE", "LA VICTOIRE EST PROCHE", "NE PAS DÉRANGER"][e], pos - (Vector3(0, 0, sgn) if ax else Vector3(sgn, 0, 0)) * (th * 0.5 + 0.02) + Vector3(0, 0.6, 0), 64, Color(0.75, 0.72, 0.68), Color(0, 0, 0, 0), false)
+		var txt := U.label(self, ["MILLE ANS (ENVIRON)", "ICI COMMANDE UN GÉNIE", "LA VICTOIRE EST PROCHE", "NE PAS DÉRANGER"][e], pos - (Vector3(0, 0, sgn) if ax else Vector3(sgn, 0, 0)) * (th * 0.5 + 0.02) + Vector3(0, -0.05, 0), 64, Color(0.75, 0.72, 0.68), Color(0, 0, 0, 0), false)
 		txt.rotation.y = (PI if sgn > 0 else 0.0) if ax else (-PI / 2 if sgn > 0 else PI / 2)
-		U.fit_label(txt, side * 0.6, 1.2)
+		U.fit_label(txt, side * 0.6, 0.6)
 	# roof + sign + an invisible block that keeps everyone out until phase 3
 	var roof := Node3D.new(); add_child(roof)
-	U.box(roof, Vector3(side + 0.6, 0.8, side + 0.6), c + Vector3(0, h + 0.4, 0), conc_s)
-	var sign := U.label(roof, "LE BUNKER", c + Vector3(0, h + 0.82, 0), 200, Color(0.85, 0.1, 0.1), Color(0, 0, 0, 1), false)
+	U.box(roof, Vector3(side + 0.6, 1.8, side + 0.6), c + Vector3(0, 1.9, 0), conc_s)
+	U.box(roof, Vector3(side * 0.6, 1.0, side * 0.6), c + Vector3(0, 3.5, 0), conc_s)
+	var sign := U.label(roof, "LE BUNKER", c + Vector3(0, 4.02, 0), 200, Color(0.85, 0.1, 0.1), Color(0, 0, 0, 1), false)
 	sign.rotation = Vector3(-PI / 2, 0, 0)
-	U.fit_label(sign, side * 0.7, 4.0)
+	U.fit_label(sign, side * 0.55, 3.0)
 	for k in 3:
-		U.cyl(roof, 0.35, 1.4, c + Vector3(-side * 0.3 + k * side * 0.3, h + 1.5, side * 0.3), U.solid(Color(0.3, 0.3, 0.3), 0.0, 0.8))      # air vents
+		U.cyl(roof, 0.35, 1.4, c + Vector3(-side * 0.3 + k * side * 0.3, 3.4, side * 0.38), U.solid(Color(0.3, 0.3, 0.3), 0.0, 0.8))      # air vents
 	var rect := Rect2(c.x - inner * 0.5, c.z - inner * 0.5, inner, inner)
 	obstacles.append(rect)
 	var block := StaticBody3D.new()
@@ -1220,13 +1222,15 @@ func berlin_phase(n: int):
 				if is_instance_valid(t): t.queue_free()
 			var b: Node3D = rr["n"]
 			var a0 := U.world_aabb(b)
-			b.scale.y *= rng.randf_range(0.45, 0.65)
+			b.scale.y *= rng.randf_range(0.3, 0.5)
 			b.position.y -= (U.world_aabb(b).position.y - a0.position.y)
 			var a := U.world_aabb(b)
 			rr["top"] = _ruin_top(a, 2.4)
 			if not rr["back"]: _rubble(a, rr["face"], 3)
 			if rng.randf() < 0.3:
 				VFX.puff(self, Vector3(a.get_center().x, a.end.y, a.get_center().z), 4.0, false, 6)
+			if rng.randf() < 0.35:
+				VFX.fire(self, Vector3(a.get_center().x, a.end.y + 0.2, a.get_center().z), rng.randf_range(1.2, 2.0))
 		for k in 14:
 			var p := free_spot(8.0, 2.0)
 			VFX.fire(self, p, rng.randf_range(0.9, 1.6))
