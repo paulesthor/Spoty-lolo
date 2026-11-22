@@ -53,8 +53,6 @@ var weather
 var base_time_scale := 1.0
 var slowmo_cd := 0.0
 var revives := 0
-var ult_kills := 0
-var ult_t := 0.0          # active ultimate remaining
 var kills_by_kind := {}
 var kills_by_weapon := {}
 var dmg_by_weapon := {}
@@ -66,10 +64,13 @@ var report_done := false
 var multi_run := false
 var bets := 0              # Bourse aux paris accepted
 var world
-var player
+var player             # this PC's comrade (the camera follows it)
+var players: Array = []  # every comrade in the run (index 0 = the host's)
 var enemies
-var weapons
+var weapons            # this PC's comrade's weapons
 var hud
+var party: Array = []    # [{char, skin, remote, peer, name}] one entry per comrade
+var coop_test := 0       # test hook: extra bot comrades
 var cam_rig: Node3D
 var cam: Camera3D
 var shake_amt := 0.0
@@ -128,6 +129,7 @@ func _ready():
 		elif a == "killboss": test_killboss = true
 		elif a == "god": test_god = true
 		elif a.begins_with("give="): test_give = a.substr(5)
+		elif a.begins_with("coop="): coop_test = int(a.substr(5))
 	zone = Meta.run_zone
 	tier = Meta.run_tier
 	endless = Meta.run_endless
@@ -141,19 +143,30 @@ func _ready():
 	world = load("res://scripts/world.gd").new()
 	add_child(world)
 	world.build(seed_v, tpl)
-	player = load("res://scripts/player.gd").new()
-	add_child(player)
-	player.setup(self)
-	player.grav_mult = float(tpl.get("gravity", 1.0))
-	player.bot = bot
-	player.landed.connect(_on_landed)
-	player.global_position = world.player_start + Vector3(0, 0.3, 0)
+	party = Meta.run_party.duplicate(true) if not Meta.run_party.is_empty() else [{"char": Meta.run_char, "skin": -1, "remote": false, "name": "Camarade 1"}]
+	for i in coop_test - party.size():
+		party.append({"char": Meta.CHARACTERS.keys()[(i * 5 + 3) % Meta.CHARACTERS.size()], "skin": 0, "remote": false, "bot": true, "name": "Camarade %d" % (party.size() + 1)})
+	for i in party.size():
+		var pl = load("res://scripts/player.gd").new()
+		add_child(pl)
+		pl.setup(self)
+		pl.idx = i
+		pl.grav_mult = float(tpl.get("gravity", 1.0))
+		pl.bot = bot or party[i].get("bot", false)
+		pl.remote = party[i].get("remote", false)
+		pl.landed.connect(_on_landed.bind(pl))
+		pl.global_position = world.player_start + Vector3(0, 0.3, 0) + (Vector3(cos(i * 2.1), 0, sin(i * 2.1)) * 2.0 if i > 0 else Vector3.ZERO)
+		players.append(pl)
+	player = players[0]
 	enemies = load("res://scripts/enemies.gd").new()
 	add_child(enemies)
 	enemies.setup(self)
-	weapons = load("res://scripts/weapons.gd").new()
-	add_child(weapons)
-	weapons.setup(self)
+	for pl in players:
+		var w = load("res://scripts/weapons.gd").new()
+		add_child(w)
+		pl.weapons = w
+		w.setup(self, pl)
+	weapons = player.weapons
 	weather = load("res://scripts/weather.gd").new()
 	add_child(weather)
 	weather.process_mode = Node.PROCESS_MODE_PAUSABLE
@@ -162,9 +175,13 @@ func _ready():
 		_restore(Meta.carry)
 		Meta.carry = {}
 	elif not "solo" in OS.get_cmdline_user_args():
-		weapons.add_weapon(Meta.CHARACTERS[char_id]["weapon"])
-	for n in [world, player, enemies, weapons]:
+		for pl in players: pl.weapons.add_weapon(Meta.CHARACTERS[pl.char_id]["weapon"])
+	for n in [world, enemies]:
 		n.process_mode = Node.PROCESS_MODE_PAUSABLE
+	for pl in players:
+		pl.process_mode = Node.PROCESS_MODE_PAUSABLE
+		pl.weapons.process_mode = Node.PROCESS_MODE_PAUSABLE
+		if players.size() > 1: _make_tag(pl)
 	_setup_camera()
 	_setup_map_objects()
 	if "layoutcheck" in OS.get_cmdline_user_args():
@@ -290,7 +307,7 @@ func _warmup():
 	var dummy := [{"kind": "decret", "id": "productivite", "rarity": 3, "tag": "ÉVOLUTION · ARME · DÉCRET · COMMUN RARE ÉPIQUE LÉGENDAIRE", "title": "Marteau-Pilon Révolution", "lv": "Niveau 10 / 6", "desc": "0123456789 %+-.,:'() abcdefghijklmnopqrstuvwxyz ÀÂÉÈÊËÎÏÔÙÛÇéèêàùç", "cost": 99},
 		{"kind": "decret", "id": "cadence", "rarity": 1, "tag": "x", "title": "x", "lv": "x", "desc": "x"}, {"kind": "decret", "id": "aimant", "rarity": 2, "tag": "x", "title": "x", "lv": "x", "desc": "x"}]
 	hud.show_choices("NIVEAU 0123456789 · LE PARTI TE RÉCOMPENSE", dummy, "PARTIR")
-	hud.toast("ÉVÉNEMENT · ABCDEFGHIJKLMNOPQRSTUVWXYZ 0123456789", 0.01)
+	_toast_all("ÉVÉNEMENT · ABCDEFGHIJKLMNOPQRSTUVWXYZ 0123456789", 0.01)
 	hud.prompt("F / X : OUVRIR LE COFFRE (12 RBL)")
 	for i in 6: await get_tree().process_frame
 	hud.hide_choices()
@@ -326,7 +343,8 @@ func _warmup():
 		for g in arr: g["n"].queue_free()
 		arr.clear()
 	if not carried:
-		kills = 0; ult_kills = 0
+		kills = 0
+		for pl in players: pl.ult_kills = 0
 		kills_by_kind.clear(); kills_by_weapon.clear(); dmg_by_weapon.clear()
 	cover.queue_free()
 	warming = false
@@ -343,9 +361,13 @@ func _load_meta():
 	skips = int(mods.get("skip", 0.0))
 	base_time_scale = Engine.time_scale
 	revives = int(mods.get("revive", 0.0))
-	player.apply_character(char_id)
-	player.max_hp = 120.0 + mods.get("endurance", 0.0)
-	player.hp = player.max_hp
+	for i in players.size():
+		var pl = players[i]
+		var cid: String = char_id if i == 0 else String(party[i].get("char", "stakhanov"))
+		if not Meta.CHARACTERS.has(cid): cid = "stakhanov"
+		pl.apply_character(cid, -1 if i == 0 else int(party[i].get("skin", 0)))
+		pl.max_hp = 120.0 + mods.get("endurance", 0.0)
+		pl.hp = pl.max_hp
 	if dirs.has("surveillance"): pass
 	if dirs.has("opa"):
 		elite_times = [90.0, 150.0, 240.0, 300.0, 360.0, 420.0, 480.0, 540.0]
@@ -355,23 +377,110 @@ func _load_meta():
 func dirl(id: String) -> int:
 	return int(dirs.get(id, 0))
 
-var ult_uses := 0
-func ultimate_cost() -> int:
+func ultimate_cost(p = null) -> int:
+	if p == null: p = player
 	if "freeult" in OS.get_cmdline_user_args(): return 5
-	return int(220.0 * (1.0 + 0.3 * ult_uses) * (1.0 - mods.get("ult_charge", 0.0) / 100.0))
+	return int(220.0 * (1.0 + 0.3 * p.ult_uses) * (1.0 - mods.get("ult_charge", 0.0) / 100.0))
 
-# effective stat: in-run décrets + permanent bonuses (+ Stakhanov's passive)
-func dv(id: String) -> float:
+# effective stat: in-run décrets (shared by the whole collective) + permanent bonuses + the comrade's own passive
+func dv(id: String, p = null) -> float:
+	if p == null: p = player
 	var v: float = (decrets[id]["v"] if decrets.has(id) else 0.0)
 	if id == "endurance": return v
 	v += mods.get(id, 0.0)
+	var cid: String = p.char_id if p else char_id
+	var ut: float = p.ult_t if p else 0.0
 	if id == "productivite": v += 1.5 * (level - 1)       # "Expérience du Parti": every level makes you hit harder
-	if id == "productivite" and char_id == "barbudo": v += minf(30.0, 3.0 * (elites_killed + bosses_killed.size()))
+	if id == "productivite" and cid == "barbudo": v += minf(30.0, 3.0 * (elites_killed + bosses_killed.size()))
 	if id == "cadence":
-		if char_id == "stakhanov": v += minf(20.0, floorf(kills / 150.0) * 2.0)
-		if ult_t > 0.0 and char_id == "stakhanov": v = (1.0 + v / 100.0) * (2.0 * (1.0 + mods.get("ult_power", 0.0) / 100.0)) * 100.0 - 100.0
-		if ult_t > 0.0 and char_id == "vodkine": v += 60.0 * (1.0 + mods.get("ult_power", 0.0) / 100.0)
+		if cid == "stakhanov": v += minf(20.0, floorf(kills / 150.0) * 2.0)
+		if ut > 0.0 and cid == "stakhanov": v = (1.0 + v / 100.0) * (2.0 * (1.0 + mods.get("ult_power", 0.0) / 100.0)) * 100.0 - 100.0
+		if ut > 0.0 and cid == "vodkine": v += 60.0 * (1.0 + mods.get("ult_power", 0.0) / 100.0)
 	return v
+
+# ---------------------------------------------------------------- coop helpers
+func alive_players() -> Array:
+	var out := []
+	for p in players:
+		if not p.downed: out.append(p)
+	return out
+
+func nearest_player(pos: Vector3, alive_only := true):
+	var best = null
+	var bd := 1e9
+	for p in players:
+		if alive_only and p.downed: continue
+		var dd: float = Vector2(p.global_position.x - pos.x, p.global_position.z - pos.z).length_squared()
+		if dd < bd: bd = dd; best = p
+	return best if best != null else player
+
+func is_local(p) -> bool:
+	return p == player
+
+func input_blocked(_p) -> bool:
+	return false
+
+func player_toast(p, t: String, dur := 2.0):
+	if is_local(p): _toast_all(t, dur)
+	elif Net.active: Net.to_player(p.idx, "toast", [t, dur])
+
+func player_blind(p):
+	if is_local(p): hud.blind()
+	elif Net.active: Net.to_player(p.idx, "blind", [])
+
+func player_hit_from(p, from: Vector3):
+	if is_local(p): hud.hit_from(from)
+	elif Net.active: Net.to_player(p.idx, "hit_from", [from])
+
+func _make_tag(p):
+	var col: Color = [Color(1, 0.85, 0.3), Color(0.4, 0.85, 1.0), Color(0.5, 1.0, 0.5), Color(1.0, 0.55, 0.9)][p.idx % 4]
+	var nm: String = String(party[p.idx].get("name", "")) if p.idx < party.size() else ""
+	var l := U.label(p, "J%d · %s" % [p.idx + 1, Meta.CHARACTERS[p.char_id]["name"].to_upper() if nm == "" else nm.to_upper()], Vector3(0, 2.7, 0), 44, col, Color(0, 0, 0, 1))
+	l.fixed_size = true; l.pixel_size = 0.0006
+	p.tag = l
+	var ring := U.sprite(p, "circle_03.png", Vector3(0, 0.06, 0), 1.6, Color(col.r, col.g, col.b, 0.7), 2.0, false, Vector3(-PI / 2, 0, 0))
+	ring.set_meta("airborne", true)
+
+# a comrade falls: the others can pick them up; everyone down = the end
+const REVIVE_TIME := 3.0
+func player_down(p):
+	if players.size() == 1:
+		game_over()
+		return
+	if p.downed: return
+	p.downed = true
+	p.revive_t = 0.0
+	p.hp = 0.0
+	p.oneshot("death", 999.0, 1.0)
+	var col := Color(1, 0.25, 0.2)
+	var fx := Node3D.new(); p.add_child(fx); fx.set_meta("airborne", true)
+	U.sprite(fx, "circle_02.png", Vector3(0, 0.07, 0), 5.0, Color(col.r, col.g, col.b, 0.6), 2.0, false, Vector3(-PI / 2, 0, 0))
+	var l := U.label(fx, "À TERRE · VIENS ME RELEVER", Vector3(0, 2.2, 0), 48, col, Color(0, 0, 0, 1))
+	l.fixed_size = true; l.pixel_size = 0.0007
+	l.name = "label"
+	p.down_fx = fx
+	for q in players:
+		player_toast(q, "%s EST À TERRE ! RESTE PRÈS DE LUI POUR LE RELEVER" % Meta.CHARACTERS[p.char_id]["name"].to_upper() if q != p else "TU ES À TERRE · UN CAMARADE PEUT TE RELEVER", 3.0)
+	if alive_players().is_empty():
+		game_over()
+
+func _update_revives(d: float):
+	for p in players:
+		if not p.downed: continue
+		var helper := false
+		for q in players:
+			if q != p and not q.downed and q.global_position.distance_to(p.global_position) < 2.6: helper = true
+		p.revive_t = clampf(p.revive_t + (d if helper else -d * 0.5), 0.0, REVIVE_TIME)
+		if p.down_fx:
+			var l = p.down_fx.get_node_or_null("label")
+			if l: l.text = ("RELÈVE EN COURS %d %%" % int(100.0 * p.revive_t / REVIVE_TIME)) if p.revive_t > 0.0 else "À TERRE · VIENS ME RELEVER"
+		if p.revive_t >= REVIVE_TIME:
+			p.downed = false
+			p.hp = p.max_hp * 0.4
+			p.invuln = 2.5
+			p.oneshot("cheer", 1.2, 1.0)
+			if p.down_fx: p.down_fx.queue_free(); p.down_fx = null
+			for q in players: player_toast(q, "%s EST DE RETOUR AU COMBAT" % Meta.CHARACTERS[p.char_id]["name"].to_upper(), 2.0)
 
 func weapon_slots() -> int:
 	return Data.WEAPON_SLOTS + int(mods.get("weapon_slot", 0.0))
@@ -390,11 +499,12 @@ func _do_warp():
 	next_event = warp + 10.0
 	level = int(4 + warp / 30.0)
 	var ups := int(warp / 60.0)
-	for id in ["kalach", "molotov", "matriochka"]:
-		weapons.add_weapon(id)
-	for id in weapons.owned:
-		for i in ups:
-			weapons.upgrade(id, {"dmg": 0.2, "cd": 0.06})
+	for q in players:
+		for id in ["kalach", "molotov", "matriochka"]:
+			q.weapons.add_weapon(id)
+		for id in q.weapons.owned:
+			for i in ups:
+				q.weapons.upgrade(id, {"dmg": 0.2, "cd": 0.06})
 	for id in ["productivite", "cadence", "endurance", "expansion"]:
 		for i in maxi(1, ups / 2):
 			_apply({"kind": "decret", "id": id, "rarity": 1})
@@ -661,23 +771,24 @@ func start():
 	hud.hide_screen()
 	hud.set_hud_visible(true)
 	if not bot: Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-	hud.toast("ZONE %d · %s · %s" % [zone, tpl["name"].to_upper(), Meta.CHARACTERS[char_id]["name"].to_upper()], 2.5)
+	_toast_all("ZONE %d · %s · %s" % [zone, tpl["name"].to_upper(), Meta.CHARACTERS[char_id]["name"].to_upper()], 2.5)
 	if test_give != "":
 		var ids: Array = Data.WEAPONS.keys() if test_give.begins_with("all") else Array(test_give.split(","))
-		for id in ids:
-			weapons.add_weapon(id)
-			for i in Data.EVO_MIN_LV - weapons.level(id): weapons.upgrade(id, {"dmg": 0.1})
-			if test_give.ends_with("evo"): weapons.evolve(id)
-		if test_give.ends_with("evo"):
-			for f in Data.FUSIONS:
-				if weapons.can_fuse(f): weapons.fuse(f)
+		for pl in players:
+			var pw = pl.weapons
+			for id in ids:
+				pw.add_weapon(id)
+				for i in Data.EVO_MIN_LV - pw.level(id): pw.upgrade(id, {"dmg": 0.1})
+				if test_give.ends_with("evo"): pw.evolve(id)
+			if test_give.ends_with("evo"):
+				for f in Data.FUSIONS:
+					if pw.can_fuse(f): pw.fuse(f)
 	var sl := int(mods.get("start_level", 0.0))
 	if carried: sl = 0
 	elif zone > 1: sl += 12 * ((zone - 1) % 3) + 6 * Levels.act(zone)     # starting directly in a later zone: catch-up levels
 	if sl > 0:
 		level += sl
-		pending_levels += sl
-		_open_levelup()
+		_queue_levels(sl)
 
 func _unhandled_input(ev: InputEvent):
 	if ev is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and state == "play":
@@ -707,52 +818,38 @@ func _process(d: float):
 				game_over(true)
 			return
 		"choice":
-			if Input.is_action_just_pressed("reroll") and rerolls > 0 and choice_source in ["level", "shrine"]:
-				rerolls -= 1
-				var n: int = hud.options.size()
-				var mr := 1 if hud.options.size() > 0 and choice_source == "shrine" else 0
-				var opts := _roll_options(n, mr)
-				if not opts.is_empty(): hud.show_choices(hud.choice_title.text, opts, "")
-			if Input.is_action_just_pressed("banish") and banishes > 0 and choice_source in ["level", "shrine", "market"] and hud.sel < hud.options.size():
-				var o: Dictionary = hud.options[hud.sel]
-				if o["kind"] != "pack":
-					banishes -= 1
-					banned[_ban_key(o)] = true
-					hud.toast("BANNI : %s (pour toute la run)" % o["title"], 1.5)
-					var keep := []
-					for i in hud.options.size():
-						if i != hud.sel: keep.append(hud.options[i])
-					var ex := []
-					for k in keep: ex.append(_ban_key(k))
-					var rep := _roll_options(1, 1 if choice_source == "shrine" else 0, 0, ex)
-					if choice_source == "market":
-						for r in rep: r["cost"] = int((22 + 14 * market_buys) * (1.0 + 0.5 * r["rarity"]))
-					var newopts := []
-					for i in hud.options.size():
-						if i == hud.sel:
-							if not rep.is_empty(): newopts.append(rep[0])
-						else:
-							newopts.append(hud.options[i])
-					hud.show_choices(hud.choice_title.text, newopts, hud.leave_label)
-			if Input.is_action_just_pressed("skip") and skips > 0 and choice_source in ["level", "shrine"]:
-				skips -= 1
-				rubles += 8
-				hud.toast("CARTES PASSÉES · +8 ROUBLES", 1.2)
-				_on_chosen(-2)
+			if Input.is_action_just_pressed("reroll"): _choice_action(player, "reroll")
+			if Input.is_action_just_pressed("banish"): _choice_action(player, "banish", hud.sel)
+			if Input.is_action_just_pressed("skip"):
+				_choice_action(player, "skip")
 				return
-			if bot:
-				choice_wait -= d / maxf(Engine.time_scale, 0.001)
-				if choice_wait <= 0.0: _on_chosen(_bot_pick())
+			for p in players:
+				if p.bot and p.get_meta("cur_choice", null) != null:
+					var bw: float = p.get_meta("bot_wait", 0.4) - d / maxf(Engine.time_scale, 0.001)
+					p.set_meta("bot_wait", bw)
+					if bw <= 0.0: _resolve_choice(p, _bot_pick(p))
+				elif p.remote and p.net_in.has("pick"):
+					var pk: int = p.net_in["pick"]
+					p.net_in.erase("pick")
+					_resolve_choice(p, pk)
+				elif p.remote and p.net_in.has("cact"):
+					var ca: Array = p.net_in["cact"]
+					p.net_in.erase("cact")
+					_choice_action(p, ca[0], ca[1])
 			_bot_tick(d)
 			return
 	if Input.is_action_just_pressed("pause"):
 		_pause(); return
 	if Input.is_action_just_pressed("minimap"):
 		Meta.set_opt("minimap", 0.0 if Meta.opt("minimap") > 0.0 else 1.0)
-		hud.toast("MINI-CARTE " + ("ACTIVÉE" if Meta.opt("minimap") > 0.0 else "DÉSACTIVÉE · TAB POUR LA GRANDE CARTE"), 1.2)
-	if Input.is_action_just_pressed("ultimate") or (bot and ult_kills >= ultimate_cost() and enemies.count() > 25):
-		_try_ultimate()
-	ult_t = maxf(0.0, ult_t - rd)
+		_toast_all("MINI-CARTE " + ("ACTIVÉE" if Meta.opt("minimap") > 0.0 else "DÉSACTIVÉE · TAB POUR LA GRANDE CARTE"), 1.2)
+	if Input.is_action_just_pressed("ultimate"): _try_ultimate(player)
+	for pl in players:
+		if pl.bot and pl.ult_kills >= ultimate_cost(pl) and enemies.count() > 25: _try_ultimate(pl)
+		elif pl.remote and pl.net_in.get("ult", false):
+			pl.net_in["ult"] = false
+			_try_ultimate(pl)
+	_update_revives(rd)
 	time += rd
 	var yaw_in := Input.get_axis("cam_left", "cam_right")
 	cam_pitch = clampf(cam_pitch + Input.get_axis("cam_up", "cam_down") * 1.2 * rd, PITCH_MIN, PITCH_MAX)
@@ -815,8 +912,11 @@ func _fmt(t: float) -> String:
 	return "%02d:%02d" % [int(t) / 60, int(t) % 60]
 
 # ---------------------------------------------------------------- spawning / difficulty
+var _spawn_turn := 0
 func spawn_point(min_d: float, max_d: float) -> Vector3:
-	var pp: Vector3 = player.global_position
+	var al := alive_players()
+	_spawn_turn += 1
+	var pp: Vector3 = (al[_spawn_turn % al.size()] if not al.is_empty() else player).global_position
 	for i in 12:
 		var a := rng.randf() * TAU
 		var dd := rng.randf_range(min_d, max_d)
@@ -835,6 +935,7 @@ func mults() -> Array:
 	var tm := dtime() / 60.0
 	var t: Dictionary = Meta.TIERS[tier - 1]
 	var hp := (1.0 + 0.36 * tm + 0.12 * tm * tm + 0.014 * tm * tm * tm) * (1.0 + 0.2 * bets) * (1.0 + 0.25 * dirl("productivisme")) * float(t["hp"])
+	hp *= 1.0 + 0.45 * (players.size() - 1)       # more comrades, tougher capitalists
 	return [hp, (1.0 + 0.1 * tm) * (1.0 + 0.25 * dirl("sans_pitie")) * float(t["dmg"])]
 
 func enemy_speed_mult() -> float:
@@ -871,8 +972,9 @@ func _pick_kind() -> String:
 func _director(d: float):
 	var tm := dtime() / 60.0
 	var m := mults()
-	var cap := 260 if not krach else 320
-	var rate := (1.1 + 0.9 * tm + 0.19 * tm * tm) * (1.0 + 0.15 * bets) * (1.0 + 0.25 * dirl("cadence")) * float(Meta.TIERS[tier - 1]["rate"])
+	var np := players.size()
+	var cap := (260 if not krach else 320) + 70 * (np - 1)
+	var rate := (1.1 + 0.9 * tm + 0.19 * tm * tm) * (1.0 + 0.15 * bets) * (1.0 + 0.25 * dirl("cadence")) * float(Meta.TIERS[tier - 1]["rate"]) * (1.0 + 0.55 * (np - 1))
 	if krach: rate *= 2.2
 	spawn_acc += rate * d
 	while spawn_acc >= 1.0:
@@ -882,36 +984,36 @@ func _director(d: float):
 	if time >= next_wave and time < ZONE_TIME:
 		next_wave += 60.0
 		var n := int(12 + tm * 5)
-		hud.toast("VAGUE DE STAGIAIRES", 1.5)
+		_toast_all("VAGUE DE STAGIAIRES", 1.5)
 		for i in n:
 			if enemies.count() >= cap + 40: break
 			var a := TAU * i / n
-			var p: Vector3 = player.global_position + Vector3(cos(a), 0, sin(a)) * 17.0
+			var p: Vector3 = players[i % players.size()].global_position + Vector3(cos(a), 0, sin(a)) * 17.0
 			enemies.spawn("stagiaire", world.resolve(p, 0.5), m[0], m[1])
 	if not elite_times.is_empty() and time >= elite_times[0]:
 		elite_times.pop_front()
 		enemies.spawn("golden", spawn_point(18.0, 22.0), m[0] * (1.05 if dirl("opa") > 0 else 0.7), m[1])
-		hud.toast("UN GOLDEN BOY APPROCHE · IL TRANSPORTE UN COFFRE", 2.5)
+		_toast_all("UN GOLDEN BOY APPROCHE · IL TRANSPORTE UN COFFRE", 2.5)
 	if not boss_spawned and time >= BOSS_TIME:
 		boss_spawned = true
 		var bk: String = tpl["boss"]
 		Snd.music("boss", 2.0); Snd.play("explosion", 0.0, 0.0, 1.0, 0.6)
 		var zl := (1.0 + 1.2 * floorf((zone - 1) / 3.0)) if endless else (1.0 + 0.45 * Levels.act(zone))     # later acts / endless loops: tougher bosses
-		boss = enemies.spawn(bk, spawn_point(20.0, 24.0), (1.0 + 0.2 * bets) * zl * float(Meta.TIERS[tier - 1]["hp"]), float(Meta.TIERS[tier - 1]["dmg"]))
-		hud.toast("%s ARRIVE" % Levels.edef(bk)["name"].to_upper(), 3.0)
+		boss = enemies.spawn(bk, spawn_point(20.0, 24.0), (1.0 + 0.2 * bets) * zl * float(Meta.TIERS[tier - 1]["hp"]) * (1.0 + 0.6 * (players.size() - 1)), float(Meta.TIERS[tier - 1]["dmg"]))
+		_toast_all("%s ARRIVE" % Levels.edef(bk)["name"].to_upper(), 3.0)
 		if test_killboss: get_tree().create_timer(3.0, false).timeout.connect(func(): if boss.alive: enemies.kill(boss))
 		shake(0.4)
 	if not krach and time >= (420.0 if dirl("surveillance") > 0 else ZONE_TIME):
 		krach = true
 		enemies.spawn("fisc", spawn_point(24.0, 28.0))
-		hud.toast("LE KRACH · LE CONTRÔLEUR FISCAL TE TROUVERA", 3.5)
+		_toast_all("LE KRACH · LE CONTRÔLEUR FISCAL TE TROUVERA", 3.5)
 
 # ---------------------------------------------------------------- random events
 func _events(d: float):
 	if event_t > 0.0:
 		event_t -= d
 		if event_t <= 0.0:
-			if event_name == "greve": hud.toast("FIN DE LA GRÈVE", 1.5)
+			if event_name == "greve": _toast_all("FIN DE LA GRÈVE", 1.5)
 			event_name = ""
 	if time < next_event or krach: return
 	next_event = time + rng.randf_range(70.0, 105.0)
@@ -920,21 +1022,21 @@ func _events(d: float):
 	var m := mults()
 	match ev:
 		"black_friday":
-			hud.toast("ÉVÉNEMENT · BLACK FRIDAY ! UNE RUÉE DE CLIENTS ARRIVE", 3.0)
+			_toast_all("ÉVÉNEMENT · BLACK FRIDAY ! UNE RUÉE DE CLIENTS ARRIVE", 3.0)
 			var a := rng.randf() * TAU
 			for i in int(30 + dtime() / 20.0):
-				var p: Vector3 = player.global_position + Vector3(cos(a), 0, sin(a)) * 24.0 + Vector3(rng.randf_range(-6, 6), 0, rng.randf_range(-6, 6))
+				var p: Vector3 = players[i % players.size()].global_position + Vector3(cos(a), 0, sin(a)) * 24.0 + Vector3(rng.randf_range(-6, 6), 0, rng.randf_range(-6, 6))
 				enemies.spawn("trader" if i % 4 == 0 else "stagiaire", world.resolve(p, 0.5), m[0] * 0.7, m[1])
 		"pluie":
-			hud.toast("ÉVÉNEMENT · PLUIE DE BILLETS ! RAMASSE VITE", 3.0)
+			_toast_all("ÉVÉNEMENT · PLUIE DE BILLETS ! RAMASSE VITE", 3.0)
 			for i in 30:
-				var p: Vector3 = player.global_position + Vector3(rng.randf_range(-14, 14), 0, rng.randf_range(-14, 14))
+				var p: Vector3 = players[i % players.size()].global_position + Vector3(rng.randf_range(-14, 14), 0, rng.randf_range(-14, 14))
 				_drop_coin(world.resolve(p, 0.3), rng.randi_range(2, 4))
 		"greve":
-			hud.toast("ÉVÉNEMENT · GRÈVE GÉNÉRALE ! LES ENNEMIS RALENTISSENT 15 S", 3.0)
+			_toast_all("ÉVÉNEMENT · GRÈVE GÉNÉRALE ! LES ENNEMIS RALENTISSENT 15 S", 3.0)
 			event_name = "greve"; event_t = 15.0
 		"opa":
-			hud.toast("ÉVÉNEMENT · OPA HOSTILE ! DEUX GOLDEN BOYS", 3.0)
+			_toast_all("ÉVÉNEMENT · OPA HOSTILE ! DEUX GOLDEN BOYS", 3.0)
 			for i in 2:
 				enemies.spawn("golden", spawn_point(16.0, 22.0), m[0] * 0.6, m[1])
 		"livraison":
@@ -943,24 +1045,25 @@ func _events(d: float):
 			while p.distance_to(player.global_position) > 35.0 and tries < 30:
 				p = world.free_spot(0.0, 1.5); tries += 1
 			_make_chest(p, true, 1)
-			hud.toast("ÉVÉNEMENT · LIVRAISON EXPRESS ! UN COFFRE RARE EST TOMBÉ (FAISCEAU VIOLET)", 3.5)
+			_toast_all("ÉVÉNEMENT · LIVRAISON EXPRESS ! UN COFFRE RARE EST TOMBÉ (FAISCEAU VIOLET)", 3.5)
 		"soldes":
 			chest_cost = maxi(8, int(chest_cost * 0.5))
-			hud.toast("ÉVÉNEMENT · SOLDES ! LES COFFRES COÛTENT MOITIÉ PRIX", 3.0)
+			_toast_all("ÉVÉNEMENT · SOLDES ! LES COFFRES COÛTENT MOITIÉ PRIX", 3.0)
 
 # ---------------------------------------------------------------- kills, drops
 func on_enemy_killed(e):
 	if warming: return
 	kills += 1
-	ult_kills += 1
+	var killer = players[clampi(e.last_p, 0, players.size() - 1)]
+	killer.ult_kills += 1
 	kills_by_kind[e.kind] = int(kills_by_kind.get(e.kind, 0)) + 1
 	if e.last_w != "": kills_by_weapon[e.last_w] = int(kills_by_weapon.get(e.last_w, 0)) + 1
 	if e.elite:
 		elites_killed += 1
 		stamp(e.node.position + Vector3(0, 3.0, 0), ["LIQUIDÉ !", "NATIONALISÉ !", "REDISTRIBUÉ !"][randi() % 3])
-	if char_id == "barbudo" and ult_t > 0.0 and not e.boss:
+	if killer.char_id == "barbudo" and killer.ult_t > 0.0 and not e.boss:
 		var bp: Vector3 = e.node.position
-		weapons._blast(bp, 2.6, 30.0 + 6.0 * level, {"crit": 0.1, "id": ""}, Color(1, 0.4, 0.15), false)
+		killer.weapons._blast(bp, 2.6, 30.0 + 6.0 * level, {"crit": 0.1, "id": ""}, Color(1, 0.4, 0.15), false)
 	spark(e.node.position + Vector3(0, 1.0, 0), true)
 	_drop_gem(e.node.position, e.xp)
 	var luck := 1.0 + dv("chance") / 100.0
@@ -970,21 +1073,25 @@ func on_enemy_killed(e):
 		_drop_coin(e.node.position + Vector3(0.6, 0, 0), 30 if e.elite else rng.randi_range(2, 5))
 	if e.elite:
 		_make_chest(e.node.position + Vector3(-0.8, 0, 0), true)
-		hud.toast("LE GOLDEN BOY A LÂCHÉ UN COFFRE", 2.0)
+		_toast_all("LE GOLDEN BOY A LÂCHÉ UN COFFRE", 2.0)
 	if e.boss:
 		_boss_down(e)
 
-func on_player_hit(amount: float):
+func on_player_hit(amount: float, p = null):
+	if p == null: p = player
+	if not is_local(p):
+		if Net.active: Net.to_player(p.idx, "hurt", [])
+		return
 	hud.hurt()
 	shake(0.15)
-	if player.hp > 0.0 and player.hp < player.max_hp * 0.3 and time > slowmo_cd and not bot:
+	if player.hp > 0.0 and player.hp < player.max_hp * 0.3 and time > slowmo_cd and not bot and players.size() == 1:
 		slowmo_cd = time + 12.0
-		hud.toast("PV CRITIQUES !", 1.0)
+		_toast_all("PV CRITIQUES !", 1.0)
 		Engine.time_scale = base_time_scale * 0.3
 		get_tree().create_timer(0.45, true, false, true).timeout.connect(func(): Engine.time_scale = base_time_scale)
 
-func _on_landed(fall_speed: float):
-	weapons.on_landed(fall_speed)
+func _on_landed(fall_speed: float, p = null):
+	(p if p != null else player).weapons.on_landed(fall_speed)
 
 func damage_number(pos: Vector3, amt: float, crit: bool, resisted := false):
 	var mode := int(Meta.opt("numbers"))
@@ -1043,7 +1150,12 @@ func stamp(pos: Vector3, text: String):
 	pop_word(pos, text, Color(0.85, 0.08, 0.1), 1.4, true)
 
 func toast(t: String, dur := 2.0):
+	_toast_all(t, dur)
+
+# a message for every comrade (each one sees it on their own screen)
+func _toast_all(t: String, dur := 2.0):
 	hud.toast(t, dur)
+	if Net.active: Net.event_all("toast", [t, dur])
 
 func _drop_gem(p: Vector3, val: int):
 	if gems.size() > 350:
@@ -1086,15 +1198,18 @@ func nearest_gem(p: Vector3, maxd: float):
 	return best
 
 func _update_pickups(d: float):
-	var pp: Vector3 = player.global_position + Vector3(0, 0.6, 0)
 	var magnet := 4.0 * (1.0 + dv("aimant") / 100.0)
 	var t := Time.get_ticks_msec() / 1000.0
 	for arr in [gems, coins]:
 		for g in arr.duplicate():
 			var n: Node3D = g["n"]
+			var who = g.get("who") if g.get("who") != null and not g["who"].downed else nearest_player(n.global_position)
+			var pp: Vector3 = who.global_position + Vector3(0, 0.6, 0)
 			var v := pp - n.global_position
 			var dist := v.length()
-			if dist < magnet: g["pull"] = true
+			if dist < magnet:
+				if not g["pull"]: g["who"] = who
+				g["pull"] = true
 			if g["pull"]:
 				g["spd"] = minf(g["spd"] + 40.0 * d, 34.0)
 				n.global_position += v.normalized() * minf(g["spd"] * d, dist)
@@ -1106,8 +1221,8 @@ func _update_pickups(d: float):
 						Snd.play("gem", -16.0, 0.0, 0.035, 0.9 + minf(float(g["v"]), 10.0) * 0.04 + randf() * 0.15)
 					elif g.has("heal"):
 						var hh: float = g["heal"] * (1.0 + mods.get("heal_pickup", 0.0) / 100.0)
-						player.heal(hh)
-						hud.toast("TARTINE · +%d PV" % int(hh), 1.0)
+						who.heal(hh)
+						player_toast(who, "TARTINE · +%d PV" % int(hh), 1.0)
 					else:
 						Snd.play("coin", -10.0, 0.1, 0.06)
 						rubles += int(ceil(g["v"] * (1.0 + 0.35 * bets) * (1.0 + mods.get("rubles_pct", 0.0) / 100.0) * (0.6 if dirl("inflation") > 0 else 1.0)))
@@ -1115,58 +1230,79 @@ func _update_pickups(d: float):
 				n.rotation.y = t * 2.0
 				n.position.y = g.get("y0", 0.35) + sin(t * 3.0 + n.position.x) * 0.08
 	for b in breakables.duplicate():
-		var v2: Vector3 = b["pos"] - player.global_position
-		v2.y = 0
-		if v2.length() < 1.3: _break(b)
+		for q in players:
+			var v2: Vector3 = b["pos"] - q.global_position
+			v2.y = 0
+			if v2.length() < 1.3:
+				_break(b)
+				break
+
+# in coop every comrade picks a card per level: levels take a bit longer
+func xp_need(lv: int) -> int:
+	return int(Data.xp_to_next(lv) * (1.0 + 0.6 * (players.size() - 1)))
 
 func add_xp(v: int):
 	xp += int(ceil(v * (1.0 + dv("propagande") / 100.0) * (1.0 + 0.35 * bets)))
-	while xp >= Data.xp_to_next(level):
-		xp -= Data.xp_to_next(level)
+	while xp >= xp_need(level):
+		xp -= xp_need(level)
 		level += 1
 		pending_levels += 1
-	if pending_levels > 0 and state == "play":
-		_open_levelup()
+	if pending_levels > 0:
+		var k := pending_levels
+		pending_levels = 0
+		_queue_levels(k)
 
 # ---------------------------------------------------------------- interactions (chests, shrines)
 func _update_interactions(d: float):
-	var pp: Vector3 = player.global_position
-	var prompt := ""
-	var act := Input.is_action_just_pressed("interact") or (bot and rng.randf() < 0.3)
-	# chests
+	for p in players: p.prompt = ""
+	var acts := {}
+	for p in players:
+		var a := false
+		if p.downed: a = false
+		elif p.bot: a = rng.randf() < 0.3
+		elif p.remote: a = p.net_in.get("act", false); p.net_in["act"] = false
+		elif is_local(p): a = Input.is_action_just_pressed("interact")
+		acts[p] = a
+	# chests: whoever stands next to one can open it with the collective's roubles
 	for c in chests:
 		if not c["free"]: c["label"].text = "%d RBL" % chest_price()
-	for c in chests:
-		if c["n"].global_position.distance_to(pp) < 2.4:
-			var cost := 0 if c["free"] else chest_price()
-			prompt = "F / X : OUVRIR LE COFFRE" + ("" if cost == 0 else " (%d RBL)" % cost) + ("" if rubles >= cost else " · PAS ASSEZ DE ROUBLES")
-			if act and rubles >= cost:
-				rubles -= cost
-				if not c["free"]: chest_cost = int(chest_cost * 1.45) + 4
-				chests.erase(c)
-				_chest_open_fx(c["n"])
-				Snd.play("chest", -2.0, 0.05, 0.2); Snd.play("coin", -6.0, 0.1, 0.0, 0.8)
-				player.oneshot("interact", 0.5, 1.6)
-				chests_opened += 1
-				_open_chest(c["bonus"])
-				act = false
-			break
-	# shrines
+	for p in players:
+		if p.downed: continue
+		var pp: Vector3 = p.global_position
+		for c in chests:
+			if c["n"].global_position.distance_to(pp) < 2.4:
+				var cost := 0 if c["free"] else chest_price()
+				p.prompt = "F / X : OUVRIR LE COFFRE" + ("" if cost == 0 else " (%d RBL)" % cost) + ("" if rubles >= cost else " · PAS ASSEZ DE ROUBLES")
+				if acts[p] and rubles >= cost:
+					rubles -= cost
+					if not c["free"]: chest_cost = int(chest_cost * 1.45) + 4
+					chests.erase(c)
+					_chest_open_fx(c["n"])
+					Snd.play("chest", -2.0, 0.05, 0.2); Snd.play("coin", -6.0, 0.1, 0.0, 0.8)
+					p.oneshot("interact", 0.5, 1.6)
+					chests_opened += 1
+					_open_chest(c["bonus"], p)
+					acts[p] = false
+				break
+	# shrines: the comrade closest to each one is the one who uses it
 	for s in shrines:
 		s["cd"] = maxf(0.0, s["cd"] - d)
-		var v: Vector3 = pp - s["pos"]
+		var p = nearest_player(s["pos"])
+		if p.downed: continue
+		var v: Vector3 = p.global_position - s["pos"]
 		v.y = 0
 		var dist := v.length()
+		var prompt := ""
 		match s["kind"]:
 			"statue":
 				if s["used"]: continue
-				if dist < 4.5 and player.is_on_floor():
+				if dist < 4.5 and p.is_on_floor():
 					s["charge"] += d / 5.0
 					prompt = "STATUE DU LEADER · RESTE DANS LE CERCLE (%d %%)" % int(s["charge"] * 100)
 					if s["charge"] >= 1.0:
-						_use_shrine(s)
-						var opts := _roll_options(3, 1)
-						if not opts.is_empty(): _open_choice("LE LEADER T'ACCORDE UNE FAVEUR", opts, "shrine")
+						_use_shrine(s, p)
+						var opts := _roll_options(3, 1, 0, [], p)
+						if not opts.is_empty(): _open_choice("LE LEADER T'ACCORDE UNE FAVEUR", opts, "shrine", "", p)
 				else:
 					s["charge"] = maxf(0.0, s["charge"] - d / 10.0)
 			"file":
@@ -1177,20 +1313,20 @@ func _update_interactions(d: float):
 						s["out"] += d
 						prompt = "REVIENS DANS LA FILE ! (%.1f s)" % maxf(0.0, 2.0 - s["out"])
 						if s["out"] > 2.0:
-							_use_shrine(s)
-							hud.toast("DÉFI ÉCHOUÉ · TU AS QUITTÉ LA FILE", 2.0)
+							_use_shrine(s, p)
+							for q in players: player_toast(q, "DÉFI ÉCHOUÉ · LA FILE A ÉTÉ QUITTÉE", 2.0)
 					else:
 						s["out"] = 0.0
 						prompt = "FILE D'ATTENTE · TIENS ENCORE %d S" % ceili(s["t"])
 					if s["active"] and s["t"] <= 0.0:
-						_use_shrine(s)
+						_use_shrine(s, p)
 						_make_chest(s["pos"] + Vector3(0, 0, 3), true, 2)
-						hud.toast("DÉFI RÉUSSI · COFFRE ÉPIQUE OFFERT", 2.5)
+						for q in players: player_toast(q, "DÉFI RÉUSSI · COFFRE ÉPIQUE OFFERT", 2.5)
 				elif dist < 3.5:
 					prompt = "F / X : PRENDRE UN NUMÉRO (défi : tenir 20 s dans le cercle)"
-					if act:
+					if acts[p]:
 						s["active"] = true; s["t"] = 20.0; s["out"] = 0.0
-						hud.toast("DÉFI · FILE D'ATTENTE · NE QUITTE PAS LE CERCLE", 2.5)
+						for q in players: player_toast(q, "DÉFI · FILE D'ATTENTE · NE QUITTEZ PAS LE CERCLE", 2.5)
 						var m := mults()
 						for i in int(14 + time / 25.0):
 							var a := TAU * i / (14 + time / 25.0)
@@ -1199,11 +1335,12 @@ func _update_interactions(d: float):
 				if s["used"] and s["kind"] != "marche": continue
 				if dist < 3.5 and s["cd"] <= 0.0:
 					prompt = "F / X : " + SHRINE_INFO[s["kind"]][0] + " · " + SHRINE_INFO[s["kind"]][2]
-					if act: _activate(s)
-	hud.prompt(prompt)
+					if acts[p]: _activate(s, p)
+		if prompt != "" and p.prompt == "": p.prompt = prompt
+	hud.prompt(player.prompt)
 
-func _use_shrine(s: Dictionary):
-	player.oneshot("interact", 0.5, 1.6)
+func _use_shrine(s: Dictionary, p = null):
+	(p if p != null else player).oneshot("interact", 0.5, 1.6)
 	if not s["used"]: shrines_used += 1
 	s["used"] = true
 	s["active"] = false
@@ -1213,45 +1350,47 @@ func _use_shrine(s: Dictionary):
 		if c is MeshInstance3D and c.mesh is CylinderMesh and (c.mesh as CylinderMesh).height >= 14.0:
 			c.visible = false
 
-func _activate(s: Dictionary):
+func _activate(s: Dictionary, p = null):
+	if p == null: p = player
 	match s["kind"]:
 		"pari":
-			_use_shrine(s)
+			_use_shrine(s, p)
 			bets += 1
-			hud.toast("PARI ACCEPTÉ · ENNEMIS +20 % PV · XP ET ROUBLES +35 %", 3.0)
+			_toast_all("PARI ACCEPTÉ · ENNEMIS +20 % PV · XP ET ROUBLES +35 %", 3.0)
 		"goulag":
-			_use_shrine(s)
-			player.max_hp = maxf(40.0, player.max_hp - 20.0)
-			player.hp = minf(player.hp, player.max_hp)
-			var opts := _roll_options(3, 2)
-			if not opts.is_empty(): _open_choice("LE GOULAG · TON SACRIFICE SERA RÉCOMPENSÉ", opts, "shrine")
+			_use_shrine(s, p)
+			p.max_hp = maxf(40.0, p.max_hp - 20.0)
+			p.hp = minf(p.hp, p.max_hp)
+			var opts := _roll_options(3, 2, 0, [], p)
+			if not opts.is_empty(): _open_choice("LE GOULAG · TON SACRIFICE SERA RÉCOMPENSÉ", opts, "shrine", "", p)
 		"aimant":
-			_use_shrine(s)
+			_use_shrine(s, p)
 			for g in gems: g["pull"] = true
-			hud.toast("DISTRIBUTEUR · TOUTE L'XP ARRIVE", 2.0)
+			_toast_all("DISTRIBUTEUR · TOUTE L'XP ARRIVE", 2.0)
 		"defi":
-			_use_shrine(s)
+			_use_shrine(s, p)
 			var m := mults()
 			for i in 3:
 				enemies.spawn("golden", world.resolve(s["pos"] + Vector3(cos(TAU * i / 3.0), 0, sin(TAU * i / 3.0)) * 8.0, 1.0), m[0] * 0.6, m[1])
-			hud.toast("OPA HOSTILE · 3 GOLDEN BOYS", 2.5)
+			_toast_all("OPA HOSTILE · 3 GOLDEN BOYS", 2.5)
 		"marche":
 			s["cd"] = 2.0
-			var opts := _roll_options(3, 0)
+			var opts := _roll_options(3, 0, 0, [], p)
 			if opts.size() >= 3: opts.pop_back()
 			for o in opts:
 				o["cost"] = int((22 + 14 * market_buys) * (1.0 + 0.5 * o["rarity"]))
 			opts.append({"kind": "pack", "id": "pack", "rarity": 1, "tag": "PAPERASSE", "title": "Dossier administratif", "lv": "Charges de choix", "desc": "+2 relances\n+1 bannissement\n+1 passer", "short": "charges", "cost": 25 + 10 * market_buys})
-			_open_choice("MARCHÉ NOIR · TU AS %d ROUBLES" % rubles, opts, "market", "PARTIR")
+			_open_choice("MARCHÉ NOIR · LE COLLECTIF A %d ROUBLES" % rubles, opts, "market", "PARTIR", p)
 
-func _open_chest(bonus: int):
-	var opts := _roll_options(1, 0, bonus)
+func _open_chest(bonus: int, p = null):
+	if p == null: p = player
+	var opts := _roll_options(1, 0, bonus, [], p)
 	if opts.is_empty():
-		player.heal(40); hud.toast("COFFRE : +40 PV", 2.0)
+		p.heal(40); player_toast(p, "COFFRE : +40 PV", 2.0)
 		return
 	var o: Dictionary = opts[0]
-	_apply(o)
-	hud.toast("COFFRE %s : %s · %s" % [Data.RARITIES[o["rarity"]], o["title"], o["short"]], 3.0)
+	_apply(o, p)
+	player_toast(p, "COFFRE %s : %s · %s" % [Data.RARITIES[o["rarity"]], o["title"], o["short"]], 3.0)
 	shake(0.1)
 
 # ---------------------------------------------------------------- options & upgrades
@@ -1270,7 +1409,10 @@ func roll_rarity(min_r := 0, bonus := 0) -> int:
 func _ban_key(o: Dictionary) -> String:
 	return ("d:" if o["kind"] == "decret" else "w:") + str(o.get("id", ""))
 
-func _roll_options(n: int, min_r := 0, bonus := 0, exclude: Array = []) -> Array:
+func _roll_options(n: int, min_r := 0, bonus := 0, exclude: Array = [], p = null) -> Array:
+	if p == null: p = player
+	var weapons = p.weapons
+	_desc_pl = p
 	var pool := []
 	for id in weapons.owned:
 		if weapons.can_evolve(id):
@@ -1329,7 +1471,9 @@ const SURPLUS := {
 	"vitesse": ["STAKHANOVISME", "+%d %% de vitesse", 3.0],
 }
 
+var _desc_pl
 func _describe(o: Dictionary):
+	var weapons = (_desc_pl if _desc_pl != null else player).weapons
 	var r: int = o["rarity"]
 	match o["kind"]:
 		"surplus":
@@ -1405,7 +1549,10 @@ func _describe(o: Dictionary):
 					o["desc"] += "\n\nFait évoluer : " + Data.WEAPONS[wid]["name"]
 			o["short"] = Data.decret_text(o["id"], v)
 
-func _apply(o: Dictionary):
+func _apply(o: Dictionary, p = null):
+	if p == null: p = player
+	var weapons = p.weapons
+	_desc_pl = p
 	match o["kind"]:
 		"pack":
 			rerolls += 2; banishes += 1; skips += 1
@@ -1413,12 +1560,12 @@ func _apply(o: Dictionary):
 			Snd.play("evolve", 0.0, 0.0, 0.3)
 			got_evo = true
 			weapons.fuse(o["id"])
-			hud.toast("FUSION : " + (Data.FUSIONS[o["id"]]["name"] as String).to_upper(), 3.0)
+			player_toast(p, "FUSION : " + (Data.FUSIONS[o["id"]]["name"] as String).to_upper(), 3.0)
 		"evo":
 			Snd.play("evolve", 0.0, 0.0, 0.3)
 			got_evo = true
 			weapons.evolve(o["id"])
-			hud.toast("ÉVOLUTION : " + Data.WEAPONS[o["id"]]["evo_name"].to_upper(), 3.0)
+			player_toast(p, "ÉVOLUTION : " + Data.WEAPONS[o["id"]]["evo_name"].to_upper(), 3.0)
 		"weapon_new":
 			weapons.add_weapon(o["id"])
 		"weapon_up":
@@ -1435,7 +1582,7 @@ func _apply(o: Dictionary):
 			if bot: print("[surplus] %s +%.1f" % [o["id"], o["value"]])
 			var sv: float = o["value"]
 			if o["id"] == "endurance":
-				player.max_hp += sv; player.heal(sv)
+				for q in players: q.max_hp += sv; q.heal(sv)
 			else:
 				mods[o["id"]] = mods.get(o["id"], 0.0) + sv
 		"decret":
@@ -1444,25 +1591,72 @@ func _apply(o: Dictionary):
 			decrets[o["id"]]["n"] += 1
 			decrets[o["id"]]["v"] += v
 			if o["id"] == "endurance":
-				player.max_hp += v
-				player.heal(v)
+				for q in players: q.max_hp += v; q.heal(v)
+
+# ---------------------------------------------------------------- choices (every comrade picks their own card, at the same time)
+# each comrade has a queue of pending choices; the world stays paused until every queue is empty
+func _queue_levels(k: int):
+	if k <= 0: return
+	Snd.play("levelup", -6.0, 0.0, 0.3)
+	for p in players:
+		for i in k: p.set_meta("choices", _choices(p) + [{"source": "level"}])
+	_enter_choice()
+
+func _choices(p) -> Array:
+	return p.get_meta("choices", [])
 
 func _open_levelup():
-	Snd.play("levelup", -6.0, 0.0, 0.3)
-	var opts := _roll_options(2 if dirl("bureaucratie") > 0 else 3)
-	if opts.is_empty():
-		pending_levels = 0
-		player.heal(30)
-		return
-	_open_choice("NIVEAU %d · LE PARTI TE RÉCOMPENSE" % (level - pending_levels + 1), opts, "level")
+	_queue_levels(maxi(1, pending_levels))
+	pending_levels = 0
 
-func _open_choice(title: String, opts: Array, source: String, leave := ""):
-	state = "choice"
-	choice_source = source
-	choice_wait = 0.4
-	get_tree().paused = true
-	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-	hud.show_choices(title, opts, leave)
+func _open_choice(title: String, opts: Array, source: String, leave := "", p = null):
+	if p == null: p = player
+	p.set_meta("choices", _choices(p) + [{"source": source, "title": title, "opts": opts, "leave": leave}])
+	_enter_choice()
+
+func _enter_choice():
+	if state != "choice":
+		state = "choice"
+		get_tree().paused = true
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	_pump_choices()
+
+# show each comrade the next card set they have to pick from
+func _pump_choices():
+	var busy := false
+	for p in players:
+		var cur = p.get_meta("cur_choice", null)
+		while cur == null and not _choices(p).is_empty():
+			var q: Array = _choices(p)
+			var e: Dictionary = q.pop_front()
+			p.set_meta("choices", q)
+			if e["source"] == "level":
+				var opts := _roll_options(2 if dirl("bureaucratie") > 0 else 3, 0, 0, [], p)
+				if opts.is_empty():
+					p.heal(30)
+					continue
+				e["opts"] = opts
+				e["title"] = "NIVEAU %d · LE PARTI TE RÉCOMPENSE" % level
+				e["leave"] = ""
+			cur = e
+			p.set_meta("cur_choice", e)
+			p.set_meta("bot_wait", 0.4)
+			if is_local(p):
+				hud.show_choices(e["title"], e["opts"], e["leave"])
+				_choice_shot()
+			elif p.remote and Net.active:
+				Net.to_player(p.idx, "choice", [e["title"], e["opts"], e["leave"], e["source"]])
+		if cur != null: busy = true
+	if not busy:
+		state = "play"
+		hud.hide_choices()
+		hud.waiting(false)
+		get_tree().paused = false
+		if not bot: Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	elif player.get_meta("cur_choice", null) == null:
+		hud.waiting(true)
+
+func _choice_shot():
 	if bot and shot_every > 0.0 and not shot_choice_done:
 		shot_choice_done = true
 		await get_tree().process_frame
@@ -1470,129 +1664,176 @@ func _open_choice(title: String, opts: Array, source: String, leave := ""):
 		_screenshot()
 
 func _on_chosen(i: int):
+	_resolve_choice(player, i)
+
+# a comrade picked card i (or -1 to leave, -2 after a skip)
+func _resolve_choice(p, i: int):
 	if state != "choice": return
+	var e = p.get_meta("cur_choice", null)
+	if e == null: return
+	var opts: Array = e["opts"]
 	Snd.play("ui_confirm", -6.0, 0.03, 0.1)
-	if i >= 0 and i < hud.options.size():
-		var o: Dictionary = hud.options[i]
-		if choice_source == "market":
+	if i >= 0 and i < opts.size():
+		var o: Dictionary = opts[i]
+		if e["source"] == "market":
 			if rubles < o["cost"]:
-				hud.toast("PAS ASSEZ DE ROUBLES", 1.2)
-				if not bot: return
+				player_toast(p, "PAS ASSEZ DE ROUBLES", 1.2)
+				if not p.bot: return
 			else:
 				rubles -= o["cost"]
 				market_buys += 1
-				_apply(o)
-				hud.toast("ACHAT : %s" % o["title"], 1.5)
+				_apply(o, p)
+				player_toast(p, "ACHAT : %s" % o["title"], 1.5)
 		else:
-			_apply(o)
-	hud.hide_choices()
-	if choice_source == "level":
-		pending_levels -= 1
-	if pending_levels > 0:
-		_open_levelup()
-		return
-	state = "play"
-	get_tree().paused = false
-	if not bot: Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+			_apply(o, p)
+	p.set_meta("cur_choice", null)
+	if is_local(p): hud.hide_choices()
+	elif p.remote and Net.active: Net.to_player(p.idx, "choice_end", [])
+	_pump_choices()
+
+# reroll / banish / skip on the comrade's current card set
+func _choice_action(p, what: String, sel := 0):
+	var e = p.get_meta("cur_choice", null)
+	if e == null: return
+	var src: String = e["source"]
+	var opts: Array = e["opts"]
+	match what:
+		"reroll":
+			if rerolls <= 0 or not src in ["level", "shrine"]: return
+			rerolls -= 1
+			var mr := 1 if src == "shrine" else 0
+			var no := _roll_options(opts.size(), mr, 0, [], p)
+			if no.is_empty(): return
+			e["opts"] = no
+		"banish":
+			if banishes <= 0 or not src in ["level", "shrine", "market"] or sel >= opts.size(): return
+			var o: Dictionary = opts[sel]
+			if o["kind"] == "pack": return
+			banishes -= 1
+			banned[_ban_key(o)] = true
+			player_toast(p, "BANNI : %s (pour toute la run)" % o["title"], 1.5)
+			var ex := []
+			for k in opts: ex.append(_ban_key(k))
+			var rep := _roll_options(1, 1 if src == "shrine" else 0, 0, ex, p)
+			if src == "market":
+				for rr in rep: rr["cost"] = int((22 + 14 * market_buys) * (1.0 + 0.5 * rr["rarity"]))
+			var newopts := []
+			for i in opts.size():
+				if i == sel:
+					if not rep.is_empty(): newopts.append(rep[0])
+				else:
+					newopts.append(opts[i])
+			e["opts"] = newopts
+		"skip":
+			if skips <= 0 or not src in ["level", "shrine"]: return
+			skips -= 1
+			rubles += 8
+			player_toast(p, "CARTES PASSÉES · +8 ROUBLES", 1.2)
+			_resolve_choice(p, -2)
+			return
+	if is_local(p): hud.show_choices(e["title"], e["opts"], e["leave"])
+	elif p.remote and Net.active: Net.to_player(p.idx, "choice", [e["title"], e["opts"], e["leave"], src])
 
 # ---------------------------------------------------------------- ultimate
-func _try_ultimate():
-	if ult_kills < ultimate_cost(): return
-	player.oneshot("cast", 0.7, 1.4)
-	ult_kills = 0
-	ult_uses += 1
+func _try_ultimate(p = null):
+	if p == null: p = player
+	if p.downed or p.ult_kills < ultimate_cost(p): return
+	if Net.active: Net.event_all("ult", [p.idx])
+	p.oneshot("cast", 0.7, 1.4)
+	p.ult_kills = 0
+	p.ult_uses += 1
 	var pw: float = 1.0 + mods.get("ult_power", 0.0) / 100.0
-	var pp: Vector3 = player.global_position
-	match char_id:
+	var pp: Vector3 = p.global_position
+	match p.char_id:
 		"stakhanov":
-			ult_t = 6.0
-			hud.toast("SURPRODUCTION !", 1.5)
+			p.ult_t = 6.0
+			player_toast(p, "SURPRODUCTION !", 1.5)
 		"ilitch":
 			var dur: float = (3.0 + mods.get("ult_stun", 0.0)) * pw
 			for e in enemies.in_radius(pp, 22.0):
 				enemies.stun(e, dur, true)
 				e.vuln_t = dur
-			hud.toast("DISCOURS AU PEUPLE !", 1.5)
-			weapons._ring_fx(pp, 22.0, Color(1, 0.8, 0.3))
+			player_toast(p, "DISCOURS AU PEUPLE !", 1.5)
+			p.weapons._ring_fx(pp, 22.0, Color(1, 0.8, 0.3))
 		"moustache":
-			player.hp = maxf(1.0, player.hp * 0.85)
+			p.hp = maxf(1.0, p.hp * 0.85)
 			var n := 0
 			for e in enemies.in_radius(pp, 14.0 * pw):
 				if not e.elite and not e.boss and not e.invincible:
 					enemies.kill(e); n += 1
-			hud.toast("GRANDE PURGE · %d CAPITALISTES DISPARUS" % n, 2.0)
-			weapons._ring_fx(pp, 14.0 * pw, Color(0.8, 0.1, 0.1))
+			player_toast(p, "GRANDE PURGE · %d CAPITALISTES DISPARUS" % n, 2.0)
+			p.weapons._ring_fx(pp, 14.0 * pw, Color(0.8, 0.1, 0.1))
 		"babouchka":
-			player.hp = player.max_hp
-			player.invuln = 4.0 * pw
-			hud.toast("ELLE A CONNU PIRE !", 1.5)
+			p.hp = p.max_hp
+			p.invuln = 4.0 * pw
+			player_toast(p, "ELLE A CONNU PIRE !", 1.5)
 		"barbudo":
-			ult_t = 8.0 * pw
-			hud.toast("¡VIVA LA REVOLUCIÓN !", 1.5)
+			p.ult_t = 8.0 * pw
+			player_toast(p, "¡VIVA LA REVOLUCIÓN !", 1.5)
 		"natacha":
 			for g in gems: g["pull"] = true
-			var ts: Dictionary = weapons.stats("tracteur") if weapons.owned.has("tracteur") else {"dmg": 30.0 + 4.0 * level, "area": 1.8, "speed": 18.0, "range": 26.0, "crit": 0.1, "id": "tracteur", "count": 1}
+			var ts: Dictionary = p.weapons.stats("tracteur") if p.weapons.owned.has("tracteur") else {"dmg": 30.0 + 4.0 * level, "area": 1.8, "speed": 18.0, "range": 26.0, "crit": 0.1, "id": "tracteur", "count": 1}
 			ts["dmg"] = ts["dmg"] * 2.0 * pw
 			for k in 8:
 				var dir := Vector3.FORWARD.rotated(Vector3.UP, TAU * k / 8.0)
-				weapons._tractor(pp, dir, ts)
-			hud.toast("MOISSON COLLECTIVE !", 1.5)
+				p.weapons._tractor(pp, dir, ts)
+			player_toast(p, "MOISSON COLLECTIVE !", 1.5)
 		"vodkine":
-			player.heal(player.max_hp * 0.4 * pw)
-			ult_t = 6.0
-			hud.toast("TOURNÉE DU SERGENT !", 1.5)
+			p.heal(p.max_hp * 0.4 * pw)
+			p.ult_t = 6.0
+			player_toast(p, "TOURNÉE DU SERGENT !", 1.5)
 		"tamara":
-			var dir: Vector3 = player.facing
-			player.invuln = 1.6
-			player.velocity = dir * 22.0
+			var dir: Vector3 = p.facing
+			p.invuln = 1.6
+			p.velocity = dir * 22.0
 			var hit_dmg: float = (80.0 + 14.0 * level) * pw
 			for e in enemies.alive_list().duplicate():
 				var v: Vector3 = e.node.position - pp; v.y = 0
 				var along := v.dot(dir)
 				if along > -1.0 and along < 14.0 and (v - dir * along).length() < 2.4:
 					enemies.damage(e, hit_dmg, pp, 16.0, "", true, true, 0.2, "")
-			weapons._ring_fx(pp + dir * 7.0, 4.0, Color(0.6, 0.7, 0.4))
-			hud.toast("PERCÉE BLINDÉE !", 1.5)
+			p.weapons._ring_fx(pp + dir * 7.0, 4.0, Color(0.6, 0.7, 0.4))
+			player_toast(p, "PERCÉE BLINDÉE !", 1.5)
 		"mikhail":
-			ult_t = 10.0 * pw
-			hud.toast("LA TAÏGA SE RÉVEILLE !", 1.5)
+			p.ult_t = 10.0 * pw
+			player_toast(p, "LA TAÏGA SE RÉVEILLE !", 1.5)
 		"timonier":
 			for e in enemies.in_radius(pp, 20.0):
 				if e.invincible: continue
 				enemies.damage(e, e.max_hp * (0.2 if not e.boss else 0.04) * pw, pp, 6.0, "", true, true, 0.0, "")
-			weapons._ring_fx(pp, 20.0, Color(1, 0.2, 0.15))
-			hud.toast("GRAND BOND EN AVANT !", 1.5)
+			p.weapons._ring_fx(pp, 20.0, Color(1, 0.2, 0.15))
+			player_toast(p, "GRAND BOND EN AVANT !", 1.5)
 		"lev":
-			var rs: Dictionary = weapons.stats("rideau") if weapons.owned.has("rideau") else {"dmg": 20.0 + 3.0 * level, "area": 4.0, "duration": 6.0, "crit": 0.1, "id": "rideau"}
+			var rs: Dictionary = p.weapons.stats("rideau") if p.weapons.owned.has("rideau") else {"dmg": 20.0 + 3.0 * level, "area": 4.0, "duration": 6.0, "crit": 0.1, "id": "rideau"}
 			rs["duration"] = 6.0 * pw
 			for k in 8:
 				var a := TAU * k / 8.0
 				var c := pp + Vector3(cos(a), 0, sin(a)) * 7.0
-				weapons._wall(c, Vector3(-sin(a), 0, cos(a)), rs)
-			hud.toast("LE MUR DE LA HONTE SE DRESSE !", 1.5)
+				p.weapons._wall(c, Vector3(-sin(a), 0, cos(a)), rs)
+			player_toast(p, "LE MUR DE LA HONTE SE DRESSE !", 1.5)
 		"svetlana":
-			var ms: Dictionary = weapons.stats("molotov") if weapons.owned.has("molotov") else {"dmg": 10.0 + 2.0 * level, "area": 2.6, "duration": 4.0, "crit": 0.1, "id": "molotov"}
+			var ms: Dictionary = p.weapons.stats("molotov") if p.weapons.owned.has("molotov") else {"dmg": 10.0 + 2.0 * level, "area": 2.6, "duration": 4.0, "crit": 0.1, "id": "molotov"}
 			ms["dmg"] = ms["dmg"] * 1.5 * pw
 			for k in 12:
 				var a := TAU * k / 12.0
-				weapons._spawn_fire(pp + Vector3(cos(a), 0, sin(a)) * (4.0 + (k % 2) * 4.0), ms)
-			hud.toast("GRAND INCENDIE !", 1.5)
+				p.weapons._spawn_fire(pp + Vector3(cos(a), 0, sin(a)) * (4.0 + (k % 2) * 4.0), ms)
+			player_toast(p, "GRAND INCENDIE !", 1.5)
 		"dmitri":
 			var dur2: float = 4.0 * pw
 			for e in enemies.in_radius(pp, 18.0):
 				enemies.stun(e, dur2, true)
 				e.vuln_t = dur2
-			hud.toast("KALINKA ! TOUT LE MONDE DANSE !", 1.5)
+			player_toast(p, "KALINKA ! TOUT LE MONDE DANSE !", 1.5)
 		"valentina":
-			var es: Dictionary = weapons.stats("etoile") if weapons.owned.has("etoile") else {"dmg": 90.0 + 10.0 * level, "area": 2.2, "crit": 0.2, "id": "etoile"}
+			var es: Dictionary = p.weapons.stats("etoile") if p.weapons.owned.has("etoile") else {"dmg": 90.0 + 10.0 * level, "area": 2.2, "crit": 0.2, "id": "etoile"}
 			es["dmg"] = es["dmg"] * 1.5 * pw
-			var tg: Array = weapons._toughest(pp, 26.0, 12)
+			var tg: Array = p.weapons._toughest(pp, 26.0, 12)
 			for k in tg.size():
 				var e = tg[k]
-				get_tree().create_timer(0.08 * k, false).timeout.connect(func(): if e.alive: weapons._star(e.node.position + Vector3(2, 16, 2), e.node.position, es))
-			hud.toast("PLUIE DE MÉTÉORES !", 1.5)
+				get_tree().create_timer(0.08 * k, false).timeout.connect(func(): if e.alive: p.weapons._star(e.node.position + Vector3(2, 16, 2), e.node.position, es))
+			player_toast(p, "PLUIE DE MÉTÉORES !", 1.5)
 		"youri":
-			var best: Vector3 = pp + player.facing * 6.0
+			var best: Vector3 = pp + p.facing * 6.0
 			var bn := -1
 			var cand: Array = enemies.in_radius(pp, 18.0)
 			for i in mini(24, cand.size()):
@@ -1601,7 +1842,7 @@ func _try_ultimate():
 				if nb > bn: bn = nb; best = e.node.position
 			var tgt: Vector3 = Vector3(best.x, 0, best.z)
 			enemies._telegraph_circle(tgt, 7.0, 0.8)
-			hud.toast("RETOUR SUR TERRE !", 1.5)
+			player_toast(p, "RETOUR SUR TERRE !", 1.5)
 			var dmg: float = (500.0 + 90.0 * level) * pw
 			var cap := Node3D.new()
 			add_child(cap)
@@ -1615,7 +1856,7 @@ func _try_ultimate():
 				for e in enemies.in_radius(tgt, 7.0):
 					enemies.damage(e, dmg, tgt, 14.0, "", true, true, 0.2, "")
 					if e.alive: enemies.stun(e, 2.0 * pw, true)
-				weapons._ring_fx(tgt, 7.0, Color(1, 0.6, 0.3))
+				p.weapons._ring_fx(tgt, 7.0, Color(1, 0.6, 0.3))
 				shake(0.45))
 			tw.tween_interval(1.5)
 			tw.tween_callback(cap.queue_free)
@@ -1631,10 +1872,10 @@ func _boss_down(e):
 	var p: Vector3 = world.resolve(e.node.position, 2.0)
 	if not world.inside(p): p = world.player_start
 	_open_door(p)
-	player.oneshot("cheer", 1.6, 1.0)
+	for q in players: q.oneshot("cheer", 1.6, 1.0)
 	var nxt: Dictionary = Levels.zone(zone + 1)
-	hud.toast("%s EST BONKÉ ! LA PORTE VERS %s EST OUVERTE" % [Levels.edef(e.kind)["name"].to_upper(), nxt["name"].to_upper()], 4.0)
-	player.heal(player.max_hp * 0.3)
+	_toast_all("%s EST BONKÉ ! LA PORTE VERS %s EST OUVERTE" % [Levels.edef(e.kind)["name"].to_upper(), nxt["name"].to_upper()], 4.0)
+	for q in players: q.heal(q.max_hp * 0.3)
 
 func _open_door(p: Vector3):
 	Snd.play("door", 0.0, 0.0, 1.0); Snd.play("evolve", -4.0, 0.0, 1.0)
@@ -1655,9 +1896,13 @@ func _open_door(p: Vector3):
 
 func _update_door():
 	if door == null: return
-	var v: Vector3 = player.global_position - door.global_position
-	v.y = 0
-	if v.length() < 2.6: _next_zone()
+	for q in players:
+		if q.downed: continue
+		var v: Vector3 = q.global_position - door.global_position
+		v.y = 0
+		if v.length() < 2.6:
+			_next_zone()
+			return
 
 func _next_zone():
 	if state != "play": return
@@ -1665,6 +1910,7 @@ func _next_zone():
 	get_tree().paused = true
 	Meta.carry = _snapshot()
 	Meta.run_zone = zone + 1
+	if Net.active: Net.host_next_zone(zone + 1)
 	print("[game] ZONE %d -> %d t=%s level=%d kills=%d" % [zone, zone + 1, _fmt(run_time + time), level, kills])
 	get_tree().paused = false
 	get_tree().change_scene_to_file("res://scenes/main.tscn")
@@ -1673,35 +1919,42 @@ func _snapshot() -> Dictionary:
 	return {"owned": weapons.owned.duplicate(true), "decrets": decrets.duplicate(true), "level": level, "xp": xp, "rubles": rubles,
 		"kills": kills, "kills_by_kind": kills_by_kind.duplicate(), "kills_by_weapon": kills_by_weapon.duplicate(), "dmg_by_weapon": dmg_by_weapon.duplicate(),
 		"elites": elites_killed, "chests": chests_opened, "shrines": shrines_used, "evo": got_evo, "rerolls": rerolls, "banishes": banishes, "skips": skips,
-		"banned": banned.duplicate(), "revives": revives, "ult_kills": ult_kills, "ult_uses": ult_uses, "hp": player.hp, "max_hp": player.max_hp, "run_time": run_time + time,
-		"bosses": bosses_killed.duplicate(), "market_buys": market_buys, "mods": mods.duplicate()}
+		"banned": banned.duplicate(), "revives": revives, "hp": player.hp, "max_hp": player.max_hp, "run_time": run_time + time,
+		"bosses": bosses_killed.duplicate(), "market_buys": market_buys, "mods": mods.duplicate(),
+		"party": players.map(func(q): return {"owned": q.weapons.owned.duplicate(true), "max_hp": q.max_hp, "ult_kills": q.ult_kills, "ult_uses": q.ult_uses})}
 
 func _restore(c: Dictionary):
 	carried = true
-	for id in c["owned"]:
-		weapons.add_weapon(id)
-		weapons.owned[id] = (c["owned"][id] as Dictionary).duplicate(true)
+	var pc: Array = c.get("party", [{"owned": c["owned"], "max_hp": c["max_hp"], "ult_kills": c.get("ult_kills", 0), "ult_uses": c.get("ult_uses", 0)}])
+	for i in mini(pc.size(), players.size()):
+		var q = players[i]
+		for id in pc[i]["owned"]:
+			q.weapons.add_weapon(id)
+			q.weapons.owned[id] = (pc[i]["owned"][id] as Dictionary).duplicate(true)
+		q.max_hp = pc[i]["max_hp"]
+		q.hp = q.max_hp
+		q.ult_kills = pc[i]["ult_kills"]; q.ult_uses = pc[i]["ult_uses"]
 	decrets = c["decrets"]; level = c["level"]; xp = c["xp"]; rubles = c["rubles"]; kills = c["kills"]
 	kills_by_kind = c["kills_by_kind"]; kills_by_weapon = c["kills_by_weapon"]; dmg_by_weapon = c["dmg_by_weapon"]
 	elites_killed = c["elites"]; chests_opened = c["chests"]; shrines_used = c["shrines"]; got_evo = c["evo"]
 	rerolls = c["rerolls"]; banishes = c["banishes"]; skips = c["skips"]; banned = c["banned"]; revives = c["revives"]
-	ult_kills = c["ult_kills"]; ult_uses = c["ult_uses"]; run_time = c["run_time"]; bosses_killed = c["bosses"]
+	run_time = c["run_time"]; bosses_killed = c["bosses"]
 	market_buys = c.get("market_buys", 0)
 	if c.has("mods"): mods = c["mods"]      # includes "Surplus du Plan" bonuses
-	player.max_hp = c["max_hp"]
-	player.hp = player.max_hp     # a new zone: the Party grants a full meal
+	# a new zone: the Party grants a full meal (already done per comrade above)
 
 # ---------------------------------------------------------------- end
 func game_over(abandon := false):
 	if state == "over": return
-	if revives > 0 and not abandon:
+	if revives > 0 and not abandon and players.size() == 1:
 		revives -= 1
 		player.hp = player.max_hp * 0.5
 		player.invuln = 3.0
 		for e in enemies.in_radius(player.global_position, 10.0):
 			if not e.boss and not e.invincible: enemies.kill(e)
-		hud.toast("SECONDE CHANCE · LE PARTI TE RESSUSCITE", 2.5)
+		_toast_all("SECONDE CHANCE · LE PARTI TE RESSUSCITE", 2.5)
 		return
+	if Net.active: Net.event_all("over", [abandon])
 	if not abandon and state == "play":
 		# the comrade falls first, in slow motion, then the report appears
 		state = "dying"
@@ -1727,6 +1980,7 @@ func _finish_over():
 	print("[game] GAME OVER t=%s level=%d kills=%d" % [_fmt(time), level, kills])
 
 func _win():
+	if Net.active: Net.event_all("win", [])
 	Snd.music("victory", 0.3)
 	state = "win"
 	get_tree().paused = true
@@ -1772,11 +2026,16 @@ func track_damage(wid: String, amt: float):
 	if wid != "": dmg_by_weapon[wid] = dmg_by_weapon.get(wid, 0.0) + amt
 
 # ---------------------------------------------------------------- automated test hooks
-func _bot_pick() -> int:
+func _bot_pick(p = null) -> int:
+	if p == null: p = player
+	var weapons = p.weapons
+	var e = p.get_meta("cur_choice", null)
+	var options: Array = e["opts"] if e != null else hud.options
+	var choice_source: String = e["source"] if e != null else ""
 	var best := 0
 	var bs := -1.0
-	for i in hud.options.size():
-		var o: Dictionary = hud.options[i]
+	for i in options.size():
+		var o: Dictionary = options[i]
 		var sc: float = 1.0 + o["rarity"] * 0.6
 		match o["kind"]:
 			"evo", "fusion": sc += 10.0

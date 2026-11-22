@@ -89,6 +89,13 @@ func _draw():
 		dp = dp.clamp(Vector2(8, 8), size - Vector2(8, 8))
 		draw_circle(dp, 9.0, Color(1, 0.2, 0.15))
 		draw_arc(dp, 12.0, 0, TAU, 20, Color(1, 1, 1), 2.0)
+	# comrades (coloured dots, kept on the edge when far away)
+	for q in game.players:
+		if q == game.player: continue
+		var qp := _w2m(q.global_position, c, yaw, k).clamp(Vector2(6, 6), size - Vector2(6, 6))
+		var qc: Color = [Color(1, 0.85, 0.3), Color(0.4, 0.85, 1.0), Color(0.5, 1.0, 0.5), Color(1.0, 0.55, 0.9)][q.idx % 4]
+		draw_circle(qp, 6.0 if big else 4.5, qc if not q.downed else Color(1, 0.2, 0.15))
+		draw_arc(qp, 8.0 if big else 6.0, 0, TAU, 16, Color(0, 0, 0, 0.8), 1.5)
 	# player arrow (camera forward is always up)
 	var f: Vector3 = game.player.facing.rotated(Vector3.UP, -yaw)
 	var dir := Vector2(f.x, f.z).normalized()

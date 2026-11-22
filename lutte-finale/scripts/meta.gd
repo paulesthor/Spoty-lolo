@@ -8,6 +8,7 @@ var data := {}
 
 # run configuration chosen in the Kolkhoze
 var run_char := "stakhanov"
+var run_party: Array = []    # online coop: one entry per comrade ({char, skin, remote, peer, name}); empty = solo
 var run_directives := {}     # id -> level
 var run_zone := 1            # zone the next game scene builds
 var run_tier := 1            # difficulty tier (1..3)

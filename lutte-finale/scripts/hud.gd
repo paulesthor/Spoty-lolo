@@ -167,8 +167,43 @@ func setup(g):
 		m.add_theme_color_override("font_outline_color", Color.BLACK); m.add_theme_constant_override("outline_size", 10)
 		m.modulate.a = 0.0
 		hit_marks.append(m)
+	# comrades in coop: name and health under your own bar
+	for i in 3:
+		var box := _panel(root, C_BG, 2, 1)
+		box.position = Vector2(24, 102 + i * 40); box.size = Vector2(300, 34)
+		var nm := _label(box, "", 16, C_FG)
+		nm.position = Vector2(10, 5); nm.size = Vector2(130, 24); nm.clip_text = true
+		var bg := _panel(box, Color(0, 0, 0, 0.35), 1, 0)
+		bg.position = Vector2(146, 9); bg.size = Vector2(144, 16)
+		var fill := _panel(bg, C_HP, 1, 0)
+		fill.position = Vector2(2, 2); fill.size = Vector2(140, 12)
+		box.visible = false
+		ally_rows.append([box, nm, fill])
+	wait_label = _label(root, "LES CAMARADES CHOISISSENT LEURS CARTES…", 34, Color(1, 0.85, 0.4))
+	_at(wait_label, Control.PRESET_CENTER, Vector2(-500, -30), Vector2(1000, 60))
+	wait_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	wait_label.add_theme_color_override("font_outline_color", Color.BLACK); wait_label.add_theme_constant_override("outline_size", 12)
+	wait_label.visible = false
 	_build_choices()
 	_build_screen()
+
+var ally_rows: Array = []
+var wait_label: Label
+func waiting(on: bool):
+	if wait_label: wait_label.visible = on
+
+func _update_allies():
+	var others: Array = []
+	for q in game.players:
+		if q != game.player: others.append(q)
+	for i in ally_rows.size():
+		var row: Array = ally_rows[i]
+		(row[0] as Control).visible = i < others.size()
+		if i >= others.size(): continue
+		var q = others[i]
+		(row[1] as Label).text = "J%d · %s" % [q.idx + 1, (Meta.CHARACTERS[q.char_id]["name"] as String).to_upper()]
+		(row[1] as Label).add_theme_color_override("font_color", Color(1, 0.35, 0.3) if q.downed else C_FG)
+		(row[2] as Panel).size = Vector2(140.0 * clampf(q.hp / maxf(q.max_hp, 1.0), 0.0, 1.0), 12)
 
 func _at(c: Control, preset: int, pos: Vector2, sz := Vector2.ZERO):
 	c.set_anchors_preset(preset)
@@ -212,7 +247,8 @@ func _label(parent: Control, t: String, size: int, col: Color) -> Label:
 func _process(d: float):
 	if game == null: return
 	var p = game.player
-	var need := Data.xp_to_next(game.level)
+	if game.players.size() > 1: _update_allies()
+	var need: int = game.xp_need(game.level)
 	var xw: float = (root.size.x - 4.0) * clampf(float(game.xp) / need, 0.0, 1.0)
 	xp_fill.size = Vector2(maxf(xw, 0.0), 18)
 	lvl_label.text = "NIV %d" % game.level
@@ -229,14 +265,14 @@ func _process(d: float):
 	hp_label.text = "%d / %d" % [ceili(p.hp), int(p.max_hp)]
 	rub_label.text = "%d RBL" % game.rubles
 	kill_label.text = "%d KO" % game.kills
-	var wids: Array = game.weapons.slot_ids()
+	var wids: Array = game.player.weapons.slot_ids()
 	var nslots: int = game.weapon_slots()
 	for i in weapon_slots.size():
 		var s: Array = weapon_slots[i]
 		(s[0] as Panel).visible = i < nslots
 		if i < wids.size():
-			var w: Dictionary = game.weapons.owned[wids[i]]
-			var nm: String = game.weapons.display_name(wids[i])
+			var w: Dictionary = game.player.weapons.owned[wids[i]]
+			var nm: String = game.player.weapons.display_name(wids[i])
 			s[1].text = nm.to_upper().replace("COCKTAIL MOLOTOV", "MOLOTOV").replace("RÉVOLUTION ", "RÉVOL. ")
 			s[2].text = ("NV %d ★" if w["evo"] else "NV %d") % w["lv"]
 			s[3].texture = U.icon("weapon", wids[i])
@@ -273,15 +309,15 @@ func _process(d: float):
 	if low and hurt_a < 0.12: hurt_a = 0.12 + 0.08 * sin(Time.get_ticks_msec() / 150.0)
 	hurt_rect.color = Color(0.7, 0.0, 0.0, hurt_a) if blind_a <= 0.0 else Color(0.97, 0.95, 0.88, minf(blind_a, 0.85))
 	fps_label.text = "%d FPS · %d ennemis" % [Engine.get_frames_per_second(), game.enemies.count()]
-	var cost: int = game.ultimate_cost()
-	var uname: String = Meta.CHARACTERS[game.char_id]["ult"].to_upper()
-	if game.ult_t > 0.0:
+	var cost: int = game.ultimate_cost(game.player)
+	var uname: String = Meta.CHARACTERS[game.player.char_id]["ult"].to_upper()
+	if game.player.ult_t > 0.0:
 		ult_label.text = "%s · ACTIF" % uname
-	elif game.ult_kills >= cost:
+	elif game.player.ult_kills >= cost:
 		ult_label.text = "E / RB : %s · PRÊT" % uname
 	else:
-		ult_label.text = "%s %d %%" % [uname, int(100.0 * game.ult_kills / cost)]
-	ult_label.modulate.a = 1.0 if game.ult_kills >= cost or game.ult_t > 0.0 else 0.55
+		ult_label.text = "%s %d %%" % [uname, int(100.0 * game.player.ult_kills / cost)]
+	ult_label.modulate.a = 1.0 if game.player.ult_kills >= cost or game.player.ult_t > 0.0 else 0.55
 	if choice_root.visible:
 		_choice_input()
 

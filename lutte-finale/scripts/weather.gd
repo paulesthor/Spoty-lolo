@@ -21,6 +21,7 @@ func _process(d: float):
 	if game == null or game.state != "play": return
 	d = minf(d, 0.05)
 	if kind == "":
+		if game.players.size() > 1 and force == "": return      # coop: no weather events (they target one comrade)
 		if force != "" and game.time >= next_at:
 			_start(force); return
 		# rare and random: a 6 % roll every 15 s once allowed (about one event per run on average, sometimes none)

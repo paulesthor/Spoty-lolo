@@ -10,6 +10,7 @@ config/features=PackedStringArray("4.5", "GL Compatibility")
 
 Meta="*res://scripts/meta.gd"
 Snd="*res://scripts/snd.gd"
+Net="*res://scripts/net.gd"
 
 [display]
 window/size/viewport_width=1920

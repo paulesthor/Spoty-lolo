@@ -33,6 +33,19 @@ var status := {}      # name -> remaining seconds (slow, debt, blind, seize)
 var seized_weapon := ""
 # bot (automated test) state
 var bot := false
+# coop: index in game.players, own weapons, ultimate gauge, input source
+var idx := 0
+var weapons
+var ult_kills := 0
+var ult_t := 0.0
+var ult_uses := 0
+var downed := false
+var revive_t := 0.0
+var remote := false          # driven by a connected comrade (position comes from the network)
+var net_in := {}             # last input/state received from that comrade
+var prompt := ""             # interaction hint for this player
+var tag: Label3D
+var down_fx: Node3D
 var bot_angle := 0.0
 var bot_jump_t := 2.0
 var bot_slide_t := 3.5
@@ -47,7 +60,9 @@ func setup(g):
 	floor_snap_length = 0.3
 	_build_model("stakhanov")
 
-func apply_character(c: String):
+var skin := -1
+func apply_character(c: String, sk := -1):
+	skin = sk
 	_build_model(c)
 
 var oneshot_t := 0.0
@@ -62,7 +77,7 @@ func _build_model(c: String):
 		cur_anim = ""
 	var keep := global_position
 	global_position = Vector3.ZERO
-	model = Chars.build_hero(self, c, Meta.skin_sel(c))
+	model = Chars.build_hero(self, c, Meta.skin_sel(c) if skin < 0 else skin)
 	Chars.outline(model, 0.022)
 	ap = U.anim_player(model)
 	Chars.set_loops(ap)
@@ -98,19 +113,19 @@ func stat_speed() -> float:
 func apply_status(name: String):
 	match name:
 		"slow":
-			if status.get("slow", 0.0) <= 0.0: game.toast("PAPERASSE · TU ES RALENTI", 1.2)
+			if status.get("slow", 0.0) <= 0.0: game.player_toast(self, "PAPERASSE · TU ES RALENTI", 1.2)
 			status["slow"] = 2.5
 		"debt":
 			status["debt"] = 0.25
 		"blind":
-			if status.get("blind", 0.0) <= 0.0: game.hud.blind()
+			if status.get("blind", 0.0) <= 0.0: game.player_blind(self)
 			status["blind"] = 1.6
 		"seize":
-			if status.get("seize", 0.0) > 0.0 or game.weapons.owned.is_empty(): return
-			var ids: Array = game.weapons.owned.keys()
+			if status.get("seize", 0.0) > 0.0 or weapons.owned.is_empty(): return
+			var ids: Array = weapons.owned.keys()
 			seized_weapon = ids[randi() % ids.size()]
 			status["seize"] = 5.0
-			game.toast("SAISIE ! %s CONFISQUÉ 5 S" % Data.WEAPONS[seized_weapon]["name"].to_upper(), 1.8)
+			game.player_toast(self, "SAISIE ! %s CONFISQUÉ 5 S" % Data.WEAPONS[seized_weapon]["name"].to_upper(), 1.8)
 
 func _tick_status(d: float):
 	for k in status.keys():
@@ -121,8 +136,15 @@ func _physics_process(d: float):
 	if game == null or game.state != "play": return
 	invuln = maxf(0.0, invuln - d)
 	_tick_status(d)
+	ult_t = maxf(0.0, ult_t - d)
+	if downed:
+		velocity = Vector3.ZERO
+		return
 	if game.dirl("rationnement") == 0:
 		hp = minf(max_hp, hp + (0.4 + game.mods.get("regen", 0.0)) * d)
+	if remote:
+		_remote_step(d)
+		return
 	slide_cd = maxf(0.0, slide_cd - d)
 	dodge_cd = maxf(0.0, dodge_cd - d)
 	var input := Vector2.ZERO
@@ -155,14 +177,14 @@ func _physics_process(d: float):
 		trail_t -= d
 		if trail_t <= 0.0:
 			trail_t = 0.05
-			game.weapons.add_trail(global_position)
+			weapons.add_trail(global_position)
 	# dodge: short invulnerable dash, usable in the air
 	if want_dodge and dodge_cd <= 0.0:
 		dodge_t = 0.22
 		dodge_cd = DODGE_CD * (1.0 - game.mods.get("dodge_cd", 0.0) / 100.0)
 		dodge_dir = dir.normalized() if dir.length() > 0.1 else facing
 		invuln = maxf(invuln, 0.38)
-		game.weapons.dodge_fx(global_position, dodge_dir)
+		weapons.dodge_fx(global_position, dodge_dir)
 		Snd.play("whoosh", -4.0, 0.1, 0.1)
 		var side := facing.cross(Vector3.UP).dot(dodge_dir)
 		var fwd := facing.dot(dodge_dir)
@@ -224,24 +246,60 @@ func _physics_process(d: float):
 
 var last_cause := ""
 func take_damage(amount: float, dot := false, from := Vector3.INF, cause := "") -> bool:
-	if hp <= 0.0 or (invuln > 0.0 and not dot) or game.test_god: return false
+	if hp <= 0.0 or downed or (invuln > 0.0 and not dot) or game.test_god: return false
 	if cause != "": last_cause = cause
 	if not dot and oneshot_t <= 0.0 and slide_t <= 0.0: oneshot("hit", 0.25, 1.6)
-	if from != Vector3.INF and not dot: game.hud.hit_from(from)
+	if from != Vector3.INF and not dot: game.player_hit_from(self, from)
 	if not dot: Snd.play("hurt", -2.0, 0.1, 0.18)
 	if not dot and randf() * 100.0 < game.mods.get("dodge", 0.0):
 		invuln = 0.3
 		return false
 	hp -= maxf(amount - game.dv("armure"), amount * 0.25)
 	if not dot: invuln = 0.6
-	game.on_player_hit(amount)
+	game.on_player_hit(amount, self)
 	if hp <= 0.0:
 		hp = 0.0
-		game.game_over()
+		game.player_down(self)
 	return true
 
 func heal(amount: float):
 	hp = minf(max_hp, hp + amount)
+
+# a comrade playing from another PC: their game moves the character, the host applies the result
+func _remote_step(d: float):
+	if net_in.is_empty(): return
+	var target: Vector3 = net_in.get("p", global_position)
+	global_position = global_position.lerp(target, 1.0 - exp(-18.0 * d)) if global_position.distance_to(target) < 6.0 else target
+	velocity = net_in.get("v", Vector3.ZERO)
+	cam_yaw = net_in.get("yaw", cam_yaw)
+	var f: Vector3 = net_in.get("f", facing)
+	if f.length() > 0.1:
+		facing = f
+		model.rotation.y = lerp_angle(model.rotation.y, atan2(facing.x, facing.z) + Chars.KK_YAW, 14.0 * d)
+	if oneshot_t <= 0.0: _anim(net_in.get("a", "idle"), net_in.get("as", 1.0))
+	oneshot_t = maxf(0.0, oneshot_t - d)
+	# their slide burns, their dodge protects (the host decides the damage)
+	if net_in.get("sl", false):
+		invuln = maxf(invuln, 0.05)
+		trail_t -= d
+		if trail_t <= 0.0:
+			trail_t = 0.05
+			weapons.add_trail(global_position)
+	if net_in.get("dg", false): invuln = maxf(invuln, 0.1)
+	var fs: float = net_in.get("land", 0.0)
+	if fs > 0.0:
+		net_in["land"] = 0.0
+		landed.emit(fs)
+
+# what this comrade's own game reports each tick (client side)
+func local_state() -> Dictionary:
+	return {"p": global_position, "v": velocity, "yaw": cam_yaw, "f": facing, "a": anim_key(), "as": ap.speed_scale if ap else 1.0,
+		"sl": slide_t > 0.0, "dg": dodge_t > 0.0}
+
+func anim_key() -> String:
+	for k in Chars.HERO_ANIMS:
+		if Chars.HERO_ANIMS[k] == cur_anim: return k
+	return cur_anim
 
 # simple automated player used for headless tests
 func _bot_input(d: float) -> Array:

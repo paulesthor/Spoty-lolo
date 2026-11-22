@@ -28,6 +28,9 @@ class Enemy:
 	var slow_t := 0.0
 	var shielded := false
 	var last_w := ""
+	var last_p := 0           # index of the comrade who hit it last (ultimate charge goes to them)
+	var tgt                   # the comrade it is chasing
+	var nid := 0              # network id
 	var affix := ""
 	var affix_fx: Node3D
 	var tp_t := 0.0
@@ -200,17 +203,22 @@ func _process(d: float):
 		if e.alive: _alive_cache.append(e)
 	if game.state != "play": return
 	_frame += 1
-	var pp: Vector3 = game.player.global_position
 	var grid := {}
 	const CELL := 1.6
 	var slow_world: float = game.enemy_speed_mult()
 	var w = game.world
-	var pl_player := -1
-	if pp.y > 1.2:
-		pl_player = w.plateau_at(pp)
-		if pl_player < 0:
-			var rp0: Array = w.ramp_at(pp)
-			if not rp0.is_empty(): pl_player = rp0[0]
+	# which plateau each comrade stands on (enemies climb the ramps after the one they chase)
+	var levels := {}
+	for q in game.players:
+		var qp: Vector3 = q.global_position
+		var lv := -1
+		if qp.y > 1.2:
+			lv = w.plateau_at(qp)
+			if lv < 0:
+				var rp0: Array = w.ramp_at(qp)
+				if not rp0.is_empty(): lv = rp0[0]
+		levels[q] = lv
+	var multi: bool = game.players.size() > 1
 	# support auras
 	heal_t -= d
 	aura_t -= d
@@ -225,6 +233,10 @@ func _process(d: float):
 					if o != s: o.shielded = true
 	for e in _alive_cache:
 		var p: Vector3 = e.node.position
+		if e.tgt == null or not multi: e.tgt = game.player
+		elif e.tgt.downed or (_frame + e.idx) % 20 == 0: e.tgt = game.nearest_player(p)
+		var pp: Vector3 = e.tgt.global_position
+		var pl_player: int = levels.get(e.tgt, -1)
 		var to := Vector3(pp.x - p.x, 0, pp.z - p.z)
 		var dist := to.length()
 		var dir := to / maxf(dist, 0.001)
@@ -311,14 +323,14 @@ func _process(d: float):
 		var key := Vector2i(floori(p.x / CELL), floori(p.z / CELL))
 		if not grid.has(key): grid[key] = []
 		grid[key].append(e)
-		var py: float = game.player.global_position.y
+		var py: float = pp.y
 		if dist < e.r + 0.45 and absf(py - p.y) < 1.4 and e.stun_t <= 0.0 and e.node.visible:
-			if game.player.take_damage(e.dmg, false, p, ("un " + AFFIX_INFO[e.affix][0].to_lower() + " · " if e.affix != "" else "") + e.def["name"]):
+			if e.tgt.take_damage(e.dmg, false, p, ("un " + AFFIX_INFO[e.affix][0].to_lower() + " · " if e.affix != "" else "") + e.def["name"]):
 				_act(e, "Punch_Right" if randf() < 0.5 else "Punch_Left", 0.45, 1.6)
 				if e.affix == "vampire": e.hp = minf(e.max_hp, e.hp + e.max_hp * 0.3)
 				var eff: String = e.def.get("on_hit", "")
-				if eff != "": game.player.apply_status(eff)
-		if dist > 55.0 and not e.boss and not e.invincible:
+				if eff != "": e.tgt.apply_status(eff)
+		if dist > 55.0 and not e.boss and not e.invincible and (not multi or game.nearest_player(p).global_position.distance_to(p) > 55.0):
 			e.node.position = game.spawn_point(22.0, 30.0)
 	# separation
 	for key in grid:
@@ -368,7 +380,7 @@ func _ai_lobber(e: Enemy, dir: Vector3, dist: float, d: float) -> Vector3:
 	e.t_act -= d
 	if e.t_act <= 0.0 and dist < 18.0:
 		e.t_act = randf_range(3.5, 4.5)
-		var target: Vector3 = game.player.global_position + game.player.velocity * 0.5
+		var target: Vector3 = e.tgt.global_position + e.tgt.velocity * 0.5
 		target.y = 0
 		_lob(e.node.position + Vector3(0, 1.5, 0), target, e.dmg)
 		_act(e, "Sword_Slash", 0.6, 1.5)
@@ -417,7 +429,7 @@ func _ai_boss(e: Enemy, dir: Vector3, dist: float, d: float) -> Vector3:
 		for i in 8:
 			var a := TAU * i / 8.0
 			spawn("cadre" if i % 2 == 0 else "trader", game.world.resolve(e.node.position + Vector3(cos(a), 0, sin(a)) * 4.0, 0.5), m[0], m[1])
-		var target: Vector3 = game.player.global_position
+		var target: Vector3 = e.tgt.global_position
 		_telegraph_circle(target, 5.0, 1.3)
 		get_tree().create_timer(1.3, false).timeout.connect(func():
 			if not e.alive: return
@@ -431,7 +443,7 @@ func _ai_boss(e: Enemy, dir: Vector3, dist: float, d: float) -> Vector3:
 			e.t_act = 2.4
 			game.toast("LA MAIN INVISIBLE DISPARAÎT…", 1.2)
 			var a2 := randf() * TAU
-			var dest: Vector3 = game.world.resolve(game.player.global_position + Vector3(cos(a2), 0, sin(a2)) * 6.0, e.r)
+			var dest: Vector3 = game.world.resolve(e.tgt.global_position + Vector3(cos(a2), 0, sin(a2)) * 6.0, e.r)
 			_telegraph_circle(dest, 4.5, 2.2)
 			get_tree().create_timer(2.2, false).timeout.connect(func():
 				if not e.alive: return
@@ -456,7 +468,7 @@ func _ai_boss(e: Enemy, dir: Vector3, dist: float, d: float) -> Vector3:
 					_act(e, "Sword_Slash", 0.7, 1.3)
 					for i in 6:
 						var a := TAU * i / 6.0
-						_lob(e.node.position + Vector3(0, 4, 0), game.player.global_position + Vector3(cos(a), 0, sin(a)) * 5.0, e.dmg * 0.4)
+						_lob(e.node.position + Vector3(0, 4, 0), e.tgt.global_position + Vector3(cos(a), 0, sin(a)) * 5.0, e.dmg * 0.4)
 			return dir
 		"aim":
 			if e.t_act <= 0.0: e.phase = "dash"; e.t_act = 0.8
@@ -513,11 +525,12 @@ func _telegraph_line(p: Vector3, dir: Vector3, length: float, dur: float):
 	tw.tween_callback(m.queue_free)
 
 func _slam(p: Vector3, r: float, dmg: float, cause := "le coup de zone d'un Actionnaire"):
-	var v: Vector3 = game.player.global_position - p
-	v.y = 0
-	if v.length() < r and game.player.global_position.y < 1.5:
-		game.player.take_damage(dmg, false, p, cause)
-		game.player.velocity += v.normalized() * 12.0 + Vector3(0, 6, 0)
+	for q in game.players:
+		var v: Vector3 = q.global_position - p
+		v.y = 0
+		if v.length() < r and q.global_position.y < 1.5:
+			q.take_damage(dmg, false, p, cause)
+			q.velocity += v.normalized() * 12.0 + Vector3(0, 6, 0)
 	var s := U.sprite(self, "circle_05.png", Vector3(p.x, 0.07, p.z), r * 2.2, Color(1, 0.5, 0.2, 0.7), 2.5, false, Vector3(-PI / 2, 0, 0))
 	var tw := s.create_tween()
 	tw.tween_property(s, "scale", Vector3.ONE * 1.3, 0.25)
@@ -527,9 +540,10 @@ func _slam(p: Vector3, r: float, dmg: float, cause := "le coup de zone d'un Acti
 func _explode(p: Vector3, dmg: float):
 	_telegraph_circle(p, 2.8, 0.7)
 	get_tree().create_timer(0.7, false).timeout.connect(func():
-		var v: Vector3 = game.player.global_position - p
-		v.y = 0
-		if v.length() < 2.8: game.player.take_damage(dmg, false, p, "l'explosion d'un Crypto-bro")
+		for q in game.players:
+			var v: Vector3 = q.global_position - p
+			v.y = 0
+			if v.length() < 2.8: q.take_damage(dmg, false, p, "l'explosion d'un Crypto-bro")
 		for o in in_radius(p, 2.8):
 			damage(o, dmg * 2.0, p, 8.0)
 		var s := U.sprite(self, "star_04.png", p + Vector3(0, 0.8, 0), 5.5, Color(0.4, 1.0, 0.5), 3.0)
@@ -545,17 +559,18 @@ func _heal_fx(p: Vector3):
 	tw.tween_callback(s.queue_free)
 
 func _update_hazards(d: float):
-	var pp: Vector3 = game.player.global_position + Vector3(0, 1.0, 0)
 	for h in hazards.duplicate():
 		var n: Node3D = h["n"]
 		match h["t"]:
 			"shot":
 				n.global_position += h["v"] * d
 				h["life"] -= d
-				if n.global_position.distance_to(pp) < 0.75:
-					if game.player.take_damage(h["dmg"], false, n.global_position, "un tir d'Influenceur") and h["eff"] != "":
-						game.player.apply_status(h["eff"])
-					h["life"] = 0.0
+				for q in game.players:
+					if n.global_position.distance_to(q.global_position + Vector3(0, 1.0, 0)) < 0.75:
+						if q.take_damage(h["dmg"], false, n.global_position, "un tir d'Influenceur") and h["eff"] != "":
+							q.apply_status(h["eff"])
+						h["life"] = 0.0
+						break
 				if h["life"] <= 0.0:
 					hazards.erase(h); n.queue_free()
 			"lob":
@@ -571,13 +586,14 @@ func _update_hazards(d: float):
 			"zone":
 				h["life"] -= d
 				h["tick"] -= d
-				var v: Vector3 = game.player.global_position - n.global_position
-				v.y = 0
-				if v.length() < h["r"] and game.player.global_position.y < 1.0:
-					game.player.apply_status("debt")
-					if h["tick"] <= 0.0:
-						h["tick"] = 0.5
-						game.player.take_damage(h["dmg"], true, n.global_position, "une zone de Dette")
+				var tick: bool = h["tick"] <= 0.0
+				if tick: h["tick"] = 0.5
+				for q in game.players:
+					var v: Vector3 = q.global_position - n.global_position
+					v.y = 0
+					if v.length() < h["r"] and q.global_position.y < 1.0:
+						q.apply_status("debt")
+						if tick: q.take_damage(h["dmg"], true, n.global_position, "une zone de Dette")
 				if h["life"] <= 0.0:
 					hazards.erase(h); n.queue_free()
 

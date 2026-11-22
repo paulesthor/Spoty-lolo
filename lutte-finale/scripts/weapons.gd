@@ -18,8 +18,12 @@ var cages: Array = []       # {n, p, r, life, tick, s}
 var spiral_a := 0.0
 var star_t := 0.0
 
-func setup(g):
+var pl                     # the comrade who carries these weapons
+var visual_only := false   # on a connected comrade's PC: weapons only draw, the host deals the damage
+
+func setup(g, p = null):
 	game = g
+	pl = p if p != null else g.player
 
 func level(id: String) -> int:
 	return owned[id]["lv"] if owned.has(id) else 0
@@ -74,20 +78,20 @@ func stats(id: String) -> Dictionary:
 	var m: Dictionary = w["mods"]
 	var evo: bool = w["evo"]
 	var s := {}
-	s["dmg"] = base["dmg"] * (1.0 + m.get("dmg", 0.0)) * (1.0 + game.dv("productivite") / 100.0)
-	s["cd"] = base["cd"] / ((1.0 + m.get("cd", 0.0)) * (1.0 + game.dv("cadence") / 100.0))
-	s["area"] = base.get("area", 0.0) * minf(1.0 + m.get("area", 0.0), 1.8) * minf(1.0 + game.dv("expansion") / 100.0, 1.6)
+	s["dmg"] = base["dmg"] * (1.0 + m.get("dmg", 0.0)) * (1.0 + game.dv("productivite", pl) / 100.0)
+	s["cd"] = base["cd"] / ((1.0 + m.get("cd", 0.0)) * (1.0 + game.dv("cadence", pl) / 100.0))
+	s["area"] = base.get("area", 0.0) * minf(1.0 + m.get("area", 0.0), 1.8) * minf(1.0 + game.dv("expansion", pl) / 100.0, 1.6)
 	s["range"] = base.get("range", 0.0) * (1.0 + m.get("range", 0.0))
-	s["duration"] = base.get("duration", 0.0) * (1.0 + m.get("duration", 0.0)) * (1.0 + game.dv("duree") / 100.0)
-	var extra := int(game.dv("collectivisation")) if id in ["kalach", "faucille", "matriochka", "molotov", "tracteur", "vodka", "t34", "katioucha", "balalaika", "tracts", "cigare"] else 0
-	if id == "ours": extra = int(game.dv("collectivisation")) / 2 + (1 if game.char_id == "mikhail" else 0) + (3 if game.char_id == "mikhail" and game.ult_t > 0.0 else 0)
+	s["duration"] = base.get("duration", 0.0) * (1.0 + m.get("duration", 0.0)) * (1.0 + game.dv("duree", pl) / 100.0)
+	var extra := int(game.dv("collectivisation", pl)) if id in ["kalach", "faucille", "matriochka", "molotov", "tracteur", "vodka", "t34", "katioucha", "balalaika", "tracts", "cigare"] else 0
+	if id == "ours": extra = int(game.dv("collectivisation", pl)) / 2 + (1 if pl.char_id == "mikhail" else 0) + (3 if pl.char_id == "mikhail" and pl.ult_t > 0.0 else 0)
 	s["count"] = int(base.get("count", 1)) + int(m.get("count", 0.0)) + extra
-	s["pierce"] = int(base.get("pierce", 0)) + int(m.get("pierce", 0.0)) + int(game.dv("perforation"))
+	s["pierce"] = int(base.get("pierce", 0)) + int(m.get("pierce", 0.0)) + int(game.dv("perforation", pl))
 	s["split"] = int(base.get("split", 0)) + int(m.get("split", 0.0))
 	s["depth"] = int(base.get("depth", 0))
 	s["chain"] = int(base.get("chain", 0)) + int(m.get("chain", 0.0))
 	s["speed"] = base.get("speed", 0.0)
-	s["crit"] = 0.05 + game.dv("critique") / 100.0
+	s["crit"] = 0.05 + game.dv("critique", pl) / 100.0
 	s["id"] = id
 	s["mastery"] = Meta.weapon_mastery(id)
 	s["dmg"] *= 1.0 + 0.04 * s["mastery"]
@@ -143,7 +147,7 @@ func _process(d: float):
 	d = minf(d, 0.05)
 	slam_cd = maxf(0.0, slam_cd - d)
 	for id in owned:
-		if id == "spoutnik" or id == game.player.seized_weapon: continue
+		if id == "spoutnik" or id == pl.seized_weapon: continue
 		timers[id] -= d
 		if timers[id] <= 0.0:
 			var s := stats(id)
@@ -162,16 +166,20 @@ func _hit(e, dmg: float, s: Dictionary, from := Vector3.INF, knock := 0.0, src :
 	if mod == "kalach_incendiaire": ignore_armor = true
 	if mod == "marteau_gel": e.slow_t = 2.0
 	if mod == "samovar_glace": e.slow_t = 1.2
+	if visual_only:
+		if randf() < 0.3: VFX.impact(self, e.node.position + Vector3(0, 1.0, 0), Color(1, 0.8, 0.3), 4)
+		return
+	e.last_p = pl.idx
 	game.track_damage(s.get("id", ""), dmg)
 	game.enemies.damage(e, dmg, from, knock, src, show, ignore_armor, s["crit"], s.get("id", ""))
 
 func _fire(id: String, s: Dictionary) -> bool:
-	var pp: Vector3 = game.player.global_position
+	var pp: Vector3 = pl.global_position
 	match id:
 		"marteau":
 			_shockwave(pp, s["area"], s["dmg"], Color(1.0, 0.3, 0.15), s, owned[id]["evo"])
 			if owned[id]["evo"]:
-				get_tree().create_timer(0.35, false).timeout.connect(func(): _shockwave(game.player.global_position, s["area"] * 1.4, s["dmg"] * 0.8, Color(1.0, 0.6, 0.2), s, true))
+				get_tree().create_timer(0.35, false).timeout.connect(func(): _shockwave(pl.global_position, s["area"] * 1.4, s["dmg"] * 0.8, Color(1.0, 0.6, 0.2), s, true))
 			if s.get("fusion", "") == "faucille_marteau":
 				var fs := stats("faucille")
 				for i in 6:
@@ -192,7 +200,7 @@ func _fire(id: String, s: Dictionary) -> bool:
 				_bullet(from, dir, s)
 			return true
 		"faucille":
-			var base_dir: Vector3 = game.player.facing
+			var base_dir: Vector3 = pl.facing
 			var t = game.enemies.nearest(pp, 16.0)
 			if t != null:
 				base_dir = (t.node.position - pp); base_dir.y = 0; base_dir = base_dir.normalized()
@@ -224,10 +232,10 @@ func _fire(id: String, s: Dictionary) -> bool:
 				e.slow_t = 0.7
 				hits += 1
 			if owned[id]["evo"] and hits > 0:
-				game.player.heal(minf(hits * 0.4, 3.0))
+				pl.heal(minf(hits * 0.4, 3.0))
 			return true
 		"hautparleur":
-			var dir: Vector3 = game.player.facing
+			var dir: Vector3 = pl.facing
 			var full: bool = owned[id]["evo"]
 			var ht = game.enemies.nearest(pp, s["area"])
 			if ht == null: return false
@@ -252,8 +260,8 @@ func on_landed(fall_speed: float):
 	if not owned.has("marteau") or fall_speed < 7.0 or slam_cd > 0.0: return
 	slam_cd = 0.6
 	var s := stats("marteau")
-	_shockwave(game.player.global_position, s["area"] * 1.15, s["dmg"] * 2.0 * (1.0 + game.mods.get("slam_bonus", 0.0) / 100.0), Color(1.0, 0.75, 0.2), s, owned["marteau"]["evo"])
-	game.pop_word(game.player.global_position + Vector3(0, 2.6, 0), ["BONK !", "KRACH !", "BAM !"][randi() % 3], Color(1.0, 0.85, 0.2), 1.1)
+	_shockwave(pl.global_position, s["area"] * 1.15, s["dmg"] * 2.0 * (1.0 + game.mods.get("slam_bonus", 0.0) / 100.0), Color(1.0, 0.75, 0.2), s, owned["marteau"]["evo"])
+	game.pop_word(pl.global_position + Vector3(0, 2.6, 0), ["BONK !", "KRACH !", "BAM !"][randi() % 3], Color(1.0, 0.85, 0.2), 1.1)
 
 func _shockwave(center: Vector3, area: float, dmg: float, col: Color, s: Dictionary, stun := false):
 	Snd.play("hammer", -4.0, 0.1, 0.12)
@@ -331,7 +339,7 @@ func _make_aura():
 
 func _update_aura_fx(d: float):
 	var s := stats("samovar")
-	aura_fx.global_position = game.player.global_position
+	aura_fx.global_position = pl.global_position
 	(aura_fx.get_node("ring") as Node3D).scale = Vector3.ONE * s["area"]
 	var st := aura_fx.get_node("steam") as CPUParticles3D
 	st.emission_ring_radius = s["area"] * 0.95
@@ -351,7 +359,7 @@ func _update_sats(d: float):
 		_fx(sp, "light_01.png", Vector3.ZERO, 1.2, Color(0.4, 0.8, 1.0, 0.5), 2.0)
 		sats.append(sp)
 	orbit_a += d * 2.4
-	var pp: Vector3 = game.player.global_position
+	var pp: Vector3 = pl.global_position
 	for i in sats.size():
 		var a := orbit_a + TAU * i / sats.size()
 		var p := pp + Vector3(cos(a) * s["area"], 1.2, sin(a) * s["area"])
@@ -419,7 +427,7 @@ func _sickle(dir: Vector3, s: Dictionary):
 	n.add_child(blade)
 	U.box(n, Vector3(0.1, 0.1, 0.5), Vector3(0.5, 0, 0.3), U.solid(Color(0.75, 0.08, 0.1), 0.0, 0.6))
 	_fx(n, "twirl_01.png", Vector3.ZERO, 1.8, Color(1, 0.25, 0.2, 0.7), 2.0, false, Vector3(-PI / 2, 0, 0))
-	n.global_position = game.player.global_position + Vector3(0, 1.1, 0)
+	n.global_position = pl.global_position + Vector3(0, 1.1, 0)
 	VFX.sparkle_trail(n, Color(1.0, 0.35, 0.25), 0.7, "trace_05.png")
 	projectiles.append({"t": "sickle", "n": n, "dir": dir, "age": 0.0, "dur": 1.5, "range": s["range"], "s": s})
 
@@ -509,7 +517,7 @@ func _update_projectiles(d: float):
 			"sickle":
 				p["age"] += d
 				var k: float = p["age"] / p["dur"]
-				var origin: Vector3 = game.player.global_position + Vector3(0, 1.1, 0)
+				var origin: Vector3 = pl.global_position + Vector3(0, 1.1, 0)
 				var side := Vector3(-p["dir"].z, 0, p["dir"].x)
 				var pos: Vector3 = origin + p["dir"] * sin(k * PI) * p["range"] + side * sin(k * TAU) * 1.6
 				n.global_position = pos
@@ -546,7 +554,7 @@ func _update_projectiles(d: float):
 
 # ---------------------------------------------------------------- slide trail & dodge
 func trail_damage() -> float:
-	return (8.0 + 1.6 * game.level) * (1.0 + game.dv("productivite") / 100.0)
+	return (8.0 + 1.6 * game.level) * (1.0 + game.dv("productivite", pl) / 100.0)
 
 var trail_fx: Node3D
 var trail_on_t := 0.0
@@ -559,18 +567,18 @@ func add_trail(p: Vector3):
 	trails.append({"pos": Vector3(p.x, 0, p.z), "life": 2.0, "tick": 0.0})
 
 func _update_trails(d: float):
-	var s := {"crit": 0.05 + game.dv("critique") / 100.0, "id": ""}
+	var s := {"crit": 0.05 + game.dv("critique", pl) / 100.0, "id": ""}
 	var dmg := trail_damage()
 	if trail_on_t > 0.0:
 		trail_on_t -= d
 		if trail_on_t <= 0.0: VFX.trail_on(trail_fx, false)
-		elif trail_fx: trail_fx.global_position = Vector3(game.player.global_position.x, 0.0, game.player.global_position.z)
+		elif trail_fx: trail_fx.global_position = Vector3(pl.global_position.x, 0.0, pl.global_position.z)
 	for t in trails.duplicate():
 		t["life"] -= d
 		t["tick"] -= d
 		if t["tick"] <= 0.0:
 			t["tick"] = 0.3
-			for e in game.enemies.in_radius(t["pos"], 0.7):
+			for e in (game.enemies.in_radius(t["pos"], 0.7) if not visual_only else []):
 				game.enemies.damage(e, dmg, Vector3.INF, 0.0, "", false, true, s["crit"], "")
 		if t["life"] <= 0.0:
 			trails.erase(t)
@@ -590,7 +598,7 @@ func _fire_new(id: String, s: Dictionary, pp: Vector3) -> bool:
 	match id:
 		"tracteur":
 			var t = game.enemies.nearest(pp, 24.0)
-			var base: Vector3 = game.player.facing
+			var base: Vector3 = pl.facing
 			if t != null:
 				base = t.node.position - pp; base.y = 0; base = base.normalized()
 			var n: int = s["count"]
@@ -628,17 +636,17 @@ func _fire_new(id: String, s: Dictionary, pp: Vector3) -> bool:
 				_vodka(pp + Vector3(0, 1.3, 0), t, s, s["chain"], [], 1.0)
 			return true
 		"piolet":
-			var dir: Vector3 = game.player.facing
+			var dir: Vector3 = pl.facing
 			var t = game.enemies.nearest(pp, s["area"] + 0.5)
 			if t == null: return false      # waits for a target instead of swinging at nothing
 			dir = t.node.position - pp; dir.y = 0; dir = dir.normalized()
 			var full: bool = owned[id]["evo"]
 			_swing(pp, dir, s, full)
 			if full:
-				get_tree().create_timer(0.25, false).timeout.connect(func(): _swing(game.player.global_position, dir, s, true))
+				get_tree().create_timer(0.25, false).timeout.connect(func(): _swing(pl.global_position, dir, s, true))
 			return true
 		"rideau":
-			var dir: Vector3 = game.player.facing
+			var dir: Vector3 = pl.facing
 			if owned[id]["evo"]:
 				for k in 4: _wall(pp + dir.rotated(Vector3.UP, k * PI / 2) * 4.5, dir.rotated(Vector3.UP, k * PI / 2 + PI / 2), s)
 			else:
@@ -650,7 +658,7 @@ func _fire_new(id: String, s: Dictionary, pp: Vector3) -> bool:
 		"t34":
 			var targets := []
 			for i in s["count"]:
-				var t = game.enemies.nearest(pp + game.player.facing * 6.0, 26.0, targets)
+				var t = game.enemies.nearest(pp + pl.facing * 6.0, 26.0, targets)
 				if t == null: break
 				targets.append(t)
 			if targets.is_empty(): return false
@@ -668,7 +676,7 @@ func _fire_new(id: String, s: Dictionary, pp: Vector3) -> bool:
 		"balalaika":
 			var any := false
 			for i in s["count"]:
-				var dir: Vector3 = game.player.facing.rotated(Vector3.UP, randf_range(-1.2, 1.2))
+				var dir: Vector3 = pl.facing.rotated(Vector3.UP, randf_range(-1.2, 1.2))
 				_note(pp + Vector3(0, 1.4, 0), dir, s)
 				any = true
 			return any and game.enemies.count() > 0
@@ -762,9 +770,9 @@ func _update_bears(d: float):
 		U.cyl(hat, 0.3, 0.25, Vector3.ZERO, U.solid(Color(0.35, 0.25, 0.18), 0.0, 1.0))
 		U.cyl(hat, 0.08, 0.05, Vector3(0, 0.05, 0.3), U.solid(Color(0.8, 0.1, 0.1), 1.0)).rotation = Vector3(PI / 2, 0, 0)
 		b.scale = Vector3.ONE * (1.3 if owned["ours"]["evo"] else 1.0)
-		b.global_position = game.player.global_position + Vector3(randf_range(-2, 2), 0, randf_range(-2, 2))
+		b.global_position = pl.global_position + Vector3(randf_range(-2, 2), 0, randf_range(-2, 2))
 		bears.append(b)
-	var pp: Vector3 = game.player.global_position
+	var pp: Vector3 = pl.global_position
 	for i in bears.size():
 		var b: Node3D = bears[i]
 		var home := pp + Vector3(cos(TAU * i / bears.size()), 0, sin(TAU * i / bears.size())) * 2.5
