@@ -439,11 +439,11 @@ func _fit(l: Label, text: String, max_size: int, min_size: int, w: float, h: flo
 func show_choices(title: String, opts: Array, leave := ""):
 	options = opts
 	leave_label = leave
-	var parts := ["1 · 2 · 3 ou clic"]
-	if leave != "": parts.append("4 : " + leave)
-	if game.rerolls > 0 and game.choice_source in ["level", "shrine"]: parts.append("T : relancer (%d)" % game.rerolls)
-	if game.banishes > 0 and game.choice_source in ["level", "shrine", "market"]: parts.append("B : bannir la carte sélectionnée (%d)" % game.banishes)
-	if game.skips > 0 and game.choice_source in ["level", "shrine"]: parts.append("X : passer (%d)" % game.skips)
+	var parts := ["1 · 2 · 3, clic ou A"]
+	if leave != "": parts.append("4 / B : " + leave)
+	if game.rerolls > 0 and game.choice_source in ["level", "shrine"]: parts.append("T / LB : relancer (%d)" % game.rerolls)
+	if game.banishes > 0 and game.choice_source in ["level", "shrine", "market"]: parts.append("B clavier / L3 : bannir (%d)" % game.banishes)
+	if game.skips > 0 and game.choice_source in ["level", "shrine"]: parts.append("X / R3 : passer (%d)" % game.skips)
 	hint_label.text = "   ·   ".join(parts)
 	choice_title.text = title
 	sel = 0
@@ -502,7 +502,7 @@ func _choice_input():
 		sel = (sel + 1) % options.size(); _highlight()
 	if Input.is_action_just_pressed("confirm"):
 		chosen.emit(sel)
-	if leave_label != "" and (Input.is_action_just_pressed("choose_4") or Input.is_action_just_pressed("pause")):
+	if leave_label != "" and (Input.is_action_just_pressed("choose_4") or Input.is_action_just_pressed("pause") or Input.is_action_just_pressed("ui_cancel")):
 		chosen.emit(-1)
 
 # ---------------------------------------------------------------- overlays

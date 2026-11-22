@@ -17,6 +17,13 @@ var zone_btn: Button
 var tier_btn: Button
 var connect_box: VBoxContainer
 var chars: Array = []
+var host_btn: Button
+
+# B on the gamepad always goes back, even while a text field is selected
+func _input(ev: InputEvent):
+	if ev is InputEventJoypadButton and ev.pressed and ev.button_index == JOY_BUTTON_B:
+		get_viewport().set_input_as_handled()
+		_back()
 var ci := 0
 var skin := 0
 var autostart := 0
@@ -69,7 +76,7 @@ func _build_ui():
 	left.position = Vector2(50, 160); left.custom_minimum_size = Vector2(560, 0)
 	var lv := VBoxContainer.new(); lv.add_theme_constant_override("separation", 10); left.add_child(lv)
 	UIK.label(lv, "TON NOM", 20, UIK.GOLD)
-	name_edit = LineEdit.new(); name_edit.text = String(Meta.data.get("net_name", "Camarade")); name_edit.max_length = 16
+	name_edit = LineEdit.new(); name_edit.focus_mode = Control.FOCUS_CLICK; name_edit.text = String(Meta.data.get("net_name", "Camarade")); name_edit.max_length = 16
 	_style_edit(name_edit)
 	lv.add_child(name_edit)
 	UIK.label(lv, "TON CAMARADE", 20, UIK.GOLD)
@@ -81,13 +88,25 @@ func _build_ui():
 	UIK.button(lv, "TENUE SUIVANTE", 20, 300).pressed.connect(_cycle_skin)
 	connect_box = VBoxContainer.new(); connect_box.add_theme_constant_override("separation", 10); lv.add_child(connect_box)
 	var sp := Control.new(); sp.custom_minimum_size = Vector2(0, 10); connect_box.add_child(sp)
-	UIK.button(connect_box, "★  HÉBERGER UNE PARTIE", 28, 480).pressed.connect(_host)
+	host_btn = UIK.button(connect_box, "★  HÉBERGER UNE PARTIE", 28, 480)
+	host_btn.pressed.connect(_host)
+	host_btn.call_deferred("grab_focus")
 	UIK.label(connect_box, "ou rejoindre l'adresse de l'hôte :", 20, UIK.DIM)
 	var jr := HBoxContainer.new(); jr.add_theme_constant_override("separation", 8); connect_box.add_child(jr)
-	ip_edit = LineEdit.new(); ip_edit.placeholder_text = "ex. 86.212.45.10"; ip_edit.text = String(Meta.data.get("net_ip", "")); ip_edit.custom_minimum_size = Vector2(290, 0)
+	ip_edit = LineEdit.new(); ip_edit.focus_mode = Control.FOCUS_CLICK; ip_edit.placeholder_text = "ex. 86.212.45.10"; ip_edit.text = String(Meta.data.get("net_ip", "")); ip_edit.custom_minimum_size = Vector2(290, 0)
 	_style_edit(ip_edit)
 	jr.add_child(ip_edit)
 	UIK.button(jr, "REJOINDRE", 24, 180).pressed.connect(_join)
+	# a keypad so the address can be typed with a gamepad too
+	var kp := GridContainer.new(); kp.columns = 6
+	kp.add_theme_constant_override("h_separation", 6); kp.add_theme_constant_override("v_separation", 6)
+	connect_box.add_child(kp)
+	for k in ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0", ".", "⌫"]:
+		var kb := UIK.button(kp, k, 22, 70)
+		kb.alignment = HORIZONTAL_ALIGNMENT_CENTER
+		kb.pressed.connect(func():
+			if k == "⌫": ip_edit.text = ip_edit.text.substr(0, maxi(0, ip_edit.text.length() - 1))
+			else: ip_edit.text += k)
 	var back := UIK.button(lv, "◀ MENU PRINCIPAL", 22, 300)
 	back.pressed.connect(_back)
 	# right: lobby
@@ -197,6 +216,8 @@ func _refresh():
 
 func _process(d: float):
 	t += d
+	var fo := get_viewport().gui_get_focus_owner()
+	if Input.is_action_just_pressed("ui_cancel") and not (fo is LineEdit) and not Input.is_joy_button_pressed(0, JOY_BUTTON_B): _back()
 	if stage and stage.cam:
 		stage.cam.position = Vector3(0.25 + sin(t * 0.2) * 0.3, 2.5, 6.8)
 		stage.cam.look_at(Vector3(0.25, 1.8, 0))

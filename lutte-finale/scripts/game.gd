@@ -839,12 +839,12 @@ func _process(d: float):
 			if Input.is_action_just_pressed("confirm") or Input.is_action_just_pressed("jump"): start()
 			return
 		"over", "win":
-			if Input.is_action_just_pressed("confirm") or Input.is_action_just_pressed("restart"):
+			if Input.is_action_just_pressed("restart"):
 				_back_to_hub()
 			_bot_tick(d)
 			return
 		"paused":
-			if Input.is_action_just_pressed("pause") or Input.is_action_just_pressed("confirm"): _unpause()
+			if Input.is_action_just_pressed("pause") or Input.is_action_just_pressed("ui_cancel"): _unpause()
 			elif Input.is_action_just_pressed("restart"):
 				game_over(true)
 			return
@@ -2251,7 +2251,7 @@ func _client_process(rd: float, d: float):
 			choice_wait -= d / maxf(Engine.time_scale, 0.001)
 			if choice_wait <= 0.0: _on_chosen(0)
 	elif state == "menu":
-		if Input.is_action_just_pressed("pause"): _client_menu_close()
+		if Input.is_action_just_pressed("pause") or Input.is_action_just_pressed("ui_cancel"): _client_menu_close()
 	_update_camera(rd)
 	_client_pickups(rd)
 	_bot_tick(d)

@@ -84,6 +84,7 @@ func _ready():
 		b.pressed.connect(func(): tab = t[0]; _refresh())
 		nav.add_child(b)
 		nav_buttons[t[0]] = b
+	nav_buttons["lancer"].call_deferred("grab_focus")
 	# a Party poster fills the space under the menu (changes each visit)
 	var art := TextureRect.new()
 	art.texture = load("res://assets/posters/" + U.propaganda_tex(randi()))
@@ -97,6 +98,7 @@ func _ready():
 	nav.add_child(quit)
 	# ---- content
 	var scroll := ScrollContainer.new()
+	scroll.follow_focus = true
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	root.add_child(scroll)
@@ -635,3 +637,9 @@ func _bot_summary():
 	var ml := []
 	for w in Data.WEAPONS: ml.append("%s:%d" % [w, Meta.weapon_mastery(w)])
 	print("[meta-summary] runs=%d wins=%d best=%d medals=%d bureau=%s chars=%s mastery=%s plan=%d" % [d["runs"], d["wins"], int(d["best_time"]), d["medals"], ",".join(b), ",".join(cl), ",".join(ml), d["plan_no"]])
+
+# B on the gamepad (or Escape): back to the title screen
+func _process(_d: float):
+	if Input.is_action_just_pressed("ui_cancel"):
+		Meta.save()
+		get_tree().change_scene_to_file("res://scenes/title.tscn")

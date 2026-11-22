@@ -76,7 +76,8 @@ func _ui():
 	UIK.button(menu, "JOUER EN LIGNE  ·  COOP 2 À 4", 26, 420).pressed.connect(func(): _go("res://scenes/online.tscn"))
 	UIK.button(menu, "LE KOLKHOZE  ·  PROGRESSION", 26, 420).pressed.connect(func(): Meta.hub_tab = "bureau"; _go("res://scenes/hub.tscn"))
 	UIK.button(menu, "OPTIONS", 26, 420).pressed.connect(func(): Meta.hub_tab = "options"; _go("res://scenes/hub.tscn"))
-	UIK.button(menu, "CRÉDITS", 26, 420).pressed.connect(func(): credits.visible = true)
+	credits_btn = UIK.button(menu, "CRÉDITS", 26, 420)
+	credits_btn.pressed.connect(func(): credits.visible = true; credits_back.call_deferred("grab_focus"))
 	UIK.button(menu, "QUITTER", 26, 420).pressed.connect(func(): get_tree().quit())
 	play.grab_focus()
 	var foot := UIK.label(root, "Prototype · Tous droits collectivisés · %d médailles · grade %d (%s)" % [int(Meta.data["medals"]), Meta.grade(), Meta.GRADE_NAMES[Meta.grade() - 1]], 18, UIK.DIM)
@@ -93,7 +94,8 @@ func _credits(root: Control):
 	UIK.label(v, "CRÉDITS DU COMITÉ CENTRAL", 40, UIK.RED, "RussoOne")
 	UIK.label(v, "Conception, code et propagande : le Parti (et Claude, camarade numérique)\n\nModèles 3D : Kenney (CC0), KayKit · Kay Lousberg (CC0), Quaternius (CC0)\nTextures : ambientCG (CC0) · Végétation : Quaternius Ultimate Stylized Nature (CC0)\nIcônes : game-icons.net (CC BY 3.0) · Delapouite, Lorc, Sbed, Skoll, Zeromancer\nSons : Kenney (CC0) · Musique originale, banque de sons FluidR3 (MIT)\nPolices : Russo One, Oswald, Bangers (SIL Open Font License)\nMoteur : Godot Engine (MIT)\n\nAucun capitaliste réel n'a été blessé. Les caricatures sont des caricatures.\nLe Plan remercie les camarades testeurs, qui seront décorés à titre posthume.", 21, UIK.PAPER, "Oswald", true)
 	var crow := HBoxContainer.new(); crow.add_theme_constant_override("separation", 12); v.add_child(crow)
-	UIK.button(crow, "RETOUR", 24, 240).pressed.connect(func(): credits.visible = false)
+	credits_back = UIK.button(crow, "RETOUR", 24, 240)
+	credits_back.pressed.connect(_close_credits)
 	UIK.button(crow, "REVOIR L'INTRO", 24, 300).pressed.connect(func(): _go("res://scenes/intro.tscn"))
 
 func _go(scene: String):
@@ -111,7 +113,13 @@ func _process(d: float):
 	if int(t / 5.0) != tag_i:
 		tag_i = int(t / 5.0)
 		tagline.text = TAGLINES[tag_i % TAGLINES.size()]
-	if Input.is_action_just_pressed("ui_cancel") and credits.visible: credits.visible = false
+	if Input.is_action_just_pressed("ui_cancel") and credits.visible: _close_credits()
+
+var credits_btn: Button
+var credits_back: Button
+func _close_credits():
+	credits.visible = false
+	if credits_btn: credits_btn.grab_focus()
 
 func _shot():
 	for i in 40: await get_tree().process_frame

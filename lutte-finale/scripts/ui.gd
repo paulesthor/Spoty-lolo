@@ -29,7 +29,9 @@ static func theme() -> Theme:
 	t.set_stylebox("normal", "Button", sb(Color(0.1, 0.08, 0.07, 0.92)))
 	t.set_stylebox("hover", "Button", sb(RED, GOLD))
 	t.set_stylebox("pressed", "Button", sb(Color(0.55, 0.05, 0.08), GOLD))
-	t.set_stylebox("focus", "Button", sb(Color(0, 0, 0, 0), GOLD, 0))
+	var fsb := sb(Color(0, 0, 0, 0), GOLD, 0)
+	fsb.border_width_bottom = 3; fsb.border_color = GOLD
+	t.set_stylebox("focus", "Button", fsb)
 	t.set_stylebox("disabled", "Button", sb(Color(0.1, 0.08, 0.07, 0.5), Color(0.3, 0.3, 0.3)))
 	t.set_color("font_color", "Button", PAPER)
 	t.set_color("font_hover_color", "Button", Color(1, 1, 1))
