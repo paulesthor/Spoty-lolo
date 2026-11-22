@@ -68,6 +68,10 @@ Ce fichier garde en mémoire les décisions prises avec le créateur du jeu, pou
 - [x] Caméra en jeu : inclinaison verticale à la souris, au stick droit et avec Page haut / Page bas.
 - Ensuite (demande du créateur) : le reste des niveaux.
 
+## Lot 7 — objets en main et finitions des têtes (22/11/2026)
+- [x] Le marteau générique est remplacé par un objet propre à chaque camarade (KayKit CC0, `assets/kaykit_props`) : marteau, carte roulée, fusil, poêle, pistolet, clé à molette, fourche, chope, clé plate, maillet, Petit Livre, truelle, torche enflammée, cuillère, bâton à étoile.
+- [x] Chapeaux enfoncés dans les cheveux (le haut du modèle est une mèche, pas le crâne) ; correction de hauteur pour le corps « Knight » ; lunettes de soleil au niveau des yeux ; casque de tankiste refait (bourrelets bas, lunettes sur le front) ; barbe recollée au menton.
+
 ## Réponses du créateur (questionnaire du 21/11/2026)
 **À faire maintenant :**
 - Personnages : taille des capitalistes inchangée ; ennemis tués = **disparition immédiate** (pas de cadavre) ; pas d'animation de frappe du héros ; je propose les 5e/6e camarades ; **skins débloquables** oui.

@@ -407,7 +407,8 @@ static func _build_accessories(root: Node3D, kinds: Array, w: float, top: float,
 				root.add_child(m)
 			"sunglasses":
 				for sx in [-1.0, 1.0]:
-					box(root, Vector3(w * 0.26, w * 0.13, w * 0.03), Vector3(sx * w * 0.2, top - w * 0.48, front + w * 0.02), solid(Color(0.05, 0.05, 0.06), 0.0, 0.1))
+					box(root, Vector3(w * 0.26, w * 0.13, w * 0.03), Vector3(sx * w * 0.2, top - w * 0.6, front + w * 0.02), solid(Color(0.05, 0.05, 0.06), 0.0, 0.1))
+				box(root, Vector3(w * 0.16, w * 0.03, w * 0.03), Vector3(0, top - w * 0.57, front + w * 0.02), solid(Color(0.05, 0.05, 0.06), 0.0, 0.1))
 			"miner":
 				var y := solid(Color(0.95, 0.75, 0.1), 0.0, 0.4)
 				sphere(root, w * 0.55, Vector3(0, top - w * 0.05, cz), y, w * 0.6)
@@ -448,11 +449,12 @@ static func _build_accessories(root: Node3D, kinds: Array, w: float, top: float,
 			"tank_helmet":
 				var lea := solid(Color(0.25, 0.2, 0.15), 0.0, 0.7)
 				sphere(root, w * 0.62, Vector3(0, top - w * 0.12, cz), lea, w * 0.75)
-				for kk in 3: box(root, Vector3(w * 0.1, w * 0.5, w * 1.1), Vector3((kk - 1) * w * 0.3, top + w * 0.02, cz), lea)
+				for kk in 3: box(root, Vector3(w * 0.09, w * 0.1, w * 0.95), Vector3((kk - 1) * w * 0.26, top + w * 0.2, cz), lea)
+				cyl(root, w * 0.66, w * 0.08, Vector3(0, top - w * 0.14, cz), lea)
 				for sx in [-1.0, 1.0]:
-					var gl := cyl(root, w * 0.15, w * 0.08, Vector3(sx * w * 0.2, top + w * 0.05, front - w * 0.05), solid(Color(0.4, 0.7, 0.9, 0.85), 0.5, 0.1, 0.5))
+					var gl := cyl(root, w * 0.13, w * 0.07, Vector3(sx * w * 0.2, top - w * 0.02, front + w * 0.06), solid(Color(0.4, 0.7, 0.9, 0.85), 0.5, 0.1, 0.5))
 					gl.rotation = Vector3(PI / 2 - 0.3, 0, 0)
-				box(root, Vector3(w * 0.5, w * 0.05, w * 0.05), Vector3(0, top + w * 0.08, front - w * 0.08), solid(Color(0.1, 0.1, 0.1)))
+				box(root, Vector3(w * 1.2, w * 0.05, w * 0.05), Vector3(0, top - w * 0.02, front + w * 0.0), solid(Color(0.1, 0.1, 0.1)))
 			"mao_cap":
 				var gc := solid(Color(0.4, 0.45, 0.38), 0.0, 0.8)
 				cyl(root, w * 0.52, w * 0.26, Vector3(0, top + w * 0.06, cz), gc)
@@ -496,7 +498,7 @@ static func _build_accessories(root: Node3D, kinds: Array, w: float, top: float,
 				root.add_child(bst)
 			"beard":
 				var bd := solid(Color(0.1, 0.08, 0.06), 0.0, 1.0)
-				sphere(root, w * 0.42, Vector3(0, top - w * 0.95, front - w * 0.05), bd, w * 0.55)
+				sphere(root, w * 0.42, Vector3(0, top - w * 0.98, front - w * 0.12), bd, w * 0.55)
 				for sx in [-1.0, 1.0]:
 					box(root, Vector3(w * 0.12, w * 0.5, w * 0.3), Vector3(sx * w * 0.42, top - w * 0.6, front - w * 0.22), bd)
 			"space_helmet":

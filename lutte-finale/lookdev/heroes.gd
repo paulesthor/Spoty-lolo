@@ -15,19 +15,30 @@ func _ready():
 	cam.global_position = c + Vector3(0, 3.6, 12.5)
 	cam.look_at(c + Vector3(0, 1.4, 0))
 	var ids: Array = Chars.HEROES.keys()
+	if "close" in OS.get_cmdline_user_args():
+		ids = ids.slice(0, 8) if not "back" in OS.get_cmdline_user_args() else ids.slice(8)
+		for a in OS.get_cmdline_user_args():
+			if a.begins_with("only="): ids = Array(a.substr(5).split(","))
+		cam.global_position = c + Vector3(0, 2.4, 10.5)
+		cam.look_at(c + Vector3(0, 1.1, 1.5))
+		if "heads" in OS.get_cmdline_user_args():
+			cam.fov = 30
+			cam.global_position = c + Vector3(0, 3.0, 9.0 if ids.size() < 4 else 14.0)
+			cam.look_at(c + Vector3(0, 1.9, 1.5))
 	for i in ids.size():
 		for sk in 1:
 			var h := Node3D.new()
 			add_child(h)
 			var m := Chars.build_hero(h, ids[i], sk)
-			var back := "back" in OS.get_cmdline_user_args()
+			var back := "back" in OS.get_cmdline_user_args() and not "close" in OS.get_cmdline_user_args()
 			var row := i / 8 if not back else (0 if i >= 7 else 1)
+			if "close" in OS.get_cmdline_user_args(): row = 0
 			var col := (i % 8) if not back else ((i - 7) if i >= 7 else i)
-			h.global_position = c + Vector3((col - 3.5) * 1.9, 0, -row * 3.0 + 1.5)
+			h.global_position = c + Vector3((col - (3.5 if not "close" in OS.get_cmdline_user_args() else (ids.size() - 1) / 2.0)) * 1.9, 0, -row * 3.0 + 1.5)
 			m.rotation.y = 0.35
 			var ap := U.anim_player(m)
 			if ap: ap.play("2H_Melee_Idle"); ap.seek(0.3, true); ap.pause()
-	for j in 4:
+	for j in (0 if "close" in OS.get_cmdline_user_args() else 4):
 		var kind: String = ["banquier", "crypto", "cadre", "avocat"][j]
 		var e := Chars.build_enemy(self, kind, c + Vector3(-7.5 + j * 1.6, 0, 4.5), 1.8)
 		Chars.attach(e, Data.ENEMIES[kind]["acc"] + (["cigar"] if kind == "cadre" else []))

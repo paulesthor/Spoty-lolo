@@ -9,21 +9,21 @@ const HIDE := ["Hat", "Helmet", "Hood", "Axe", "Sword", "Shield", "Mug", "Staff"
 
 # ---------------------------------------------------------------- comrades
 const HEROES := {
-	"stakhanov": {"body": "Barbarian", "acc": ["miner"], "weapon_hand": true},
-	"ilitch": {"body": "Mage", "acc": ["chapka", "goatee"], "weapon_hand": true},
-	"moustache": {"body": "Rogue", "acc": ["kepi", "big_moustache"], "weapon_hand": true},
-	"babouchka": {"body": "Knight", "acc": ["fichu"], "weapon_hand": true},
-	"barbudo": {"body": "Rogue", "acc": ["beret", "beard", "cigar"], "weapon_hand": true},
-	"youri": {"body": "Knight", "acc": ["space_helmet"], "weapon_hand": true},
-	"natacha": {"body": "Knight", "acc": ["straw_hat", "scarf"], "weapon_hand": true},
-	"vodkine": {"body": "Barbarian", "acc": ["chapka", "big_moustache"], "weapon_hand": true},
-	"tamara": {"body": "Rogue", "acc": ["tank_helmet"], "weapon_hand": true},
-	"mikhail": {"body": "Barbarian", "acc": ["chapka", "beard"], "weapon_hand": true},
-	"timonier": {"body": "Mage", "acc": ["mao_cap"], "weapon_hand": true},
-	"lev": {"body": "Knight", "acc": ["hard_hat"], "weapon_hand": true},
-	"svetlana": {"body": "Rogue", "acc": ["bandana", "sunglasses"], "weapon_hand": true},
-	"dmitri": {"body": "Mage", "acc": ["flat_cap", "round_glasses", "big_moustache"], "weapon_hand": true},
-	"valentina": {"body": "Rogue", "acc": ["round_glasses", "scarf"], "weapon_hand": true},
+	"stakhanov": {"prop": "hammer_A", "body": "Barbarian", "acc": ["miner"], "weapon_hand": true},
+	"ilitch": {"prop": "map_rolled", "body": "Mage", "acc": ["chapka", "goatee"], "weapon_hand": true},
+	"moustache": {"prop": "Gun_Rifle", "body": "Rogue", "acc": ["kepi", "big_moustache"], "weapon_hand": true},
+	"babouchka": {"prop": "pan_A", "body": "Knight", "acc": ["fichu"], "weapon_hand": true},
+	"barbudo": {"prop": "Gun_Pistol", "body": "Rogue", "acc": ["beret", "beard", "cigar"], "weapon_hand": true},
+	"youri": {"prop": "wrench_A", "body": "Knight", "acc": ["space_helmet"], "weapon_hand": true},
+	"natacha": {"prop": "pitchfork", "body": "Knight", "acc": ["straw_hat", "scarf"], "weapon_hand": true},
+	"vodkine": {"prop": "mug_A", "body": "Barbarian", "acc": ["chapka", "big_moustache"], "weapon_hand": true},
+	"tamara": {"prop": "wrench_B", "body": "Rogue", "acc": ["tank_helmet"], "weapon_hand": true},
+	"mikhail": {"prop": "mallet", "body": "Barbarian", "acc": ["chapka", "beard"], "weapon_hand": true},
+	"timonier": {"prop": "book_single", "body": "Mage", "acc": ["mao_cap"], "weapon_hand": true},
+	"lev": {"prop": "trowel", "body": "Knight", "acc": ["hard_hat"], "weapon_hand": true},
+	"svetlana": {"prop": "torch", "body": "Rogue", "acc": ["bandana", "sunglasses"], "weapon_hand": true},
+	"dmitri": {"prop": "spoon", "body": "Mage", "acc": ["flat_cap", "round_glasses", "big_moustache"], "weapon_hand": true},
+	"valentina": {"prop": "staff_C", "body": "Rogue", "acc": ["round_glasses", "scarf"], "weapon_hand": true},
 }
 
 # hero animation names (KayKit)
@@ -65,7 +65,7 @@ static func build_hero(parent: Node, char_id: String, skin := 0) -> Node3D:
 	acc.append_array(sk[2])
 	attach(n, acc)
 	rim(n, Color(1, 0.9, 0.75), 0.6)
-	hammer(n)
+	hand_prop(n, def.get("prop", "hammer_A"))
 	return n
 
 # ---------------------------------------------------------------- capitalists
@@ -174,6 +174,13 @@ static func is_kaykit(n: Node) -> bool:
 	return sk != null and sk.find_bone("handslot.r") >= 0
 
 # accessories on the head bone, sized from the visible meshes (works for both rigs)
+const HATS := ["chapka", "kepi", "beret", "flat_cap", "straw_hat", "hard_hat", "mao_cap", "cap", "tank_helmet"]
+const HAT_SINK := 0.16
+
+static func _is_knight(n: Node) -> bool:
+	for m in n.find_children("Knight_*", "MeshInstance3D", true, false): return true
+	return false
+
 static func attach(n: Node3D, kinds: Array):
 	if kinds.is_empty(): return
 	var sk := skeleton(n)
@@ -189,6 +196,7 @@ static func attach(n: Node3D, kinds: Array):
 		top = maxf(top, a.end.y)
 	var hy := sk.get_bone_global_rest(hb).origin.y
 	var hh := top - hy
+	if kk and _is_knight(n): hh -= 0.12     # the knight's hair tuft pokes above the skull
 	var w := hh * (0.95 if kk else 1.25)
 	var ba := BoneAttachment3D.new()
 	ba.bone_name = sk.get_bone_name(hb)
@@ -197,10 +205,37 @@ static func attach(n: Node3D, kinds: Array):
 	ba.add_child(root)
 	if kk:
 		root.position.y = w * 0.12
-	U._build_accessories(root, kinds, w, hh, 0.0, w * 0.5)
+	# headwear is sunk into the hair: the mesh top is a hair tuft, the skull sits lower
+	var hats: Array = kinds.filter(func(x): return x in HATS)
+	var rest: Array = kinds.filter(func(x): return not x in HATS)
+	U._build_accessories(root, rest, w, hh, 0.0, w * 0.5)
+	if not hats.is_empty():
+		var hr := Node3D.new()
+		hr.position.y = -w * (HAT_SINK) if kk else 0.0
+		root.add_child(hr)
+		U._build_accessories(hr, hats, w, hh, 0.0, w * 0.5)
 	U.batch_static(root)      # a hat made of 3 pieces -> one draw call per material
 
-static func hammer(n: Node3D):
+# KayKit CC0 props (assets/kaykit_props): [scale, offset, rotation in degrees] in hand-slot space
+const PROP_FIT := {
+	"hammer_A": [1.0, Vector3.ZERO, Vector3.ZERO],
+	"mallet": [1.0, Vector3.ZERO, Vector3.ZERO],
+	"pitchfork": [0.85, Vector3(0, -0.1, 0), Vector3.ZERO],
+	"staff_C": [0.85, Vector3.ZERO, Vector3.ZERO],
+	"trowel": [0.9, Vector3.ZERO, Vector3.ZERO],
+	"torch": [1.0, Vector3.ZERO, Vector3.ZERO],
+	"spoon": [1.1, Vector3.ZERO, Vector3.ZERO],
+	"wrench_A": [1.2, Vector3.ZERO, Vector3.ZERO],
+	"wrench_B": [1.2, Vector3.ZERO, Vector3.ZERO],
+	"Gun_Rifle": [0.9, Vector3.ZERO, Vector3.ZERO],
+	"Gun_Pistol": [1.0, Vector3.ZERO, Vector3.ZERO],
+	"pan_A": [0.7, Vector3(0, 0.5, 0), Vector3(90, 0, 0)],
+	"mug_A": [1.1, Vector3(-0.05, 0, 0), Vector3.ZERO],
+	"book_single": [1.0, Vector3.ZERO, Vector3.ZERO],
+	"map_rolled": [1.0, Vector3(0, 0.3, 0), Vector3(90, 0, 0)],
+}
+
+static func hand_prop(n: Node3D, prop: String):
 	var sk := skeleton(n)
 	if sk == null: return
 	var bone := "handslot.r" if sk.find_bone("handslot.r") >= 0 else "Wrist.R"
@@ -208,12 +243,19 @@ static func hammer(n: Node3D):
 	var ba := BoneAttachment3D.new()
 	ba.bone_name = bone
 	sk.add_child(ba)
-	var h := Node3D.new()
-	h.set_meta("airborne", true)    # held in the hand: the layout checker can't see the skinned hand
+	var ps: PackedScene = load("res://assets/kaykit_props/%s.gltf" % prop)
+	if ps == null: return
+	var h: Node3D = ps.instantiate()
+	h.set_meta("airborne", true)
+	var fit: Array = PROP_FIT.get(prop, [1.0, Vector3.ZERO, Vector3.ZERO])
+	h.scale = Vector3.ONE * float(fit[0])
+	h.position = fit[1]
+	h.rotation_degrees = fit[2]
 	ba.add_child(h)
-	U.cyl(h, 0.035, 1.0, Vector3(0, 0.45, 0), U.solid(Color(0.55, 0.33, 0.15)))
-	U.box(h, Vector3(0.42, 0.2, 0.2), Vector3(0, 0.95, 0), U.solid(Color(0.5, 0.52, 0.56), 0.0, 0.35, 0.9))
-	h.scale = Vector3.ONE / n.scale.x
+	if prop == "torch":    # the flame of the revolution, obviously
+		var fl := U.sphere(h, 0.13, Vector3(0, 1.02, 0), U.solid(Color(1.0, 0.55, 0.1), 3.0), 0.3)
+		fl.set_meta("airborne", true)
+		U.sphere(h, 0.08, Vector3(0, 1.1, 0), U.solid(Color(1.0, 0.9, 0.4), 4.0), 0.22)
 
 # ink outline on a character (inverted hull as a next pass on its own material copies)
 static var _ink: ShaderMaterial
