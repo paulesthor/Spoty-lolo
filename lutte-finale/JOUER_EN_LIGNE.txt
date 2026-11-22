@@ -1,6 +1,15 @@
 COMMUNISTE LAND · JOUER EN LIGNE (COOP 2 À 4)
 ==============================================
 
+LE PLUS SIMPLE : RADMIN VPN (rien à régler sur la box)
+1. Tout le monde installe Radmin VPN (gratuit, radmin-vpn.com).
+2. L'hôte : Réseau > Créer un réseau (nom + mot de passe). Les autres : Réseau > Rejoindre un réseau.
+3. L'hôte lance le jeu > JOUER EN LIGNE > HÉBERGER : le salon affiche « Adresse à donner (Radmin VPN) : 26.x.x.x ».
+4. Les autres : JOUER EN LIGNE > tapent cette adresse 26.x.x.x > REJOINDRE.
+5. Si Windows demande l'autorisation du pare-feu pour CommunisteLand : cochez « privés » ET « publics ».
+
+SANS RADMIN :
+
 L'HÔTE (le PC qui fait tourner la partie)
 1. Menu principal > JOUER EN LIGNE.
 2. Choisis ton nom et ton camarade, puis HÉBERGER UNE PARTIE.

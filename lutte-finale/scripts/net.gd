@@ -25,6 +25,8 @@ var settings := {"zone": 1, "tier": 1}
 var status := ""
 var public_ip := ""
 var local_ip := ""
+var vpn_ip := ""                 # Radmin VPN (26.x), Tailscale (100.64-127.x) or ZeroTier address of this PC
+var vpn_name := ""
 var game                         # the running game scene (it registers itself)
 var run_seed := 0
 var in_game := false
@@ -45,10 +47,21 @@ func _ready():
 	multiplayer.connected_to_server.connect(_on_connected)
 	multiplayer.connection_failed.connect(_on_failed)
 	multiplayer.server_disconnected.connect(_on_server_lost)
+	_find_addresses()
+
+func _find_addresses():
+	local_ip = ""; vpn_ip = ""; vpn_name = ""
 	for a in IP.get_local_addresses():
-		if a.begins_with("192.168.") or a.begins_with("10.") or (a.begins_with("172.") and not a.begins_with("172.17.")):
+		if a.contains(":"): continue
+		var p := a.split(".")
+		if p.size() != 4: continue
+		var b := int(p[1])
+		if p[0] == "26":
+			vpn_ip = a; vpn_name = "Radmin VPN"
+		elif p[0] == "100" and b >= 64 and b <= 127 and vpn_ip == "":
+			vpn_ip = a; vpn_name = "Tailscale"
+		elif local_ip == "" and (a.begins_with("192.168.") or a.begins_with("10.") or (p[0] == "172" and b >= 16 and b <= 31 and b != 17)):
 			local_ip = a
-			break
 
 func _set_status(t: String):
 	status = t
@@ -65,8 +78,12 @@ func host(pname: String, char_id: String, skin: int) -> bool:
 	multiplayer.multiplayer_peer = peer
 	active = true; is_host = true; my_idx = 0
 	lobby = [{"peer": 1, "name": pname, "char": char_id, "skin": skin}]
-	_set_status("Partie ouverte. Donne ton adresse à tes camarades.")
+	_find_addresses()
 	lobby_changed.emit()
+	if vpn_ip != "":
+		_set_status("%s détecté : tes camarades doivent être sur le même réseau %s et taper %s." % [vpn_name, vpn_name, vpn_ip])
+		return true
+	_set_status("Partie ouverte. Donne ton adresse à tes camarades.")
 	_open_router_port()
 	return true
 

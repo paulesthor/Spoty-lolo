@@ -172,7 +172,9 @@ func _refresh():
 	status_lbl.text = Net.status if Net.status != "" else "Héberge une partie ou rejoins celle d'un camarade."
 	connect_box.visible = not Net.active
 	var addr := ""
-	if Net.is_host:
+	if Net.is_host and Net.vpn_ip != "":
+		addr = "Adresse à donner (%s) : %s" % [Net.vpn_name, Net.vpn_ip]
+	elif Net.is_host:
 		var pub: String = Net.public_ip if Net.public_ip != "" else ("(recherche…)" if Net.status.begins_with("Partie ouverte") else "inconnue · tape « quelle est mon IP » sur internet")
 		addr = "Adresse à donner à tes camarades : %s" % pub
 		if Net.local_ip != "": addr += "\nSur le même réseau local : %s" % Net.local_ip
