@@ -20,7 +20,7 @@ func _ready():
 	ids = Meta.CHARACTERS.keys()
 	stage = load("res://scripts/stage.gd").new()
 	add_child(stage)
-	stage.build(ids.size(), 2.25, 0.4)
+	stage.build(ids.size(), 2.25, 0.12)
 	for i in ids.size(): holders.append(null)
 	for i in ids.size(): _place(i)
 	for i in ids.size():
@@ -34,7 +34,7 @@ func _ready():
 	UIK.grade(self)
 	_ui()
 	_select(sel, false)
-	cam_x = stage.podiums[sel].x * 0.25
+	cam_x = stage.podiums[sel].x
 	UIK.fade_in(self, 0.5)
 	if "selectshot" in OS.get_cmdline_user_args(): _shot()
 
@@ -122,9 +122,15 @@ func _select(i: int, cheer := true):
 		tw.tween_property(h, "position", stage.podiums[k] + (Vector3(0, 0, 0.35) if on else Vector3.ZERO), 0.25)
 		tw.parallel().tween_property(h, "scale", Vector3.ONE * (1.22 if on else 0.92), 0.25).set_trans(Tween.TRANS_BACK)
 	var ap := U.anim_player(holders[i])
-	if cheer and ap and _unlocked(c) and ap.has_animation("Cheer"):
-		ap.play("Cheer", 0.15)
-		get_tree().create_timer(1.8).timeout.connect(func(): if is_instance_valid(ap): ap.play("2H_Melee_Idle", 0.3))
+	var move: String = Chars.SELECT_ANIM.get(c, "Cheer")
+	if cheer and ap and _unlocked(c) and ap.has_animation(move):
+		# each comrade's signature move, then back to idle
+		ap.play(move, 0.12)
+		var dur: float = minf(ap.get_animation(move).length, 2.4)
+		var tok := Time.get_ticks_msec()
+		holders[i].set_meta("move_tok", tok)
+		get_tree().create_timer(dur).timeout.connect(func():
+			if is_instance_valid(ap) and holders[i].get_meta("move_tok", 0) == tok: ap.play("2H_Melee_Idle", 0.25))
 	if _unlocked(c):
 		Meta.run_char = c
 		Meta.data["last_char"] = c
@@ -136,6 +142,17 @@ func _info():
 	var def: Dictionary = Meta.CHARACTERS[c]
 	var unlocked := _unlocked(c)
 	UIK.label(info, (def["name"] as String).to_upper(), 40, UIK.RED if unlocked else UIK.DIM, "RussoOne", true)
+	if not unlocked and def.has("unlock"):
+		UIK.label(info, "Camarade à réhabiliter par un exploit.", 24, UIK.PAPER, "Oswald", true)
+		UIK.label(info, "Arme de départ : %s" % Data.WEAPONS[def["weapon"]]["name"], 22, UIK.GOLD)
+		UIK.label(info, def["passive"], 20, UIK.PAPER, "Oswald", true)
+		UIK.label(info, "DÉFI", 20, UIK.RED, "RussoOne")
+		UIK.label(info, Meta.challenge_text(c), 20, UIK.GOLD, "Oswald", true)
+		var pb := ProgressBar.new(); pb.show_percentage = false; pb.custom_minimum_size = Vector2(0, 14)
+		pb.value = clampf(Meta.challenge_value(c) / Meta.challenge_target(c), 0.0, 1.0) * 100.0
+		info.add_child(pb)
+		go_btn.disabled = true
+		return
 	if not unlocked:
 		var cg: int = Meta.CHAR_GRADE.get(c, 1)
 		UIK.label(info, "Camarade non encore réhabilité.", 24, UIK.PAPER, "Oswald", true)
@@ -193,8 +210,9 @@ func _go(scene: String):
 func _process(d: float):
 	t += d
 	# the whole line-up stays in view on the left; the camera leans gently toward the chosen one
-	cam_x = lerpf(cam_x, stage.podiums[sel].x * 0.25, 1.0 - exp(-3.0 * d))
-	stage.cam.position = Vector3(cam_x + 3.3, 4.2 + sin(t * 0.3) * 0.08, 14.0)
+	# the camera travels along the line-up, keeping the chosen one left of the info panel
+	cam_x = lerpf(cam_x, stage.podiums[sel].x, 1.0 - exp(-4.0 * d))
+	stage.cam.position = Vector3(cam_x + 3.4, 4.0 + sin(t * 0.3) * 0.08, 12.5)
 	stage.cam.look_at(Vector3(cam_x + 2.8, 1.9, 0.0))
 	if Input.is_action_just_pressed("ui_left"): _select(posmod(sel - 1, ids.size()))
 	if Input.is_action_just_pressed("ui_right"): _select(posmod(sel + 1, ids.size()))

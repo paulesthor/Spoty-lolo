@@ -12,15 +12,18 @@ func _ready():
 	var cam := Camera3D.new()
 	add_child(cam)
 	cam.fov = 40
-	cam.global_position = c + Vector3(0, 4.2, 15.5)
+	cam.global_position = c + Vector3(0, 3.6, 12.5)
 	cam.look_at(c + Vector3(0, 1.4, 0))
 	var ids: Array = Chars.HEROES.keys()
 	for i in ids.size():
-		for sk in 3:
+		for sk in 1:
 			var h := Node3D.new()
 			add_child(h)
 			var m := Chars.build_hero(h, ids[i], sk)
-			h.global_position = c + Vector3((i - 2.5) * 2.3, 0, -sk * 3.2 + 1.5)
+			var back := "back" in OS.get_cmdline_user_args()
+			var row := i / 8 if not back else (0 if i >= 7 else 1)
+			var col := (i % 8) if not back else ((i - 7) if i >= 7 else i)
+			h.global_position = c + Vector3((col - 3.5) * 1.9, 0, -row * 3.0 + 1.5)
 			m.rotation.y = 0.35
 			var ap := U.anim_player(m)
 			if ap: ap.play("2H_Melee_Idle"); ap.seek(0.3, true); ap.pause()

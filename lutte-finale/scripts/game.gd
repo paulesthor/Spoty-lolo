@@ -7,6 +7,18 @@ const ZONE_OFFSET := 240.0    # each later zone starts as if this much more time
 const BOSS_TIME := 480.0      # 08:00
 const CAM_OFFSET := Vector3(0, 7.5, 10.5)
 const CAM_LOOK := Vector3(0, 0.3, -6.5)
+const PITCH_MIN := 0.3     # ~17°: low, looking ahead
+const PITCH_MAX := 1.15    # ~66°: nearly top-down
+var cam_pitch := atan2(7.5, 10.5)
+
+# camera offset/look target for the current pitch (same distance as the default framing)
+func cam_offset() -> Vector3:
+	var dist := Vector2(10.5, 7.5).length()
+	return Vector3(0, sin(cam_pitch) * dist, cos(cam_pitch) * dist)
+
+func cam_look() -> Vector3:
+	var k := clampf((cam_pitch - PITCH_MIN) / (PITCH_MAX - PITCH_MIN), 0.0, 1.0)
+	return Vector3(0, lerpf(1.2, -1.2, k), lerpf(-9.0, -2.35, k))     # default pitch gives the original framing
 
 var state := "menu"
 var zone := 1
@@ -319,6 +331,8 @@ func _warmup():
 func _load_meta():
 	char_id = Meta.run_char
 	if not Meta.data["chars"].has(char_id) or not Meta.data["chars"][char_id]["unlocked"]: char_id = "stakhanov"
+	for a2 in OS.get_cmdline_user_args():
+		if a2.begins_with("char=") and Meta.CHARACTERS.has(a2.substr(5)): char_id = a2.substr(5)    # test hook
 	dirs = Meta.run_directives.duplicate()
 	mods = Meta.run_modifiers(char_id)
 	rerolls = int(mods.get("reroll", 0.0))
@@ -340,6 +354,7 @@ func dirl(id: String) -> int:
 
 var ult_uses := 0
 func ultimate_cost() -> int:
+	if "freeult" in OS.get_cmdline_user_args(): return 5
 	return int(220.0 * (1.0 + 0.3 * ult_uses) * (1.0 - mods.get("ult_charge", 0.0) / 100.0))
 
 # effective stat: in-run décrets + permanent bonuses (+ Stakhanov's passive)
@@ -352,6 +367,7 @@ func dv(id: String) -> float:
 	if id == "cadence":
 		if char_id == "stakhanov": v += minf(20.0, floorf(kills / 150.0) * 2.0)
 		if ult_t > 0.0 and char_id == "stakhanov": v = (1.0 + v / 100.0) * (2.0 * (1.0 + mods.get("ult_power", 0.0) / 100.0)) * 100.0 - 100.0
+		if ult_t > 0.0 and char_id == "vodkine": v += 60.0 * (1.0 + mods.get("ult_power", 0.0) / 100.0)
 	return v
 
 func weapon_slots() -> int:
@@ -388,7 +404,7 @@ func _setup_input():
 		"move_left": [KEY_A, KEY_LEFT], "move_right": [KEY_D, KEY_RIGHT],
 		"move_forward": [KEY_W, KEY_UP], "move_back": [KEY_S, KEY_DOWN],
 		"jump": [KEY_SPACE], "slide": [KEY_SHIFT, KEY_CTRL], "interact": [KEY_F], "ultimate": [KEY_E], "reroll": [KEY_T], "dodge": [KEY_C, KEY_ALT], "banish": [KEY_B], "skip": [KEY_X],
-		"cam_left": [KEY_Q], "cam_right": [KEY_R],
+		"cam_left": [KEY_Q], "cam_right": [KEY_R], "cam_up": [KEY_PAGEUP], "cam_down": [KEY_PAGEDOWN],
 		"pause": [KEY_ESCAPE, KEY_P], "confirm": [KEY_ENTER, KEY_KP_ENTER],
 		"choose_1": [KEY_1, KEY_KP_1], "choose_2": [KEY_2, KEY_KP_2], "choose_3": [KEY_3, KEY_KP_3], "choose_4": [KEY_4, KEY_KP_4],
 		"restart": [KEY_BACKSPACE],
@@ -412,7 +428,7 @@ func _setup_input():
 	InputMap.action_add_event("bigmap", bev)
 	var mb := InputEventMouseButton.new(); mb.button_index = MOUSE_BUTTON_RIGHT
 	InputMap.action_add_event("dodge", mb)
-	var axes := [["move_left", JOY_AXIS_LEFT_X, -1.0], ["move_right", JOY_AXIS_LEFT_X, 1.0], ["move_forward", JOY_AXIS_LEFT_Y, -1.0], ["move_back", JOY_AXIS_LEFT_Y, 1.0], ["cam_left", JOY_AXIS_RIGHT_X, -1.0], ["cam_right", JOY_AXIS_RIGHT_X, 1.0]]
+	var axes := [["move_left", JOY_AXIS_LEFT_X, -1.0], ["move_right", JOY_AXIS_LEFT_X, 1.0], ["move_forward", JOY_AXIS_LEFT_Y, -1.0], ["move_back", JOY_AXIS_LEFT_Y, 1.0], ["cam_left", JOY_AXIS_RIGHT_X, -1.0], ["cam_right", JOY_AXIS_RIGHT_X, 1.0], ["cam_up", JOY_AXIS_RIGHT_Y, -1.0], ["cam_down", JOY_AXIS_RIGHT_Y, 1.0]]
 	for ax in axes:
 		var ev := InputEventJoypadMotion.new(); ev.axis = ax[1]; ev.axis_value = ax[2]
 		InputMap.action_add_event(ax[0], ev)
@@ -663,6 +679,7 @@ func start():
 func _unhandled_input(ev: InputEvent):
 	if ev is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and state == "play":
 		player.cam_yaw -= clampf(ev.relative.x, -60.0, 60.0) * 0.0025
+		cam_pitch = clampf(cam_pitch + clampf(ev.relative.y, -60.0, 60.0) * 0.0022, PITCH_MIN, PITCH_MAX)
 
 func _process(d: float):
 	if cam_rig == null or player == null or hud == null: return
@@ -735,6 +752,7 @@ func _process(d: float):
 	ult_t = maxf(0.0, ult_t - rd)
 	time += rd
 	var yaw_in := Input.get_axis("cam_left", "cam_right")
+	cam_pitch = clampf(cam_pitch + Input.get_axis("cam_up", "cam_down") * 1.2 * rd, PITCH_MIN, PITCH_MAX)
 	player.cam_yaw -= yaw_in * 2.2 * rd
 	_update_camera(rd)
 	_director(rd)
@@ -756,7 +774,8 @@ func _update_camera(d: float):
 	cam_rig.rotation.y = player.cam_yaw
 	shake_amt = maxf(0.0, shake_amt - d * 1.5)
 	var head: Vector3 = player.global_position + Vector3(0, 1.6, 0)
-	var want: Vector3 = cam_rig.global_transform * CAM_OFFSET
+	var off := cam_offset()
+	var want: Vector3 = cam_rig.global_transform * off
 	var q := PhysicsRayQueryParameters3D.create(head, want, 2)
 	var hit := get_world_3d().direct_space_state.intersect_ray(q)
 	var k := 1.0
@@ -764,9 +783,9 @@ func _update_camera(d: float):
 		k = clampf((head.distance_to(hit["position"]) - 0.8) / head.distance_to(want), 0.15, 1.0)
 	cam_k = minf(k, cam_k + d * 2.0) if k > cam_k else k
 	var pivot := Vector3(0, 1.6, 0)
-	var local := pivot + (CAM_OFFSET - pivot) * cam_k
+	var local := pivot + (off - pivot) * cam_k
 	cam.position = local + Vector3(randf_range(-1, 1), randf_range(-1, 1), 0) * shake_amt
-	cam.basis = Basis.looking_at(CAM_LOOK.lerp(Vector3(0, 1.0, -3.0), 1.0 - cam_k) - local, Vector3.UP)
+	cam.basis = Basis.looking_at(cam_look().lerp(Vector3(0, 1.0, -3.0), 1.0 - cam_k) - local, Vector3.UP)
 
 func shake(a: float):
 	shake_amt = minf(0.5, shake_amt + a * Meta.opt("shake") / 100.0)
@@ -1510,6 +1529,68 @@ func _try_ultimate():
 		"barbudo":
 			ult_t = 8.0 * pw
 			hud.toast("¡VIVA LA REVOLUCIÓN !", 1.5)
+		"natacha":
+			for g in gems: g["pull"] = true
+			var ts: Dictionary = weapons.stats("tracteur") if weapons.owned.has("tracteur") else {"dmg": 30.0 + 4.0 * level, "area": 1.8, "speed": 18.0, "range": 26.0, "crit": 0.1, "id": "tracteur", "count": 1}
+			ts["dmg"] = ts["dmg"] * 2.0 * pw
+			for k in 8:
+				var dir := Vector3.FORWARD.rotated(Vector3.UP, TAU * k / 8.0)
+				weapons._tractor(pp, dir, ts)
+			hud.toast("MOISSON COLLECTIVE !", 1.5)
+		"vodkine":
+			player.heal(player.max_hp * 0.4 * pw)
+			ult_t = 6.0
+			hud.toast("TOURNÉE DU SERGENT !", 1.5)
+		"tamara":
+			var dir: Vector3 = player.facing
+			player.invuln = 1.6
+			player.velocity = dir * 22.0
+			var hit_dmg: float = (80.0 + 14.0 * level) * pw
+			for e in enemies.alive_list().duplicate():
+				var v: Vector3 = e.node.position - pp; v.y = 0
+				var along := v.dot(dir)
+				if along > -1.0 and along < 14.0 and (v - dir * along).length() < 2.4:
+					enemies.damage(e, hit_dmg, pp, 16.0, "", true, true, 0.2, "")
+			weapons._ring_fx(pp + dir * 7.0, 4.0, Color(0.6, 0.7, 0.4))
+			hud.toast("PERCÉE BLINDÉE !", 1.5)
+		"mikhail":
+			ult_t = 10.0 * pw
+			hud.toast("LA TAÏGA SE RÉVEILLE !", 1.5)
+		"timonier":
+			for e in enemies.in_radius(pp, 20.0):
+				if e.invincible: continue
+				enemies.damage(e, e.max_hp * (0.2 if not e.boss else 0.04) * pw, pp, 6.0, "", true, true, 0.0, "")
+			weapons._ring_fx(pp, 20.0, Color(1, 0.2, 0.15))
+			hud.toast("GRAND BOND EN AVANT !", 1.5)
+		"lev":
+			var rs: Dictionary = weapons.stats("rideau") if weapons.owned.has("rideau") else {"dmg": 20.0 + 3.0 * level, "area": 4.0, "duration": 6.0, "crit": 0.1, "id": "rideau"}
+			rs["duration"] = 6.0 * pw
+			for k in 8:
+				var a := TAU * k / 8.0
+				var c := pp + Vector3(cos(a), 0, sin(a)) * 7.0
+				weapons._wall(c, Vector3(-sin(a), 0, cos(a)), rs)
+			hud.toast("LE MUR DE LA HONTE SE DRESSE !", 1.5)
+		"svetlana":
+			var ms: Dictionary = weapons.stats("molotov") if weapons.owned.has("molotov") else {"dmg": 10.0 + 2.0 * level, "area": 2.6, "duration": 4.0, "crit": 0.1, "id": "molotov"}
+			ms["dmg"] = ms["dmg"] * 1.5 * pw
+			for k in 12:
+				var a := TAU * k / 12.0
+				weapons._spawn_fire(pp + Vector3(cos(a), 0, sin(a)) * (4.0 + (k % 2) * 4.0), ms)
+			hud.toast("GRAND INCENDIE !", 1.5)
+		"dmitri":
+			var dur2: float = 4.0 * pw
+			for e in enemies.in_radius(pp, 18.0):
+				enemies.stun(e, dur2, true)
+				e.vuln_t = dur2
+			hud.toast("KALINKA ! TOUT LE MONDE DANSE !", 1.5)
+		"valentina":
+			var es: Dictionary = weapons.stats("etoile") if weapons.owned.has("etoile") else {"dmg": 90.0 + 10.0 * level, "area": 2.2, "crit": 0.2, "id": "etoile"}
+			es["dmg"] = es["dmg"] * 1.5 * pw
+			var tg: Array = weapons._toughest(pp, 26.0, 12)
+			for k in tg.size():
+				var e = tg[k]
+				get_tree().create_timer(0.08 * k, false).timeout.connect(func(): if e.alive: weapons._star(e.node.position + Vector3(2, 16, 2), e.node.position, es))
+			hud.toast("PLUIE DE MÉTÉORES !", 1.5)
 		"youri":
 			var best: Vector3 = pp + player.facing * 6.0
 			var bn := -1
@@ -1665,6 +1746,13 @@ func _report(win: bool) -> Dictionary:
 		"shrines": shrines_used, "evo": got_evo, "ferveur": Meta.ferveur(dirs), "win": win,
 		"bosses": bosses_killed, "tier": tier, "endless": endless, "zone": zone}
 	r["time"] = run_time + time
+	var wlv := {}
+	for wid in weapons.owned: wlv[wid] = weapons.owned[wid]["lv"]
+	r["weapon_levels"] = wlv
+	var evo_list := []
+	for wid in weapons.owned:
+		if weapons.owned[wid]["evo"]: evo_list.append(wid)
+	r["evolved"] = evo_list
 	r["boss"] = not bosses_killed.is_empty()
 	var out: Dictionary = Meta.end_run(r)
 	print("[meta] run=%d char=%s zone=%d time=%s win=%s lvl=%d kills=%d medals=%d total=%d" % [Meta.data["runs"], char_id, zone, _fmt(run_time + time), win, level, kills, out["medals"], Meta.data["medals"]])

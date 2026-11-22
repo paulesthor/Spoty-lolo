@@ -97,6 +97,113 @@ const CHARACTERS := {
 			["Entraînement", [["endurance", 20], ["vitesse", 5], ["dodge_cd", 15], ["endurance", 25], ["armure", 1.5]]],
 			["Héros national", [["chance", 6], ["aimant", 25], ["ult_charge", 15], ["propagande", 8], ["start_level", 2]]],
 		],
+	},	"natacha": {
+		"name": "Natacha la Kolkhozienne", "model": "", "acc": [], "cost": -1, "weapon": "tracteur",
+		"passive": "Récolte record : +20 % de ramassage, +10 % d'XP.",
+		"ult": "Moisson collective", "ult_desc": "Aspire toute l'XP de la carte et lance 8 tracteurs en étoile.",
+		"base": {"aimant": 20, "propagande": 10},
+		"unlock": {"kind": "weapon_kills_total", "weapon": "tracteur", "n": 8000, "text": "Faire 8000 éliminations avec le Tracteur du Kolkhoze (toutes runs confondues)"},
+		"tree": [
+			["Moissonneuse", [["productivite", 6], ["expansion", 8], ["productivite", 8], ["expansion", 10], ["ult_power", 30]]],
+			["Champs", [["endurance", 20], ["regen", 0.3], ["endurance", 25], ["armure", 1], ["revive", 1]]],
+			["Coopérative", [["aimant", 20], ["propagande", 8], ["chance", 6], ["ult_charge", 15], ["rubles_pct", 20]]],
+		],
+	},
+	"vodkine": {
+		"name": "Sergent Vodkine", "model": "", "acc": [], "cost": -1, "weapon": "vodka",
+		"passive": "Ivresse tactique : +12 % d'esquive des coups.",
+		"ult": "Tournée du sergent", "ult_desc": "Soigne 40 % des PV et +60 % de cadence pendant 6 s.",
+		"base": {"dodge": 12},
+		"unlock": {"kind": "weapon_evo", "weapon": "vodka", "text": "Faire évoluer la Vodka Frappée en Tournée Générale pendant une run"},
+		"tree": [
+			["Bouteille", [["cadence", 5], ["productivite", 6], ["cadence", 6], ["crit_dmg", 40], ["ult_power", 30]]],
+			["Caserne", [["endurance", 20], ["armure", 1], ["dodge", 5], ["endurance", 25], ["regen", 0.4]]],
+			["Cantine", [["ult_charge", 15], ["chance", 6], ["aimant", 20], ["ult_charge", 15], ["heal_pickup", 50]]],
+		],
+	},
+	"tamara": {
+		"name": "Tankiste Tamara", "model": "", "acc": [], "cost": -1, "weapon": "t34",
+		"passive": "Blindée : +3 d'armure, mais -8 % de vitesse.",
+		"ult": "Percée blindée", "ult_desc": "Fonce droit devant, invulnérable, en écrasant tout sur 14 m.",
+		"base": {"armure": 3, "vitesse": -8},
+		"unlock": {"kind": "weapon_kills_run", "weapon": "t34", "n": 2500, "text": "Faire 2500 éliminations avec le Char du Peuple pendant une run"},
+		"tree": [
+			["Canon", [["productivite", 6], ["expansion", 8], ["productivite", 8], ["critique", 5], ["ult_power", 30]]],
+			["Chenilles", [["armure", 1], ["endurance", 25], ["armure", 1], ["endurance", 30], ["revive", 1]]],
+			["Équipage", [["vitesse", 6], ["ult_charge", 15], ["cadence", 5], ["vitesse", 6], ["start_level", 2]]],
+		],
+	},
+	"mikhail": {
+		"name": "Mikhaïl le Dresseur", "model": "", "acc": [], "cost": -1, "weapon": "ours",
+		"passive": "Ami des bêtes : un ours de plus à ses côtés.",
+		"ult": "Réveil de la taïga", "ult_desc": "Trois ours géants rejoignent la lutte pendant 10 s.",
+		"base": {"endurance": 20},
+		"unlock": {"kind": "survive_with", "weapon": "ours", "time": 1500, "text": "Tenir 25 minutes au total (3 zones) avec l'Ours de Sibérie dans son arsenal"},
+		"tree": [
+			["Meute", [["productivite", 6], ["cadence", 5], ["productivite", 8], ["expansion", 10], ["ult_power", 30]]],
+			["Fourrure", [["endurance", 25], ["regen", 0.3], ["armure", 1], ["endurance", 30], ["regen", 0.4]]],
+			["Taïga", [["vitesse", 5], ["aimant", 20], ["ult_charge", 15], ["chance", 6], ["ult_charge", 15]]],
+		],
+	},
+	"timonier": {
+		"name": "Le Grand Timonier", "model": "", "acc": [], "cost": -1, "weapon": "tracts",
+		"passive": "Petit livre : +15 % d'XP et une relance de cartes.",
+		"ult": "Grand bond en avant", "ult_desc": "Tous les ennemis proches perdent 20 % de leurs PV max.",
+		"base": {"propagande": 15, "reroll": 1},
+		"unlock": {"kind": "level_run", "n": 70, "text": "Atteindre le niveau 70 pendant une run"},
+		"tree": [
+			["Pensée", [["propagande", 8], ["reroll", 1], ["propagande", 8], ["banish", 1], ["ult_power", 30]]],
+			["Longue marche", [["vitesse", 5], ["endurance", 20], ["vitesse", 5], ["endurance", 25], ["dodge_cd", 15]]],
+			["Masses", [["productivite", 6], ["cadence", 5], ["ult_charge", 15], ["productivite", 8], ["start_level", 2]]],
+		],
+	},
+	"lev": {
+		"name": "Lev le Bâtisseur", "model": "", "acc": [], "cost": -1, "weapon": "rideau",
+		"passive": "Planificateur : +15 % de taille des zones.",
+		"ult": "Mur de la Honte", "ult_desc": "Huit murs d'acier surgissent en cercle autour de lui.",
+		"base": {"expansion": 15},
+		"unlock": {"kind": "weapon_level", "weapon": "rideau", "level": 10, "text": "Monter le Rideau de Fer au niveau maximum (10) pendant une run"},
+		"tree": [
+			["Béton", [["expansion", 6], ["duree", 12], ["expansion", 8], ["duree", 15], ["ult_power", 30]]],
+			["Échafaudage", [["armure", 1], ["endurance", 25], ["armure", 1], ["regen", 0.3], ["revive", 1]]],
+			["Plan", [["productivite", 6], ["ult_charge", 15], ["chance", 6], ["productivite", 8], ["rubles_pct", 20]]],
+		],
+	},
+	"svetlana": {
+		"name": "Svetlana la Pyromane", "model": "", "acc": [], "cost": -1, "weapon": "molotov",
+		"passive": "Feu sacré : +25 % de durée des effets.",
+		"ult": "Grand incendie", "ult_desc": "Douze flaques de feu s'embrasent tout autour d'elle.",
+		"base": {"duree": 25},
+		"unlock": {"kind": "weapon_kills_total", "weapon": "molotov", "n": 15000, "text": "Faire 15000 éliminations avec le Cocktail Molotov (toutes runs confondues)"},
+		"tree": [
+			["Essence", [["duree", 10], ["productivite", 6], ["expansion", 8], ["productivite", 8], ["ult_power", 30]]],
+			["Cendres", [["endurance", 20], ["regen", 0.3], ["dodge", 5], ["endurance", 25], ["dodge", 6]]],
+			["Allumettes", [["cadence", 5], ["ult_charge", 15], ["cadence", 6], ["chance", 6], ["ult_charge", 15]]],
+		],
+	},
+	"dmitri": {
+		"name": "Dmitri le Musicien", "model": "", "acc": [], "cost": -1, "weapon": "balalaika",
+		"passive": "Rythme folklorique : +12 % de cadence.",
+		"ult": "Kalinka !", "ult_desc": "Tous les ennemis proches dansent (étourdis) 4 s et subissent +50 % de dégâts.",
+		"base": {"cadence": 12},
+		"unlock": {"kind": "weapon_kills_run", "weapon": "balalaika", "n": 3000, "text": "Faire 3000 éliminations avec la Balalaïka pendant une run"},
+		"tree": [
+			["Cordes", [["cadence", 5], ["productivite", 6], ["cadence", 6], ["critique", 5], ["ult_power", 30]]],
+			["Bal populaire", [["vitesse", 6], ["dodge", 6], ["endurance", 20], ["vitesse", 6], ["dodge_cd", 15]]],
+			["Chœur", [["propagande", 8], ["ult_charge", 15], ["aimant", 20], ["ult_charge", 15], ["chance", 8]]],
+		],
+	},
+	"valentina": {
+		"name": "Valentina de l'Observatoire", "model": "", "acc": [], "cost": -1, "weapon": "etoile",
+		"passive": "Regard des étoiles : +10 % de critique.",
+		"ult": "Pluie de météores", "ult_desc": "Douze étoiles rouges s'abattent sur les ennemis les plus coriaces.",
+		"base": {"critique": 10},
+		"unlock": {"kind": "boss_with", "weapon": "etoile", "zone": 3, "text": "Vaincre La Main Invisible (boss final) avec l'Étoile Rouge dans son arsenal"},
+		"tree": [
+			["Télescope", [["critique", 4], ["crit_dmg", 30], ["critique", 5], ["crit_dmg", 40], ["ult_power", 30]]],
+			["Orbite", [["endurance", 20], ["regen", 0.3], ["armure", 1], ["endurance", 25], ["revive", 1]]],
+			["Constellation", [["chance", 6], ["ult_charge", 15], ["propagande", 8], ["ult_charge", 15], ["start_level", 2]]],
+		],
 	},
 }
 
@@ -108,6 +215,15 @@ const SKINS := {
 	"babouchka": [["Tablier fleuri", Color(1, 1, 1), [], 0], ["Babouchka de combat", Color(0.6, 0.75, 0.5), ["sunglasses"], 200], ["Reine de la datcha", Color(1.3, 0.8, 0.9), [], 150]],
 	"barbudo": [["Treillis", Color(0.72, 0.85, 0.55), [], 0], ["Guérillero de la plage", Color(1.2, 1.1, 0.75), ["sunglasses"], 200], ["Tenue de parade", Color(0.55, 0.65, 0.45), ["medal"], 250]],
 	"youri": [["Combinaison", Color(1, 1, 1), [], 0], ["Combinaison dorée", Color(1.25, 1.05, 0.55), ["medal"], 250], ["Mission martienne", Color(1.3, 0.6, 0.45), [], 200]],
+	"natacha": [["Robe des champs", Color(1, 1, 1), [], 0], ["Kolkhozienne d'honneur", Color(1.25, 1.05, 0.55), ["medal"], 250], ["Moisson d'automne", Color(1.2, 0.8, 0.5), [], 150]],
+	"vodkine": [["Uniforme", Color(0.75, 0.85, 0.6), [], 0], ["Permission", Color(0.6, 0.7, 1.1), ["sunglasses"], 200], ["Parade", Color(1.2, 1.05, 0.6), ["medal"], 250]],
+	"tamara": [["Combinaison", Color(0.7, 0.8, 0.6), [], 0], ["Camouflage d'hiver", Color(1.3, 1.3, 1.3), [], 200], ["As du blindé", Color(1.2, 1.0, 0.55), ["medal"], 250]],
+	"mikhail": [["Fourrures", Color(1, 1, 1), [], 0], ["Cirque d'État", Color(1.3, 0.6, 0.6), [], 200], ["Taïga blanche", Color(1.35, 1.35, 1.35), [], 150]],
+	"timonier": [["Costume gris", Color(0.75, 0.75, 0.75), [], 0], ["Costume vert", Color(0.6, 0.85, 0.6), [], 150], ["Grand bond doré", Color(1.25, 1.05, 0.55), ["medal"], 250]],
+	"lev": [["Bleu de chantier", Color(0.7, 0.8, 1.1), [], 0], ["Brique rouge", Color(1.2, 0.6, 0.5), [], 150], ["Héros du béton", Color(1.2, 1.05, 0.6), ["medal"], 250]],
+	"svetlana": [["Tenue noire", Color(0.55, 0.5, 0.55), [], 0], ["Braise", Color(1.3, 0.55, 0.35), [], 200], ["Cendres", Color(1.1, 1.1, 1.1), ["sunglasses"], 150]],
+	"dmitri": [["Chemise brodée", Color(1, 1, 1), [], 0], ["Tournée d'été", Color(1.2, 1.1, 0.75), ["sunglasses"], 150], ["Bal de gala", Color(0.6, 0.55, 0.9), ["medal"], 250]],
+	"valentina": [["Blouse de l'observatoire", Color(1.2, 1.2, 1.25), [], 0], ["Nuit étoilée", Color(0.5, 0.55, 1.0), [], 200], ["Médaille d'or", Color(1.25, 1.05, 0.55), ["medal"], 250]],
 }
 
 func skin_owned(c: String, i: int) -> bool:
@@ -275,6 +391,7 @@ func load_save():
 			for k in parsed: data[k] = parsed[k]
 	for c in CHARACTERS:
 		if not data["chars"].has(c): data["chars"][c] = {"unlocked": CHARACTERS[c]["cost"] == 0, "xp": 0, "talents": [0, 0, 0]}
+	if not data.has("chal"): data["chal"] = {}
 	if data["plan"].is_empty(): new_plan()
 	run_char = data.get("last_char", "stakhanov")
 
@@ -321,7 +438,7 @@ func buy_talent(c: String, branch: int) -> bool:
 
 func unlock_char(c: String) -> bool:
 	var cost: int = CHARACTERS[c]["cost"]
-	if data["chars"][c]["unlocked"] or data["medals"] < cost: return false
+	if cost < 0 or data["chars"][c]["unlocked"] or data["medals"] < cost: return false
 	if grade() < int(CHAR_GRADE.get(c, 1)): return false
 	data["medals"] -= cost
 	data["chars"][c]["unlocked"] = true
@@ -444,6 +561,44 @@ func new_plan():
 
 # report: {char, time, kills, kills_by_kind{}, kills_by_weapon{}, dmg_by_weapon{}, boss, elites,
 #          level, chests, shrines, evo, ferveur, win}
+# comrades unlocked by challenges ("unlock" spec in CHARACTERS); progress is the best value reached
+func challenge_value(c: String, r := {}) -> float:
+	var u: Dictionary = CHARACTERS[c]["unlock"]
+	var best := float(data.get("chal", {}).get(c, 0.0))
+	if r.is_empty(): 
+		if u["kind"] == "weapon_kills_total": return float(data["mastery"].get(u["weapon"], 0.0))
+		return best
+	var v := 0.0
+	var wl: Dictionary = r.get("weapon_levels", {})
+	match u["kind"]:
+		"weapon_kills_total": return float(data["mastery"].get(u["weapon"], 0.0))
+		"weapon_level": v = float(wl.get(u["weapon"], 0))
+		"weapon_kills_run": v = float(r["kills_by_weapon"].get(u["weapon"], 0))
+		"level_run": v = float(r["level"])
+		"survive_with": v = float(r["time"]) if wl.has(u["weapon"]) else 0.0
+		"boss_with": v = 1.0 if (wl.has(u["weapon"]) and (r.get("bosses", []) as Array).has(int(u.get("zone", 1)))) else 0.0
+		"weapon_evo": v = 1.0 if (r.get("evolved", []) as Array).has(u["weapon"]) else 0.0
+	return maxf(best, v)
+
+func challenge_target(c: String) -> float:
+	var u: Dictionary = CHARACTERS[c]["unlock"]
+	match u["kind"]:
+		"weapon_level": return float(u["level"])
+		"survive_with": return float(u["time"])
+		"boss_with", "weapon_evo": return 1.0
+	return float(u["n"])
+
+func challenge_text(c: String) -> String:
+	var u: Dictionary = CHARACTERS[c]["unlock"]
+	var v := challenge_value(c)
+	var tgt := challenge_target(c)
+	var prog := ""
+	match u["kind"]:
+		"survive_with": prog = "record %02d:%02d / %02d:%02d" % [int(v) / 60, int(v) % 60, int(tgt) / 60, int(tgt) % 60]
+		"boss_with", "weapon_evo": prog = "pas encore" if v < 1.0 else "fait"
+		_: prog = "%d / %d" % [int(v), int(tgt)]
+	return "%s  (%s)" % [u["text"], prog]
+
 func end_run(r: Dictionary) -> Dictionary:
 	var out := {"lines": [], "medals": 0}
 	var f: int = r["ferveur"]
@@ -537,6 +692,13 @@ func end_run(r: Dictionary) -> Dictionary:
 	data["lifetime"] = int(data.get("lifetime", 0)) + medals
 	if grade() > g_before:
 		out["lines"].append("PROMOTION : tu es maintenant %s (grade %d) ! De nouvelles améliorations sont accessibles." % [GRADE_NAMES[grade() - 1], grade()])
+	for cc in CHARACTERS:
+		if not CHARACTERS[cc].has("unlock") or data["chars"][cc]["unlocked"]: continue
+		var cv := challenge_value(cc, r)
+		data["chal"][cc] = cv
+		if cv >= challenge_target(cc):
+			data["chars"][cc]["unlocked"] = true
+			out["lines"].append("NOUVEAU CAMARADE RÉHABILITÉ : %s !" % CHARACTERS[cc]["name"])
 	data["runs"] = int(data["runs"]) + 1
 	if r["win"]: data["wins"] = int(data["wins"]) + 1
 	data["best_time"] = maxf(float(data["best_time"]), float(r["time"]))

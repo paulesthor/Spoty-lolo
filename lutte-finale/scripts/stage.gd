@@ -18,28 +18,31 @@ func build(n_podiums: int, spread := 3.0, arc := 0.6):
 	var floor_m := MeshInstance3D.new(); var pm := PlaneMesh.new(); pm.size = Vector2(80, 60); floor_m.mesh = pm
 	floor_m.material_override = U.pbr("PavingStones138", 0.35, Color(0.6, 0.52, 0.48), 0.8)
 	add_child(floor_m)
-	U.box(self, Vector3(22, 0.8, 8), Vector3(0, 0.4, -1.5), U.pbr("Concrete034", 0.4, Color(0.95, 0.9, 0.85)))
-	U.box(self, Vector3(22.2, 0.18, 0.2), Vector3(0, 0.71, 2.52), U.solid(UIK.RED, 0.0, 0.6))
-	U.box(self, Vector3(22.2, 0.5, 0.06), Vector3(0, 0.35, 2.52), U.solid(Color(0.55, 0.05, 0.08), 0.0, 0.8))
+	var sw := maxf(22.0, n_podiums * spread + 5.0)
+	U.box(self, Vector3(sw, 0.8, 8), Vector3(0, 0.4, -1.5), U.pbr("Concrete034", 0.4, Color(0.95, 0.9, 0.85)))
+	U.box(self, Vector3(sw + 0.2, 0.18, 0.2), Vector3(0, 0.71, 2.52), U.solid(UIK.RED, 0.0, 0.6))
+	U.box(self, Vector3(sw + 0.2, 0.5, 0.06), Vector3(0, 0.35, 2.52), U.solid(Color(0.55, 0.05, 0.08), 0.0, 0.8))
 	# backdrop: wall of posters between red drapes
 	var wall_z := -6.0
-	U.box(self, Vector3(36, 16, 0.4), Vector3(0, 8, wall_z - 0.2), U.pbr("Plaster001", 0.25, Color(0.95, 0.88, 0.78)))
-	var idx := [0, 2, 1, 3, 6]
-	for i in 5:
-		var x := -12.0 + i * 6.0
-		var tex: String = U.propaganda_tex(idx[i])
-		var size := Vector2(4.6, 6.9) if i != 2 else Vector2(6.0, 9.0)
-		U.poster(self, tex, Vector3(x, 5.6 if i != 2 else 6.4, wall_z + 0.02), size, 0.0)
+	U.box(self, Vector3(sw + 14, 16, 0.4), Vector3(0, 8, wall_z - 0.2), U.pbr("Plaster001", 0.25, Color(0.95, 0.88, 0.78)))
+	var idx := [0, 2, 1, 3, 6, 5, 7, 4, 0, 2]
+	var npost := 5 if sw <= 22.0 else int(sw / 6.0) | 1
+	for i in npost:
+		var x := (i - (npost - 1) / 2.0) * 6.0
+		var tex: String = U.propaganda_tex(idx[i % idx.size()])
+		var mid := i == (npost - 1) / 2
+		var size := Vector2(4.6, 6.9) if not mid else Vector2(6.0, 9.0)
+		U.poster(self, tex, Vector3(x, 5.6 if not mid else 6.4, wall_z + 0.02), size, 0.0)
 	for sx in [-1.0, 1.0]:
 		for k in 5:
-			var dr := U.cyl(self, 0.55, 15.5, Vector3(sx * (16.0 - k * 0.9), 7.75, wall_z + 0.6 + k * 0.05), U.solid(Color(0.62 - k * 0.03, 0.04, 0.07), 0.0, 0.9))
+			var dr := U.cyl(self, 0.55, 15.5, Vector3(sx * (sw * 0.5 + 5.0 - k * 0.9), 7.75, wall_z + 0.6 + k * 0.05), U.solid(Color(0.62 - k * 0.03, 0.04, 0.07), 0.0, 0.9))
 			dr.scale = Vector3(1, 1, 0.5)
-	U.box(self, Vector3(34, 1.4, 0.5), Vector3(0, 15.3, wall_z + 0.8), U.solid(Color(0.5, 0.03, 0.06), 0.0, 0.9))
+	U.box(self, Vector3(sw + 12, 1.4, 0.5), Vector3(0, 15.3, wall_z + 0.8), U.solid(Color(0.5, 0.03, 0.06), 0.0, 0.9))
 	var star := Label3D.new(); star.text = "★"; star.font = load("res://fonts/Symbols.ttf"); star.font_size = 256; star.pixel_size = 0.016
 	star.modulate = Color(1.0, 0.82, 0.3); star.outline_size = 0; star.position = Vector3(0, 12.6, wall_z + 0.3)
 	add_child(star)
 	# flags on poles at the stage corners
-	for sx in [-10.5, 10.5]:
+	for sx in [-(sw * 0.5 - 0.5), sw * 0.5 - 0.5]:
 		U.cyl(self, 0.07, 7.5, Vector3(sx, 0.8 + 3.75, -1.0), U.solid(Color(0.8, 0.75, 0.6), 0.0, 0.3, 0.9))
 		var fl := Node3D.new(); add_child(fl); fl.position = Vector3(sx, 7.4, -1.0)
 		U.box(fl, Vector3(0.04, 1.6, 2.6), Vector3(0, 0, 1.33 * (-1.0 if sx > 0 else 1.0)), U.solid(UIK.RED, 0.0, 0.9))
@@ -73,7 +76,7 @@ func build(n_podiums: int, spread := 3.0, arc := 0.6):
 		parts.lifetime = 9.0
 		parts.preprocess = 9.0
 		parts.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
-		parts.emission_box_extents = Vector3(14, 0.5, 5)
+		parts.emission_box_extents = Vector3(sw * 0.6, 0.5, 5)
 		parts.position = Vector3(0, 13, 0)
 		parts.direction = Vector3(0, -1, 0); parts.spread = 25.0
 		parts.gravity = Vector3(0, -0.6, 0)

@@ -15,6 +15,15 @@ const HEROES := {
 	"babouchka": {"body": "Knight", "acc": ["fichu"], "weapon_hand": true},
 	"barbudo": {"body": "Rogue", "acc": ["beret", "beard", "cigar"], "weapon_hand": true},
 	"youri": {"body": "Knight", "acc": ["space_helmet"], "weapon_hand": true},
+	"natacha": {"body": "Knight", "acc": ["straw_hat", "scarf"], "weapon_hand": true},
+	"vodkine": {"body": "Barbarian", "acc": ["chapka", "big_moustache"], "weapon_hand": true},
+	"tamara": {"body": "Rogue", "acc": ["tank_helmet"], "weapon_hand": true},
+	"mikhail": {"body": "Barbarian", "acc": ["chapka", "beard"], "weapon_hand": true},
+	"timonier": {"body": "Mage", "acc": ["mao_cap"], "weapon_hand": true},
+	"lev": {"body": "Knight", "acc": ["hard_hat"], "weapon_hand": true},
+	"svetlana": {"body": "Rogue", "acc": ["bandana", "sunglasses"], "weapon_hand": true},
+	"dmitri": {"body": "Mage", "acc": ["flat_cap", "round_glasses", "big_moustache"], "weapon_hand": true},
+	"valentina": {"body": "Rogue", "acc": ["round_glasses", "scarf"], "weapon_hand": true},
 }
 
 # hero animation names (KayKit)
@@ -23,6 +32,14 @@ const HERO_ANIMS := {
 	"slide": "Dodge_Forward", "dodge_f": "Dodge_Forward", "dodge_b": "Dodge_Backward", "dodge_l": "Dodge_Left", "dodge_r": "Dodge_Right",
 	"hit": "Hit_A", "death": "Death_A", "cheer": "Cheer", "attack": "2H_Melee_Attack_Chop", "throw": "Throw",
 	"interact": "Interact", "cast": "Spellcast_Raise", "pickup": "PickUp",
+}
+
+# signature move when the cursor lands on a comrade in the selection screen
+const SELECT_ANIM := {
+	"stakhanov": "2H_Melee_Attack_Chop", "ilitch": "Spellcast_Long", "moustache": "1H_Ranged_Shoot", "babouchka": "Interact",
+	"barbudo": "Throw", "youri": "Jump_Full_Long", "natacha": "PickUp", "vodkine": "Use_Item", "tamara": "2H_Ranged_Shoot",
+	"mikhail": "Unarmed_Melee_Attack_Punch_B", "timonier": "Cheer", "lev": "1H_Melee_Attack_Chop", "svetlana": "Spellcast_Shoot",
+	"dmitri": "2H_Melee_Attack_Spinning", "valentina": "Spellcast_Raise",
 }
 
 const KK_YAW := 0.0   # KayKit models face +Z (glTF forward), like our facing convention

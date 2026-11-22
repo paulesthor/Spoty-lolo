@@ -62,6 +62,12 @@ Ce fichier garde en mémoire les décisions prises avec le créateur du jeu, pou
 - [x] Introduction animée (premier lancement, passable, rejouable depuis les crédits).
 - [x] Boutons cliquables sur la pause et les écrans de fin (reprendre, abandonner, rejouer, Kolkhoze).
 
+## Lot 6 — 15 camarades (22/11/2026)
+- [x] 9 nouveaux camarades débloqués par des défis (seuils durcis à la demande du créateur : une run classique fait 5000-6000 éliminations) : Natacha la Kolkhozienne (Tracteur), Sergent Vodkine (Vodka), Tankiste Tamara (Char), Mikhaïl le Dresseur (Ours), Le Grand Timonier (Tracts), Lev le Bâtisseur (Rideau de Fer), Svetlana la Pyromane (Molotov), Dmitri le Musicien (Balalaïka), Valentina de l'Observatoire (Étoile Rouge). Chacun : allure propre (accessoires), passif, ultime, 3 branches de talents, 3 tenues.
+- [x] Sélection : animation signature pour chaque camarade au survol, caméra qui parcourt la rangée, défi et progression affichés pour les camarades verrouillés (aussi à la Caserne).
+- [x] Caméra en jeu : inclinaison verticale à la souris, au stick droit et avec Page haut / Page bas.
+- Ensuite (demande du créateur) : le reste des niveaux.
+
 ## Réponses du créateur (questionnaire du 21/11/2026)
 **À faire maintenant :**
 - Personnages : taille des capitalistes inchangée ; ennemis tués = **disparition immédiate** (pas de cadavre) ; pas d'animation de frappe du héros ; je propose les 5e/6e camarades ; **skins débloquables** oui.

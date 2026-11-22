@@ -80,7 +80,7 @@ func stats(id: String) -> Dictionary:
 	s["range"] = base.get("range", 0.0) * (1.0 + m.get("range", 0.0))
 	s["duration"] = base.get("duration", 0.0) * (1.0 + m.get("duration", 0.0)) * (1.0 + game.dv("duree") / 100.0)
 	var extra := int(game.dv("collectivisation")) if id in ["kalach", "faucille", "matriochka", "molotov", "tracteur", "vodka", "t34", "katioucha", "balalaika", "tracts", "cigare"] else 0
-	if id == "ours": extra = int(game.dv("collectivisation")) / 2
+	if id == "ours": extra = int(game.dv("collectivisation")) / 2 + (1 if game.char_id == "mikhail" else 0) + (3 if game.char_id == "mikhail" and game.ult_t > 0.0 else 0)
 	s["count"] = int(base.get("count", 1)) + int(m.get("count", 0.0)) + extra
 	s["pierce"] = int(base.get("pierce", 0)) + int(m.get("pierce", 0.0)) + int(game.dv("perforation"))
 	s["split"] = int(base.get("split", 0)) + int(m.get("split", 0.0))

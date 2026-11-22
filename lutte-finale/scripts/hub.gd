@@ -367,6 +367,10 @@ func _tab_caserne():
 			var cg: int = Meta.CHAR_GRADE.get(c, 1)
 			v.add_child(_lbl(def["name"].to_upper() + "  · VERROUILLÉ", 26, C_DIM))
 			v.add_child(_lbl("Arme : %s · %s" % [Data.WEAPONS[def["weapon"]]["name"], def["passive"]], 17, C_DIM))
+			if def.has("unlock"):
+				v.add_child(_lbl("DÉFI : " + Meta.challenge_text(c), 18, C_GOLD))
+				_bar(v, clampf(Meta.challenge_value(c) / Meta.challenge_target(c), 0.0, 1.0), C_GOLD)
+				continue
 			var ub := _btn("RECRUTER · %d médailles%s" % [def["cost"], (" · grade %d requis" % cg) if Meta.grade() < cg else ""], 20, Meta.data["medals"] >= def["cost"] and Meta.grade() >= cg)
 			ub.pressed.connect(func(): Meta.unlock_char(c); _refresh())
 			v.add_child(ub)

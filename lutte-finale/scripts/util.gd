@@ -431,7 +431,7 @@ static func _build_accessories(root: Node3D, kinds: Array, w: float, top: float,
 			"big_moustache":
 				var mo := solid(Color(0.12, 0.08, 0.06), 0.0, 1.0)
 				for sx in [-1.0, 1.0]:
-					var half := box(root, Vector3(w * 0.42, w * 0.13, w * 0.12), Vector3(sx * w * 0.22, top - w * 0.72, front + w * 0.05), mo)
+					var half := box(root, Vector3(w * 0.42, w * 0.13, w * 0.12), Vector3(sx * w * 0.22, top - w * 0.9, front + w * 0.05), mo)
 					half.rotation = Vector3(0, 0, sx * -0.3)
 			"fichu":
 				var f := solid(Color(0.8, 0.1, 0.12), 0.0, 0.9)
@@ -440,6 +440,53 @@ static func _build_accessories(root: Node3D, kinds: Array, w: float, top: float,
 				knot.rotation = Vector3(0, 0, PI / 4)
 				for dk in 5:
 					sphere(root, w * 0.05, Vector3((dk - 2) * w * 0.2, top + w * 0.05, cz + w * 0.45), solid(Color(1, 1, 1)))
+			"straw_hat":
+				var straw := solid(Color(0.9, 0.78, 0.45), 0.0, 0.9)
+				cyl(root, w * 0.95, w * 0.05, Vector3(0, top - w * 0.02, cz), straw)
+				sphere(root, w * 0.5, Vector3(0, top + w * 0.08, cz), straw, w * 0.4)
+				cyl(root, w * 0.51, w * 0.08, Vector3(0, top + w * 0.02, cz), solid(Color(0.75, 0.1, 0.12)))
+			"tank_helmet":
+				var lea := solid(Color(0.25, 0.2, 0.15), 0.0, 0.7)
+				sphere(root, w * 0.62, Vector3(0, top - w * 0.12, cz), lea, w * 0.75)
+				for kk in 3: box(root, Vector3(w * 0.1, w * 0.5, w * 1.1), Vector3((kk - 1) * w * 0.3, top + w * 0.02, cz), lea)
+				for sx in [-1.0, 1.0]:
+					var gl := cyl(root, w * 0.15, w * 0.08, Vector3(sx * w * 0.2, top + w * 0.05, front - w * 0.05), solid(Color(0.4, 0.7, 0.9, 0.85), 0.5, 0.1, 0.5))
+					gl.rotation = Vector3(PI / 2 - 0.3, 0, 0)
+				box(root, Vector3(w * 0.5, w * 0.05, w * 0.05), Vector3(0, top + w * 0.08, front - w * 0.08), solid(Color(0.1, 0.1, 0.1)))
+			"mao_cap":
+				var gc := solid(Color(0.4, 0.45, 0.38), 0.0, 0.8)
+				cyl(root, w * 0.52, w * 0.26, Vector3(0, top + w * 0.06, cz), gc)
+				box(root, Vector3(w * 0.6, w * 0.04, w * 0.3), Vector3(0, top - w * 0.06, front + w * 0.1), solid(Color(0.2, 0.22, 0.18)))
+				var ms := Label3D.new(); ms.text = "★"; ms.font = _sym_font; ms.font_size = 64; ms.pixel_size = w * 0.0035
+				ms.modulate = Color(0.9, 0.12, 0.12); ms.outline_size = 0; ms.position = Vector3(0, top + w * 0.08, cz + w * 0.53); ms.shaded = false
+				root.add_child(ms)
+			"round_glasses":
+				var rim := solid(Color(0.1, 0.1, 0.1), 0.0, 0.3, 0.8)
+				for sx in [-1.0, 1.0]:
+					var lens := MeshInstance3D.new(); var tor := TorusMesh.new(); tor.inner_radius = w * 0.09; tor.outer_radius = w * 0.12
+					lens.mesh = tor; lens.material_override = rim; lens.rotation = Vector3(PI / 2, 0, 0)
+					lens.position = Vector3(sx * w * 0.2, top - w * 0.56, front + w * 0.03); root.add_child(lens)
+				box(root, Vector3(w * 0.16, w * 0.025, w * 0.025), Vector3(0, top - w * 0.56, front + w * 0.03), rim)
+			"hard_hat":
+				var hy := solid(Color(1.0, 0.55, 0.1), 0.0, 0.4)
+				sphere(root, w * 0.56, Vector3(0, top - w * 0.04, cz), hy, w * 0.62)
+				cyl(root, w * 0.66, w * 0.05, Vector3(0, top - w * 0.12, cz + w * 0.08), hy)
+				box(root, Vector3(w * 0.08, w * 0.12, w * 1.0), Vector3(0, top + w * 0.24, cz), hy)
+			"bandana":
+				var bd := solid(Color(0.8, 0.12, 0.12), 0.0, 0.9)
+				sphere(root, w * 0.55, Vector3(0, top - w * 0.1, cz - w * 0.02), bd, w * 0.6)
+				for kk in 2:
+					var tail := box(root, Vector3(w * 0.12, w * 0.4, w * 0.05), Vector3((kk - 0.5) * w * 0.15, top - w * 0.4, cz - w * 0.6), bd)
+					tail.rotation = Vector3(0.4, 0, (kk - 0.5) * 0.6)
+			"scarf":
+				var sf := solid(Color(0.85, 0.15, 0.15), 0.0, 0.9)
+				var ring2 := MeshInstance3D.new(); var tr2 := TorusMesh.new(); tr2.inner_radius = w * 0.3; tr2.outer_radius = w * 0.42
+				ring2.mesh = tr2; ring2.material_override = sf; ring2.position = Vector3(0, top - w * 1.42, cz); ring2.scale = Vector3(1, 1.4, 1); root.add_child(ring2)
+				box(root, Vector3(w * 0.16, w * 0.4, w * 0.06), Vector3(w * 0.16, top - w * 1.62, front - w * 0.08), sf)
+			"flat_cap":
+				var fc := solid(Color(0.35, 0.3, 0.25), 0.0, 0.9)
+				sphere(root, w * 0.56, Vector3(0, top + w * 0.02, cz - w * 0.03), fc, w * 0.34)
+				box(root, Vector3(w * 0.7, w * 0.05, w * 0.32), Vector3(0, top - w * 0.06, front + w * 0.08), fc, Vector3(0.18, 0, 0))
 			"beret":
 				var bc := solid(Color(0.12, 0.12, 0.1), 0.0, 0.9)
 				var bm := sphere(root, w * 0.55, Vector3(-w * 0.08, top + w * 0.02, cz - w * 0.02), bc, w * 0.32)
