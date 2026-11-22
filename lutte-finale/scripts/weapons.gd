@@ -262,6 +262,7 @@ func _shockwave(center: Vector3, area: float, dmg: float, col: Color, s: Diction
 		if stun: game.enemies.stun(e, 0.6)
 	game.break_in_radius(center, area)
 	_ring_fx(center, area, col)
+	VFX.slam(self, center, area, col)
 	game.shake(0.12 if dmg < 150.0 else 0.22)
 
 func _ring_fx(center: Vector3, area: float, col: Color):
@@ -306,7 +307,9 @@ func _ring_fx(center: Vector3, area: float, col: Color):
 
 # ---------------------------------------------------------------- haut-parleur
 func _cone_fx(pos: Vector3, dir: Vector3, rng_d: float, full: bool):
-	var steps := 5
+	for dd in ([dir] if not full else [dir, dir.rotated(Vector3.UP, PI / 2), -dir, dir.rotated(Vector3.UP, -PI / 2)]):
+		VFX.wave(self, pos, dd, rng_d, Color(1.0, 0.85, 0.4))
+	var steps := 3
 	for i in steps:
 		var k := float(i + 1) / steps
 		var dirs := [dir] if not full else [dir, dir.rotated(Vector3.UP, PI / 2), -dir, dir.rotated(Vector3.UP, -PI / 2)]
@@ -323,18 +326,16 @@ func _make_aura():
 	add_child(aura_fx)
 	var ring := _fx(aura_fx, "circle_03.png", Vector3(0, 0.07, 0), 2.0, Color(1.0, 0.6, 0.25, 0.35), 1.5, false, Vector3(-PI / 2, 0, 0))
 	ring.name = "ring"
-	for i in 6:
-		var st := _fx(aura_fx, "smoke_04.png", Vector3.ZERO, 0.9, Color(1, 0.9, 0.8, 0.25), 1.0)
-		st.name = "steam%d" % i
+	var st := VFX.steam_ring(aura_fx)
+	st.name = "steam"
 
 func _update_aura_fx(d: float):
 	var s := stats("samovar")
 	aura_fx.global_position = game.player.global_position
 	(aura_fx.get_node("ring") as Node3D).scale = Vector3.ONE * s["area"]
-	var t := Time.get_ticks_msec() / 1000.0
-	for i in 6:
-		var a := t * 0.8 + i * TAU / 6.0
-		(aura_fx.get_node("steam%d" % i) as Node3D).position = Vector3(cos(a), 0.4 + 0.3 * sin(t * 2.0 + i), sin(a)) * Vector3(s["area"] * 0.8, 1, s["area"] * 0.8)
+	var st := aura_fx.get_node("steam") as CPUParticles3D
+	st.emission_ring_radius = s["area"] * 0.95
+	st.emission_ring_inner_radius = s["area"] * 0.75
 
 # ---------------------------------------------------------------- spoutnik
 func _update_sats(d: float):
@@ -398,6 +399,7 @@ func _bullet(from: Vector3, dir: Vector3, s: Dictionary):
 	n.global_position = from
 	var b := U.sphere(n, 0.07, Vector3.ZERO, U.solid(Color(1, 0.8, 0.3), 6.0))
 	b.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	VFX.muzzle(self, from + dir * 0.4)
 	var tr := _fx(n, "trace_01.png", Vector3(0, 0, 0.6), 1.2, Color(1, 0.75, 0.3), 3.0, false, Vector3(PI / 2, 0, 0))
 	tr.scale = Vector3(0.3, 1.8, 1)
 	var flat := Vector3(dir.x, 0, dir.z)
@@ -418,6 +420,7 @@ func _sickle(dir: Vector3, s: Dictionary):
 	U.box(n, Vector3(0.1, 0.1, 0.5), Vector3(0.5, 0, 0.3), U.solid(Color(0.75, 0.08, 0.1), 0.0, 0.6))
 	_fx(n, "twirl_01.png", Vector3.ZERO, 1.8, Color(1, 0.25, 0.2, 0.7), 2.0, false, Vector3(-PI / 2, 0, 0))
 	n.global_position = game.player.global_position + Vector3(0, 1.1, 0)
+	VFX.sparkle_trail(n, Color(1.0, 0.35, 0.25), 0.7, "trace_05.png")
 	projectiles.append({"t": "sickle", "n": n, "dir": dir, "age": 0.0, "dur": 1.5, "range": s["range"], "s": s})
 
 # ---------------------------------------------------------------- molotov
@@ -426,7 +429,9 @@ func _molotov(from: Vector3, to: Vector3, s: Dictionary):
 	add_child(n)
 	n.global_position = from
 	U.cyl(n, 0.08, 0.3, Vector3.ZERO, U.solid(Color(0.25, 0.55, 0.3, 0.9), 0.0, 0.1))
-	_fx(n, "flame_02.png", Vector3(0, 0.25, 0), 0.4, Color(1, 0.6, 0.2), 3.0)
+	U.cyl(n, 0.03, 0.12, Vector3(0, 0.2, 0), U.solid(Color(0.9, 0.85, 0.7)))
+	VFX.fire_trail(n, 0.45)
+	VFX.smoke_trail(n, 0.5, true)
 	projectiles.append({"t": "molotov", "n": n, "from": from, "to": to, "age": 0.0, "dur": 0.6, "s": s})
 
 func _spawn_fire(p: Vector3, s: Dictionary):
@@ -435,22 +440,17 @@ func _spawn_fire(p: Vector3, s: Dictionary):
 	add_child(root)
 	root.global_position = p
 	var area: float = s["area"]
-	_fx(root, "scorch_02.png", Vector3(0, 0.03, 0), area * 2.2, Color(0.15, 0.08, 0.04, 0.8), 1.0, false, Vector3(-PI / 2, 0, 0))
-	var flames := []
-	for i in int(6 + area * 3):
-		var o := Vector3(randf_range(-area, area) * 0.8, 0, randf_range(-area, area) * 0.8)
-		if o.length() > area: o = o.normalized() * area * 0.9
-		var h := randf_range(0.8, 1.8)
-		flames.append(_fx(root, "flame_0%d.png" % (1 + i % 4), o + Vector3(0, h * 0.45, 0), h, Color(1, 0.5, 0.15) if i % 3 else Color(1, 0.2, 0.1), 3.0))
-	fires.append({"n": root, "life": s["duration"], "area": area, "s": s, "tick": 0.0, "flames": flames})
+	var fx := VFX.fire(root, p, area)
+	VFX.explosion(self, p + Vector3(0, 0.2, 0), area * 0.6, Color(1, 0.6, 0.2), false)
+	fires.append({"n": root, "fx": fx, "life": s["duration"], "area": area, "s": s, "tick": 0.0})
 
 func _update_fires(d: float):
 	var t := Time.get_ticks_msec() / 1000.0
 	for f in fires.duplicate():
 		f["life"] -= d
 		f["tick"] -= d
-		for i in f["flames"].size():
-			(f["flames"][i] as Node3D).scale = Vector3.ONE * (0.85 + 0.2 * sin(t * 9.0 + i))
+		var gl = (f["fx"] as Node3D).get_node_or_null("glow") if is_instance_valid(f["fx"]) else null
+		if gl: (gl as Node3D).scale = Vector3.ONE * (0.9 + 0.12 * sin(t * 11.0 + f["area"]) + 0.06 * sin(t * 23.0))
 		if f["tick"] <= 0.0:
 			f["tick"] = 0.3
 			for e in game.enemies.in_radius(f["n"].global_position, f["area"]):
@@ -458,9 +458,8 @@ func _update_fires(d: float):
 		if f["life"] <= 0.0:
 			fires.erase(f)
 			var n: Node3D = f["n"]
-			var tw := create_tween()
-			tw.tween_property(n, "scale", Vector3(1, 0.01, 1), 0.3)
-			tw.tween_callback(n.queue_free)
+			VFX.fire_stop(f["fx"])
+			get_tree().create_timer(2.5, false).timeout.connect(func(): if is_instance_valid(n): n.queue_free())
 
 # ---------------------------------------------------------------- matriochka
 func _doll(from: Vector3, to: Vector3, s: Dictionary, depth: int, size: float):
@@ -479,10 +478,7 @@ func _doll_burst(p: Vector3, s: Dictionary, depth: int, size: float):
 	var dmg: float = s["dmg"] * size
 	for e in game.enemies.in_radius(p, rad):
 		_hit(e, dmg, s, p, 6.0)
-	var fx := _fx(self, "star_04.png", p + Vector3(0, 0.6, 0), rad * 1.6, Color(1, 0.3, 0.2), 2.5)
-	var tw := fx.create_tween()
-	tw.tween_property(fx, "scale", Vector3.ONE * 0.1, 0.25)
-	tw.tween_callback(fx.queue_free)
+	VFX.explosion(self, p + Vector3(0, 0.3, 0), rad * 0.8, Color(1, 0.3, 0.2), size >= 1.0)
 	if depth > 0:
 		var n: int = s["split"]
 		var off := randf() * TAU
@@ -552,35 +548,36 @@ func _update_projectiles(d: float):
 func trail_damage() -> float:
 	return (8.0 + 1.6 * game.level) * (1.0 + game.dv("productivite") / 100.0)
 
+var trail_fx: Node3D
+var trail_on_t := 0.0
 func add_trail(p: Vector3):
-	if trails.size() > 90:
-		var old: Dictionary = trails.pop_front()
-		old["n"].queue_free()
-	var n := _fx(self, "flame_0%d.png" % (1 + randi() % 4), Vector3(p.x, 0.45, p.z), 1.0, Color(1, 0.35, 0.12, 0.9), 2.2)
-	trails.append({"n": n, "pos": Vector3(p.x, 0, p.z), "life": 2.0, "tick": 0.0})
+	if trails.size() > 90: trails.pop_front()
+	if trail_fx == null or not is_instance_valid(trail_fx): trail_fx = VFX.trail_emitter(self)
+	trail_fx.global_position = Vector3(p.x, 0.0, p.z)
+	if trail_on_t <= 0.0: VFX.trail_on(trail_fx, true)
+	trail_on_t = 0.12
+	trails.append({"pos": Vector3(p.x, 0, p.z), "life": 2.0, "tick": 0.0})
 
 func _update_trails(d: float):
 	var s := {"crit": 0.05 + game.dv("critique") / 100.0, "id": ""}
 	var dmg := trail_damage()
+	if trail_on_t > 0.0:
+		trail_on_t -= d
+		if trail_on_t <= 0.0: VFX.trail_on(trail_fx, false)
+		elif trail_fx: trail_fx.global_position = Vector3(game.player.global_position.x, 0.0, game.player.global_position.z)
 	for t in trails.duplicate():
 		t["life"] -= d
 		t["tick"] -= d
-		var n: Node3D = t["n"]
-		n.scale = Vector3.ONE * clampf(t["life"] / 2.0, 0.05, 1.0)
 		if t["tick"] <= 0.0:
 			t["tick"] = 0.3
 			for e in game.enemies.in_radius(t["pos"], 0.7):
 				game.enemies.damage(e, dmg, Vector3.INF, 0.0, "", false, true, s["crit"], "")
 		if t["life"] <= 0.0:
 			trails.erase(t)
-			n.queue_free()
 
 func dodge_fx(p: Vector3, dir: Vector3):
-	for i in 4:
-		var sp := _fx(self, "smoke_04.png", p + Vector3(0, 0.8, 0) - dir * i * 0.7, 1.2 - i * 0.2, Color(0.9, 0.9, 1.0, 0.35), 1.0)
-		var tw := sp.create_tween()
-		tw.tween_property(sp, "scale", Vector3.ONE * 0.1, 0.35)
-		tw.tween_callback(sp.queue_free)
+	for i in 3:
+		VFX.puff(self, p + Vector3(0, 0.5, 0) - dir * i * 0.8, 1.1 - i * 0.2, true, 4)
 
 # player effects are drawn more discreetly than enemy threats (readability), scaled by the FX option
 func _fx(parent: Node, tex: String, pos: Vector3, size: float, color: Color, energy := 2.0, billboard := true, rot := Vector3.ZERO) -> MeshInstance3D:
@@ -719,16 +716,14 @@ func _blast(p: Vector3, rad: float, dmg: float, s: Dictionary, col: Color, show 
 	if rad >= 2.5 and randf() < 0.25: game.pop_word(p + Vector3(0, 2.2, 0), ["BOUM !", "PAF !", "VLAN !"][randi() % 3], Color(1.0, 0.55, 0.15), 0.9)
 	for e in game.enemies.in_radius(p, rad):
 		_hit(e, dmg, s, p, 6.0, "", show)
-	var fx := _fx(self, "star_04.png", p + Vector3(0, 0.5, 0), rad * 1.7, col, 2.5)
-	var tw := fx.create_tween()
-	tw.tween_property(fx, "scale", Vector3.ONE * 0.1, 0.25)
-	tw.tween_callback(fx.queue_free)
+	VFX.explosion(self, Vector3(p.x, maxf(p.y, 0.2), p.z), rad, col)
 
 func _slash_fx(p: Vector3, rad: float, col: Color):
-	var fx := _fx(self, "slash_02.png", Vector3(p.x, 0.6, p.z), rad * 2.0, Color(col.r, col.g, col.b, 0.8), 2.0, false, Vector3(-PI / 2, randf() * TAU, 0))
+	var fx := _fx(self, ["slash_01.png", "slash_02.png", "slash_03.png"][randi() % 3], Vector3(p.x, 0.6, p.z), rad * 2.0, Color(col.r, col.g, col.b, 0.9), 2.4, false, Vector3(-PI / 2, randf() * TAU, 0))
 	var tw := fx.create_tween()
 	tw.tween_property(fx, "scale", Vector3.ONE * 1.3, 0.18)
 	tw.tween_callback(fx.queue_free)
+	VFX.impact(self, Vector3(p.x, 0.8, p.z), col, 8)
 
 # ---------------------------------------------------------------- tracteur
 func _tractor(from: Vector3, dir: Vector3, s: Dictionary):
@@ -746,6 +741,8 @@ func _tractor(from: Vector3, dir: Vector3, s: Dictionary):
 		fw.rotation = Vector3(0, 0, PI / 2)
 	n.look_at(n.global_position + dir, Vector3.UP)
 	n.rotate_object_local(Vector3.UP, PI)
+	VFX.ps(n, "smoke_05.png", {"n": 20, "life": 0.8, "size": 1.4, "add": false, "ramp": "dust", "curve": "grow", "spread": 60.0, "vel": [0.5, 1.5], "pos": Vector3(0, 0.3, 1.2)})
+	VFX.smoke_trail(n, 0.6, true).position = Vector3(0, 2.4, -0.4)
 	projectiles.append({"t": "tractor", "n": n, "v": dir * float(s["speed"]), "life": s["range"] / s["speed"], "s": s, "hits": []})
 
 # ---------------------------------------------------------------- ours
@@ -791,6 +788,7 @@ func _vodka(from: Vector3, target, s: Dictionary, chain: int, hit: Array, mult: 
 	n.global_position = from
 	U.cyl(n, 0.09, 0.4, Vector3.ZERO, U.solid(Color(0.85, 0.92, 1.0, 0.7), 0.4, 0.1))
 	U.cyl(n, 0.04, 0.12, Vector3(0, 0.25, 0), U.solid(Color(0.8, 0.1, 0.1)))
+	VFX.sparkle_trail(n, Color(0.6, 0.85, 1.0), 0.35, "magic_01.png")
 	projectiles.append({"t": "vodka", "n": n, "target": target, "s": s, "chain": chain, "hits": hit, "mult": mult, "life": 1.5})
 
 # ---------------------------------------------------------------- piolet
@@ -851,7 +849,8 @@ func _shell(from: Vector3, to: Vector3, s: Dictionary):
 	add_child(n)
 	n.global_position = from
 	U.sphere(n, 0.22, Vector3.ZERO, U.solid(Color(0.25, 0.27, 0.2), 0.0, 0.4, 0.7))
-	_fx(n, "smoke_04.png", Vector3(0, 0, 0), 0.6, Color(0.8, 0.8, 0.8, 0.5), 1.0)
+	VFX.smoke_trail(n, 0.7)
+	VFX.muzzle(self, from, Color(1, 0.7, 0.3))
 	var dist := from.distance_to(to)
 	projectiles.append({"t": "shell", "n": n, "from": from, "to": Vector3(to.x, 0.3, to.z), "age": 0.0, "dur": maxf(0.25, dist / float(s["speed"])), "s": s})
 
@@ -862,6 +861,8 @@ func _rocket(to: Vector3, s: Dictionary, delay: float):
 	n.global_position = to + Vector3(-3, 16, -3)
 	U.cyl(n, 0.1, 0.8, Vector3.ZERO, U.solid(Color(0.3, 0.35, 0.25)))
 	_fx(n, "flame_02.png", Vector3(0, 0.6, 0), 0.6, Color(1, 0.6, 0.2), 3.0)
+	VFX.fire_trail(n, 0.4)
+	VFX.smoke_trail(n, 0.6)
 	n.look_at(to, Vector3.UP)
 	n.rotate_object_local(Vector3.RIGHT, -PI / 2)
 	projectiles.append({"t": "rocket", "n": n, "from": n.global_position, "to": to, "age": -delay, "dur": 0.45, "s": s})
@@ -874,6 +875,7 @@ func _note(from: Vector3, dir: Vector3, s: Dictionary):
 	var l := Label3D.new(); l.text = "♪"; l.font = load("res://fonts/Symbols.ttf"); l.font_size = 128; l.pixel_size = 0.006
 	l.modulate = Color(1, 0.85, 0.3); l.outline_size = 0; l.billboard = BaseMaterial3D.BILLBOARD_ENABLED; l.no_depth_test = false
 	n.add_child(l)
+	VFX.sparkle_trail(n, Color(1, 0.8, 0.3), 0.3, "star_08.png")
 	projectiles.append({"t": "note", "n": n, "v": dir.normalized() * float(s["speed"]), "life": 2.4, "s": s, "pierce": s["pierce"], "hits": [], "target": null})
 
 # ---------------------------------------------------------------- goulag
@@ -919,6 +921,7 @@ func _star(from: Vector3, to: Vector3, s: Dictionary):
 	l.modulate = Color(1, 0.2, 0.15); l.outline_size = 0; l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	n.add_child(l)
 	_fx(n, "light_01.png", Vector3.ZERO, 2.5, Color(1, 0.3, 0.2, 0.6), 3.0)
+	VFX.sparkle_trail(n, Color(1, 0.3, 0.2), 0.8)
 	projectiles.append({"t": "star", "n": n, "from": from, "to": Vector3(to.x, 0.4, to.z), "age": 0.0, "dur": 0.45, "s": s})
 
 # ---------------------------------------------------------------- tracts
@@ -940,6 +943,7 @@ func _cigar(from: Vector3, target, s: Dictionary):
 	var c := U.cyl(n, 0.07, 0.45, Vector3.ZERO, U.solid(Color(0.45, 0.28, 0.12)))
 	c.rotation = Vector3(PI / 2, 0, 0)
 	_fx(n, "flame_02.png", Vector3(0, 0, 0.25), 0.25, Color(1, 0.5, 0.2), 3.0)
+	VFX.smoke_trail(n, 0.35)
 	projectiles.append({"t": "cigar", "n": n, "target": target, "s": s, "stuck": -1.0, "life": 1.5, "pos": from})
 
 # ---------------------------------------------------------------- shared projectile update
@@ -1013,6 +1017,7 @@ func _update_new_projectile(p: Dictionary, n: Node3D, d: float):
 			if v.length() < 0.6:
 				var s: Dictionary = p["s"]
 				_hit(t, s["dmg"] * p["mult"], s, n.global_position, 4.0)
+				VFX.impact(self, n.global_position, Color(0.6, 0.85, 1.0), 8)
 				p["hits"].append(t)
 				if s.get("fusion", "") == "cocktail_luxe":
 					var ms := stats("molotov")

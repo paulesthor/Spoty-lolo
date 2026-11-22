@@ -1008,10 +1008,7 @@ func damage_number(pos: Vector3, amt: float, crit: bool, resisted := false):
 	l.set_meta("tw", tw)
 
 func spark(pos: Vector3, big := false):
-	var s := U.sprite(self, "star_06.png" if big else "spark_04.png", pos, 1.6 if big else 0.8, Color(1, 0.2, 0.15) if big else Color(1, 0.8, 0.3), 3.0)
-	var tw := s.create_tween()
-	tw.tween_property(s, "scale", Vector3.ONE * 0.1, 0.25)
-	tw.tween_callback(s.queue_free)
+	VFX.impact(self, pos, Color(1, 0.25, 0.15) if big else Color(1, 0.8, 0.3), 12 if big else 6)
 
 # comic onomatopoeia (poster/comic identity); rate-limited so it never floods the screen
 var _word_t := 0.0

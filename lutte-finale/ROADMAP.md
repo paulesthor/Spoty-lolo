@@ -80,6 +80,11 @@ Ce fichier garde en mémoire les décisions prises avec le créateur du jeu, pou
 - [x] Acte III : Station du 1 % (neige, chalets, sapins, télésiège, pistes, falaises ; boss : le Rentier), Fusée du Milliardaire (pas de tir, tours de lancement, gravité réduite ; boss : l'Exilé Spatial), Le Grand Soir (défilé, tribunes, lampions, feux d'artifice ; boss : le Marché Lui-Même).
 - [x] Ennemis rhabillés et renommés selon la zone ; une run = un acte (victoire au boss des zones 3, 6, 9) ; zone de départ choisie parmi les 9.
 
+## Lot 9 — effets d'armes (22/11/2026)
+- [x] Nouveau module `scripts/vfx.gd` : vrais systèmes de particules avec le Kenney Particle Pack complet (CC0) : feu vivant (flammes, langues, braises, fumée, sol brûlé et lueur), traînée de feu de la glissade en continu, explosions (éclair, boule de feu, étincelles, fumée, débris, onde au sol, trace brûlée), impacts à étincelles, flashs de tir, traînées de fumée / feu / étincelles sur les projectiles, vapeur du samovar, ondes sonores du haut-parleur, nuage de poussière des coups de marteau.
+- [x] Look-dev des effets : `lookdev/vfx.tscn`.
+- Ensuite (demande du créateur) : identité propre à chaque niveau avec ennemis et boss spécifiques.
+
 ## Réponses du créateur (questionnaire du 21/11/2026)
 **À faire maintenant :**
 - Personnages : taille des capitalistes inchangée ; ennemis tués = **disparition immédiate** (pas de cadavre) ; pas d'animation de frappe du héros ; je propose les 5e/6e camarades ; **skins débloquables** oui.
