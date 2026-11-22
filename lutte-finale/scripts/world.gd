@@ -257,7 +257,8 @@ func _env():
 	var sky := Sky.new()
 	var ps := ProceduralSkyMaterial.new()
 	var sun := DirectionalLight3D.new()
-	sun.shadow_enabled = true
+	sun.shadow_enabled = int(Meta.opt("quality")) > 0
+	sun.add_to_group("sun")
 	sun.directional_shadow_max_distance = 48.0
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS     # 2 passes instead of 4
 	sun.shadow_blur = 1.2
@@ -397,7 +398,8 @@ func _buildings():
 	for sx in [-15.0, 15.0]: U.box(self, Vector3(0.5, 10.8, 0.5), Vector3(sx, 5.4, fz - 0.4), steel)
 	for sx in [-34.5, -25.5]: U.box(self, Vector3(0.35, 13.2, 0.35), Vector3(sx, 6.6, fz - 0.3), steel)
 	U.box(self, Vector3(34, 3.6, 0.6), Vector3(0, 12.5, fz), U.solid(fac[3]))
-	var t := U.label(self, fac[0], Vector3(0, 12.6, fz + 0.4), 340, Color(1, 1, 1), Color(0, 0, 0, 0), false, U.font_main)
+	var t := U.label(self, fac[0], Vector3(0, 12.6, fz + 0.32), 340, Color(1, 1, 1), Color(0, 0, 0, 0), false, U.font_main)
+	U.fit_label(t, 32.0, 3.2)
 	t.outline_size = 0; t.shaded = template["id"] != "bourse"
 	var promo := U.label(self, fac[1], Vector3(13.5, 12.9, fz + 0.36), 220, Color(1, 0.85, 0.1) if template["id"] != "bourse" else Color(0.3, 1, 0.4), Color(0.1, 0.05, 0, 1), false, U.font_main)
 	promo.rotation_degrees = Vector3(0, 0, 8)
@@ -573,14 +575,14 @@ func _matryoshka(mp: Vector3):
 	for ex in [-0.25, 0.25]:
 		U.sphere(self, 0.09, mp + Vector3(ex, 4.7, 1.33), U.solid(Color(0.05, 0.05, 0.1)))
 	obstacles.append(Rect2(mp.x - 1.6, mp.z - 1.6, 3.2, 3.2))
-	var body := StaticBody3D.new(); var cs := CollisionShape3D.new(); var cy := CylinderShape3D.new(); cy.radius = 1.6; cy.height = 5.5
-	cs.shape = cy; body.add_child(cs); body.position = mp + Vector3(0, 2.75, 0); add_child(body)
+	var body := StaticBody3D.new(); var cs := CollisionShape3D.new(); var cy := CylinderShape3D.new(); cy.radius = 1.6; cy.height = 16.0
+	cs.shape = cy; body.add_child(cs); body.position = mp + Vector3(0, 8.0, 0); add_child(body)
 
 func _lot_station(r: Rect2):
 	# petrol station: canopy on pillars, pumps, a small shop
 	var c := _v(r.get_center().x, r.get_center().y)
 	U.box(self, Vector3(14, 0.5, 9), c + Vector3(0, 4.5, 0), U.solid(Color(0.85, 0.12, 0.12)))
-	U.label(self, "PÉTROLE DU PEUPLE", c + Vector3(0, 4.5, 4.6), 90, Color(1, 0.95, 0.85), Color(0, 0, 0, 0), false, U.font_main)
+	U.fit_label(U.label(self, "PÉTROLE DU PEUPLE", c + Vector3(0, 4.5, 4.52), 90, Color(1, 0.95, 0.85), Color(0, 0, 0, 0), false, U.font_main), 13.0, 0.42)
 	for px in [-5.5, 5.5]:
 		for pz in [-3.5, 3.5]:
 			U.box(self, Vector3(0.4, 4.5, 0.4), c + Vector3(px, 2.25, pz), U.solid(Color(0.8, 0.8, 0.8)))
@@ -612,24 +614,29 @@ func _build_plateau(i: int):
 		for k in 4:
 			U.box(self, Vector3(0.2, 2.5, 0.2), Vector3(r.position.x + 0.5 + k * (r.size.x - 1.0) / 3.0, h + 1.25, r.position.y + 0.5), U.solid(Color(0.4, 0.4, 0.42), 0.0, 0.4, 0.8))
 		U.box(self, Vector3(r.size.x - 0.6, 0.9, 0.08), Vector3(c.x, h + 2.6, r.position.y + 0.5), U.solid(Color(0.15, 0.15, 0.17)))
-		U.label(self, "CHANTIER DU PEUPLE", Vector3(c.x, h + 2.6, r.position.y + 0.44), 80, Color(1, 0.85, 0.3), Color(0, 0, 0, 1), false)
+		var cl := U.label(self, "CHANTIER DU PEUPLE", Vector3(c.x, h + 2.6, r.position.y + 0.44), 80, Color(1, 0.85, 0.3), Color(0, 0, 0, 1), false)
+		cl.rotation.y = PI; U.fit_label(cl, r.size.x - 1.0, 0.8)
 	elif pl["kind"] == "passerelle":
 		var glass := U.solid(Color(0.6, 0.8, 0.95, 0.35), 0.3, 0.1, 0.2)
 		U.box(self, Vector3(r.size.x, 1.0, 0.08), Vector3(c.x, h + 0.5, r.position.y), glass)
 		U.box(self, Vector3(r.size.x, 1.0, 0.08), Vector3(c.x, h + 0.5, r.end.y), glass)
-		U.label(self, "PASSERELLE DES CADRES · ACCÈS INTERDIT AU PEUPLE", Vector3(c.x, h * 0.3, r.position.y - 0.12), 60, Color(1, 1, 1), Color(0, 0, 0, 1), false)
+		var pl1 := U.label(self, "PASSERELLE DES CADRES · ACCÈS INTERDIT AU PEUPLE", Vector3(c.x, h * 0.3, r.position.y - 0.16), 60, Color(1, 1, 1), Color(0, 0, 0, 1), false)
+		pl1.rotation.y = PI; U.fit_label(pl1, r.size.x - 1.0, h * 0.4)
 	elif pl["kind"] == "piste":
-		U.label(self, "PISTE NOIRE · RÉSERVÉE AUX ACTIONNAIRES", Vector3(c.x, h * 0.6, r.position.y - 0.12), 64, Color(1, 1, 1), Color(0, 0, 0, 1), false)
+		var pl2 := U.label(self, "PISTE NOIRE · RÉSERVÉE AUX ACTIONNAIRES", Vector3(c.x, h * 0.6, r.position.y - 0.16), 64, Color(1, 1, 1), Color(0, 0, 0, 1), false)
+		pl2.rotation.y = PI; U.fit_label(pl2, r.size.x - 1.0, h * 0.4)
 		U.box(self, Vector3(r.size.x - 0.4, 0.35, r.size.y - 0.4), Vector3(c.x, h + 0.2, c.z), U.pbr("Snow010A", 0.2, Color(1.05, 1.05, 1.1), 0.5))
 		for k in 3:
 			var fl := Vector3(rng.randf_range(r.position.x + 2, r.end.x - 2), h + 0.35, rng.randf_range(r.position.y + 2, r.end.y - 2))
 			U.cyl(self, 0.04, 1.6, fl + Vector3(0, 0.8, 0), U.solid(Color(0.1, 0.1, 0.1) if k % 2 == 0 else Color(0.85, 0.1, 0.1)))
 	elif pl["kind"] == "estrade":
-		U.label(self, template.get("plateau_labels", {}).get("estrade", "ESTRADE DES ACTIONNAIRES"), Vector3(c.x, h * 0.55, r.position.y - 0.12), 70, Color(1, 0.85, 0.3), Color(0, 0, 0, 1), false)
+		var pl3 := U.label(self, template.get("plateau_labels", {}).get("estrade", "ESTRADE DES ACTIONNAIRES"), Vector3(c.x, h * 0.45, r.position.y - 0.16), 70, Color(1, 0.85, 0.3), Color(0, 0, 0, 1), false)
+		pl3.rotation.y = PI; U.fit_label(pl3, r.size.x - 1.0, h * 0.4)
 		for k in 2:
 			U.place(self, U.CAR + "box.glb", Vector3(r.position.x + 2.0 + k * 1.5, h, r.position.y + 2.0), 0.9, rng.randf() * TAU)
 	else:
-		U.label(self, "QUAI DE CHARGEMENT", Vector3(c.x, h * 0.82, r.position.y - 0.12), 70, Color(1, 1, 1), Color(0, 0, 0, 1), false)
+		var pl4 := U.label(self, "QUAI DE CHARGEMENT", Vector3(c.x, h * 0.82, r.position.y - 0.16), 70, Color(1, 1, 1), Color(0, 0, 0, 1), false)
+		pl4.rotation.y = PI; U.fit_label(pl4, r.size.x - 1.0, h * 0.3)
 		for k in 3:
 			U.place(self, U.CAR + "box.glb", Vector3(r.position.x + 2.0 + k * 1.5, h, r.position.y + 2.0), 0.9, rng.randf() * TAU)
 	for rp in pl["ramps"]:
@@ -835,9 +842,10 @@ func _lot_sign(c: Vector3, text: String, col: Color):
 		U.box(self, Vector3(0.14, 3.0, 0.14), c + Vector3(sx * (wdt * 0.5 - 0.2), 1.5, 0), steel)
 	U.box(self, Vector3(wdt, 0.9, 0.1), c + Vector3(0, 3.2, 0), U.solid(Color(0.08, 0.08, 0.1)))
 	for f in [1.0, -1.0]:
-		var l := U.label(self, text, c + Vector3(0, 3.2, 0.07 * f), 52, col, Color(0, 0, 0, 0), false)
+		var l := U.label(self, text, c + Vector3(0, 3.2, 0.06 * f), 52, col, Color(0, 0, 0, 0), false)
 		l.outline_size = 0
 		l.rotation.y = 0.0 if f > 0.0 else PI
+		U.fit_label(l, wdt - 0.25, 0.75)
 	small_obstacle(c, 0.4)
 
 # facades for raised platforms: base band, pillars, window strips or hazard stripes
@@ -991,9 +999,10 @@ func _dress(n: Node3D, face: Vector3):
 		var lateral := Vector3(c.x, 0, c.z) - face * Vector3(c.x, 0, c.z).dot(face)
 		var sp := lateral + face * (wall + 0.06) + Vector3(0, a.position.y + 3.4, 0)
 		U.box(self, Vector3(minf(half * 1.7, 8.0), 1.0, 0.16), sp, U.solid(col, 0.25 if ambiance == "nuit" else 0.0, 0.6), Vector3(0, rot, 0))
-		var l := U.label(self, txt, sp + face * 0.1, 64, Color(1, 0.95, 0.85), Color(0, 0, 0, 0), false, U.font_main)
+		var l := U.label(self, txt, sp + face * 0.09, 64, Color(1, 0.95, 0.85), Color(0, 0, 0, 0), false, U.font_main)
 		l.rotation.y = rot; l.outline_size = 0; l.pixel_size = 0.009
-		l.width = minf(half * 1.6, 7.6) / l.pixel_size; l.autowrap_mode = TextServer.AUTOWRAP_OFF
+		l.autowrap_mode = TextServer.AUTOWRAP_OFF
+		U.fit_label(l, minf(half * 1.7, 8.0) - 0.4, 0.8)
 	# rooftop items stand on the highest roof part (setbacks would leave them hovering)
 	var best_top := -1.0
 	var top := Vector3(c.x, a.end.y, c.z)
@@ -1104,10 +1113,12 @@ func _red_banners(n: Node3D, face: Vector3):
 	var rot := atan2(face.x, face.z)
 	var sym: Font = load("res://fonts/Symbols.ttf")
 	for k in [-1.0, 1.0]:
-		var bp: Vector3 = Vector3(c.x, a.position.y + a.size.y * 0.55, c.z) + face * (depth + 0.25) + lat * k * minf(a.size.x, a.size.z) * 0.25
+		var bp: Vector3 = Vector3(c.x, a.position.y + a.size.y * 0.55, c.z) + face * (_wall_plane(n, face, a.position.y + a.size.y * 0.25, a.position.y + a.size.y * 0.85) - Vector3(c.x, 0, c.z).dot(face) + 0.04) + lat * k * minf(a.size.x, a.size.z) * 0.25
+		if _wall_plane(n, face, a.position.y + a.size.y * 0.25, a.position.y + a.size.y * 0.85) < -1e8: continue
 		U.box(self, Vector3(2.4, a.size.y * 0.6, 0.06), bp, red, Vector3(0, rot, 0))
 		var s := Label3D.new(); s.text = "☭"; s.font = sym; s.font_size = 200; s.pixel_size = 0.012
-		s.modulate = Color(1, 0.8, 0.25); s.outline_size = 0; s.position = bp + face * 0.05 + Vector3(0, a.size.y * 0.12, 0); s.rotation.y = rot
+		s.modulate = Color(1, 0.8, 0.25); s.outline_size = 0; s.position = bp + face * 0.04 + Vector3(0, a.size.y * 0.12, 0); s.rotation.y = rot
+		s.double_sided = false
 		add_child(s)
 
 func _server_tower(pos: Vector3, h: float, face: Vector3) -> Node3D:
@@ -1331,5 +1342,6 @@ func _perimeter_wall():
 			elif i < n and i % 6 == 4 and not slogans.is_empty():
 				var lp: Vector3 = c + along * (off + length / maxf(n, 1) * 0.5) + inward * 0.53 + Vector3(0, 2.6, 0)
 				var l := U.label(self, slogans[k % slogans.size()], lp, 46, Color(0.95, 0.9, 0.79), Color(0, 0, 0, 0), false, U.font_main)
-				l.rotation.y = atan2(inward.x, inward.z); l.outline_size = 0; l.width = 8.0 / l.pixel_size; l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+				l.rotation.y = atan2(inward.x, inward.z); l.outline_size = 0; l.width = 7.6 / l.pixel_size; l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+				U.fit_label(l, 7.6, 2.6)
 				k += 1

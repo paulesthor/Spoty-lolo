@@ -55,14 +55,14 @@ func _ui():
 	var band := Panel.new()
 	var bs := StyleBoxFlat.new(); bs.bg_color = Color(0.06, 0.045, 0.04, 0.82); bs.skew = Vector2(-0.18, 0); bs.border_color = UIK.RED; bs.border_width_right = 10
 	band.add_theme_stylebox_override("panel", bs)
-	band.set_anchors_preset(Control.PRESET_LEFT_WIDE); band.offset_left = -120; band.offset_right = 760
+	band.set_anchors_preset(Control.PRESET_LEFT_WIDE); band.offset_left = -120; band.offset_right = 860
 	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(band)
 	var v := VBoxContainer.new()
 	v.set_anchors_preset(Control.PRESET_LEFT_WIDE); v.offset_left = 70; v.offset_top = 60; v.offset_right = 700; v.offset_bottom = -40
 	v.add_theme_constant_override("separation", 10)
 	root.add_child(v)
-	var l1 := UIK.label(v, "COMMUNISTE", 92, UIK.RED, "RussoOne")
+	var l1 := UIK.label(v, "COMMUNISTE", 84, UIK.RED, "RussoOne")
 	l1.add_theme_color_override("font_shadow_color", Color(0.95, 0.9, 0.79, 0.9)); l1.add_theme_constant_override("shadow_offset_x", 5); l1.add_theme_constant_override("shadow_offset_y", 5)
 	var l2 := UIK.label(v, "LAND", 132, UIK.PAPER, "RussoOne")
 	l2.add_theme_color_override("font_shadow_color", UIK.RED); l2.add_theme_constant_override("shadow_offset_x", 6); l2.add_theme_constant_override("shadow_offset_y", 6)

@@ -101,6 +101,18 @@ Ce fichier garde en mémoire les décisions prises avec le créateur du jeu, pou
 - [x] 8 nouvelles musiques originales, une par zone (+ salon en ligne).
 - [x] Affichage des PV : plus de 159/158 (arrondi).
 
+## Lot 12 — personnages, lisibilité, équilibrage, perfs (22/11/2026)
+- [x] Stats propres à chaque camarade + fiche stats et bio (humour noir) dans la sélection
+- [x] Textes des décors posés sur les surfaces (une face, ajustés à la taille)
+- [x] Statues / sanctuaires trop hauts pour s'y percher ; ennemis atteignent les joueurs perchés
+- [x] Caméra plus éloignée
+- [x] Équilibrage : flaques de feu non cumulables, recul avec rendements décroissants (marteau, etc.)
+- [x] Accessoires des ennemis (chapeaux, lunettes) posés sur la tête
+- [x] Perfs : chaque ennemi fusionné en un seul maillage (1 appel de rendu au lieu de 10 à 14) ; option « Qualité graphique »
+- [x] Écran de fin : chrono de toute la run + grille de stats (zone, niveau, bonkés, mini-boss, boss, armes, décrets) + armes / décrets obtenus
+- [x] Écran titre : « COMMUNISTE » ne dépasse plus de la bande inclinée
+- [ ] Identité des niveaux : ennemis et boss propres à chaque zone
+
 ## Réponses du créateur (questionnaire du 21/11/2026)
 **À faire maintenant :**
 - Personnages : taille des capitalistes inchangée ; ennemis tués = **disparition immédiate** (pas de cadavre) ; pas d'animation de frappe du héros ; je propose les 5e/6e camarades ; **skins débloquables** oui.

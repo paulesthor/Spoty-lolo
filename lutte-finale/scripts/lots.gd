@@ -64,7 +64,8 @@ func _plage(r: Rect2):
 		U.box(t, Vector3(2.0, 0.15, 2.0), Vector3(0, 3.0, 0), wood)
 		U.box(t, Vector3(2.0, 1.2, 2.0), Vector3(0, 3.7, 0), U.solid(Color(0.95, 0.3, 0.25), 0.0, 0.7))
 		U.box(t, Vector3(2.4, 0.1, 2.4), Vector3(0, 4.4, 0), wood)
-		U.label(t, "SURVEILLANCE DU CAPITAL", Vector3(0, 3.7, 1.02), 40, Color(1, 1, 1), Color(0, 0, 0, 0), false).outline_size = 0
+		var sl := U.label(t, "SURVEILLANCE\nDU CAPITAL", Vector3(0, 3.7, 1.015), 40, Color(1, 1, 1), Color(0, 0, 0, 0), false)
+		sl.outline_size = 0; U.fit_label(sl, 1.8, 1.0)
 		w.small_obstacle(lp, 1.2)
 		w._static_box(lp + Vector3(0, 2.2, 0), Vector3(1.8, 4.4, 1.8))
 	for k in 3:
@@ -85,7 +86,8 @@ func yacht(p: Vector3, rot: float, s := 1.0) -> Node3D:
 	U.box(y, Vector3(2.05, 0.3, 3.05), Vector3(0, 1.25, -0.6), U.solid(Color(0.1, 0.12, 0.15), 0.3, 0.1, 0.5))
 	U.box(y, Vector3(1.4, 0.6, 1.6), Vector3(0, 1.9, -0.9), hull)
 	U.cyl(y, 0.05, 2.2, Vector3(0, 3.2, -0.9), U.solid(Color(0.7, 0.7, 0.72), 0.0, 0.3, 0.8))
-	var l := U.label(y, "LIQUIDITÉS III", Vector3(1.32, 0.45, -1.5), 50, Color(0.1, 0.18, 0.3), Color(0, 0, 0, 0), false)
+	var l := U.label(y, "LIQUIDITÉS III", Vector3(1.31, 0.45, -1.5), 50, Color(0.1, 0.18, 0.3), Color(0, 0, 0, 0), false)
+	U.fit_label(l, 4.0, 0.5)
 	l.rotation.y = PI / 2; l.outline_size = 0
 	return y
 
@@ -167,7 +169,11 @@ func _chill(r: Rect2):
 		for k in 2: U.box(s, Vector3(0.12, 4.2, 0.12), Vector3(-0.5 + k, 2.1, -1.5), U.solid(Color(0.3, 0.3, 0.32)))
 		U.box(s, Vector3(1.3, 0.15, 1.3), Vector3(0, 4.2, -1.5), yel)
 		U.box(s, Vector3(1.0, 0.12, 6.2), Vector3(0, 2.1, 1.0), yel, Vector3(0.74, 0, 0))
-		U.label(s, "ASCENSEUR SOCIAL", Vector3(0, 4.7, -1.5), 48, Color(1, 1, 1), Color(0, 0, 0, 1), false)
+		# the name is painted on a board on the slide's top railing
+		U.box(s, Vector3(2.2, 0.6, 0.06), Vector3(0, 4.7, -0.86), U.solid(Color(0.15, 0.15, 0.17)))
+		for sx in [-1.0, 1.0]: U.box(s, Vector3(0.06, 0.6, 0.06), Vector3(sx * 1.0, 4.4, -0.86), U.solid(Color(0.3, 0.3, 0.32)))
+		var asl := U.label(s, "ASCENSEUR SOCIAL", Vector3(0, 4.7, -0.82), 48, Color(1, 0.85, 0.3), Color(0, 0, 0, 0), false)
+		asl.outline_size = 0; U.fit_label(asl, 2.0, 0.45)
 		w.add_obstacle(s, true, 0.2)
 	w._lot_sign(_v(r.get_center().x, r.end.y - 2.0), "ESPACE BIEN-ÊTRE (OBLIGATOIRE)", Color(1, 0.6, 0.85))
 
@@ -357,8 +363,10 @@ func _pas_de_tir(r: Rect2):
 		f.position = Vector3(cos(k * PI / 2) * 2.6, 3.5, sin(k * PI / 2) * 2.6)
 		f.rotation.y = -k * PI / 2
 	for sd in [1.0, -1.0]:
-		var l := U.label(root, "EXIT", Vector3(0, h * 0.5, sd * 2.25), 300, Color(0.1, 0.1, 0.12), Color(0, 0, 0, 0), false, U.font_main)
-		l.rotation.y = 0.0 if sd > 0 else PI; l.outline_size = 0; l.pixel_size = 0.012
+		# painted vertically along the hull, narrow enough to stay on the curve
+		var l := U.label(root, "E\nX\nI\nT", Vector3(0, h * 0.55, sd * 2.22), 300, Color(0.1, 0.1, 0.12), Color(0, 0, 0, 0), false, U.font_main)
+		l.rotation.y = 0.0 if sd > 0 else PI; l.outline_size = 0; l.pixel_size = 0.012; l.line_spacing = -40
+		U.fit_label(l, 1.6, h * 0.55)
 	w.obstacles.append(Rect2(c.x - 3.4, c.z - 3.4, 6.8, 6.8))
 	w._static_box(c + Vector3(0, h / 2.0, 0), Vector3(5.0, h, 5.0))
 	w.register_occluder(root)

@@ -113,6 +113,69 @@ const ENEMY_COLORS := {
 const ENEMY_ANIMS := {"walk": "Walk", "run": "Run", "death": "Death", "hit": "HitRecieve", "attack": "Punch_Right", "shoot": "Gun_Shoot", "throw": "Punch_Left", "idle": "Idle"}
 
 static var _color_mats := {}
+static var _merged := {}       # cache key -> ArrayMesh (shared by every enemy of that look)
+static var _merged_mat: StandardMaterial3D
+
+# Merge the skinned body parts of a model (same skeleton, same skin) into a single surface whose
+# vertex colours carry each part's albedo. Returns false when the model can't be merged (textures, odd skins).
+static func merge_skinned(n: Node, key: String) -> bool:
+	var parts: Array = []
+	var skin: Skin = null
+	for m in n.find_children("*", "MeshInstance3D", true, false):
+		var mi: MeshInstance3D = m
+		if mi.mesh == null or not (mi.get_parent() is Skeleton3D) or not mi.visible: continue
+		if skin == null: skin = mi.skin
+		elif mi.skin != skin: return false
+		if mi.transform != Transform3D.IDENTITY: return false
+		parts.append(mi)
+	if parts.size() < 2 or skin == null: return false
+	var mesh: ArrayMesh = _merged.get(key)
+	if mesh == null:
+		var verts := PackedVector3Array(); var norms := PackedVector3Array(); var cols := PackedColorArray()
+		var bones := PackedInt32Array(); var weights := PackedFloat32Array(); var idx := PackedInt32Array()
+		var per := -1
+		for mi in parts:
+			for i in mi.mesh.get_surface_count():
+				var mat = mi.get_active_material(i)
+				if mat is BaseMaterial3D and (mat as BaseMaterial3D).albedo_texture != null: return false
+				var col: Color = (mat as BaseMaterial3D).albedo_color if mat is BaseMaterial3D else Color(0.8, 0.8, 0.8)
+				var a: Array = mi.mesh.surface_get_arrays(i)
+				var v: PackedVector3Array = a[Mesh.ARRAY_VERTEX]
+				if a[Mesh.ARRAY_BONES] == null or a[Mesh.ARRAY_WEIGHTS] == null: return false
+				var b: PackedInt32Array = PackedInt32Array(a[Mesh.ARRAY_BONES])
+				var w: PackedFloat32Array = PackedFloat32Array(a[Mesh.ARRAY_WEIGHTS])
+				var bp: int = b.size() / maxi(v.size(), 1)
+				if per < 0: per = bp
+				elif per != bp: return false
+				var base := verts.size()
+				verts.append_array(v)
+				var nr = a[Mesh.ARRAY_NORMAL]
+				if nr == null: nr = PackedVector3Array(); nr.resize(v.size())
+				norms.append_array(nr)
+				var c := PackedColorArray(); c.resize(v.size()); c.fill(col)
+				cols.append_array(c)
+				bones.append_array(b); weights.append_array(w)
+				var ix = a[Mesh.ARRAY_INDEX]
+				if ix == null:
+					ix = PackedInt32Array(range(v.size()))
+				for k in (ix as PackedInt32Array): idx.append(k + base)
+		var arr := []; arr.resize(Mesh.ARRAY_MAX)
+		arr[Mesh.ARRAY_VERTEX] = verts; arr[Mesh.ARRAY_NORMAL] = norms; arr[Mesh.ARRAY_COLOR] = cols
+		arr[Mesh.ARRAY_BONES] = bones; arr[Mesh.ARRAY_WEIGHTS] = weights; arr[Mesh.ARRAY_INDEX] = idx
+		mesh = ArrayMesh.new()
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr, [], {}, Mesh.ARRAY_FLAG_USE_8_BONE_WEIGHTS if per == 8 else 0)
+		_merged[key] = mesh
+	if _merged_mat == null:
+		_merged_mat = StandardMaterial3D.new()
+		_merged_mat.vertex_color_use_as_albedo = true
+		_merged_mat.roughness = 0.8
+		_merged_mat.rim_enabled = true; _merged_mat.rim = 0.45; _merged_mat.rim_tint = 0.6
+	var keep: MeshInstance3D = parts[0]
+	keep.mesh = mesh
+	keep.material_override = null
+	keep.set_surface_override_material(0, _merged_mat)
+	for i in range(1, parts.size()): (parts[i] as MeshInstance3D).queue_free()
+	return true
 
 static func build_enemy(parent: Node, kind: String, pos: Vector3, h: float) -> Node3D:
 	var sk: Dictionary = Levels.skin(kind)
@@ -123,7 +186,9 @@ static func build_enemy(parent: Node, kind: String, pos: Vector3, h: float) -> N
 	var cols: Dictionary = ENEMY_COLORS.get(kind, {}).duplicate()
 	cols.merge(sk.get("colors", {}), true)
 	recolor(n, cols)
-	rim(n, Color(1.0, 0.85, 0.7), 0.45)
+	# one mesh, one material, one draw call per capitalist (was 10-14): colours go into the vertices
+	if not merge_skinned(n, path + "|" + str(cols)):
+		rim(n, Color(1.0, 0.85, 0.7), 0.45)
 	# the horde casts no real-time shadow (big saving); a soft blob grounds each capitalist instead
 	if not kind in ["golden", "boss", "boss2", "boss3"]:
 		for m in n.find_children("*", "GeometryInstance3D", true, false):
@@ -177,7 +242,7 @@ static func is_kaykit(n: Node) -> bool:
 	return sk != null and sk.find_bone("handslot.r") >= 0
 
 # accessories on the head bone, sized from the visible meshes (works for both rigs)
-const HATS := ["chapka", "kepi", "beret", "flat_cap", "straw_hat", "hard_hat", "mao_cap", "cap", "tank_helmet"]
+const HATS := ["chapka", "kepi", "beret", "flat_cap", "straw_hat", "hard_hat", "mao_cap", "cap", "tank_helmet", "tophat"]
 const HAT_SINK := 0.16
 
 static func _is_knight(n: Node) -> bool:
@@ -211,10 +276,11 @@ static func attach(n: Node3D, kinds: Array):
 	# headwear is sunk into the hair: the mesh top is a hair tuft, the skull sits lower
 	var hats: Array = kinds.filter(func(x): return x in HATS)
 	var rest: Array = kinds.filter(func(x): return not x in HATS)
+	U.eye_k = 0.6 if kk else 0.4
 	U._build_accessories(root, rest, w, hh, 0.0, w * 0.5)
 	if not hats.is_empty():
 		var hr := Node3D.new()
-		hr.position.y = -w * (HAT_SINK) if kk else 0.0
+		hr.position.y = -w * (HAT_SINK if kk else 0.2)
 		root.add_child(hr)
 		U._build_accessories(hr, hats, w, hh, 0.0, w * 0.5)
 	U.batch_static(root)      # a hat made of 3 pieces -> one draw call per material

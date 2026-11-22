@@ -37,7 +37,8 @@ const CHARACTERS := {
 		"name": "Stakhanov", "model": "character-worker", "acc": [], "cost": 0, "weapon": "marteau",
 		"passive": "Dépasser les quotas : +2 % de cadence tous les 150 ennemis bonkés (max +20 %).",
 		"ult": "Surproduction", "ult_desc": "Cadence x2 pendant 6 s.",
-		"base": {},
+		"bio": "Héros du travail, il a dépassé ses quotas de 1 400 %, puis ses poumons, puis son espérance de vie. On l'a décoré trois fois, dont une à titre posthume par erreur. Il ne s'en est pas remis : il est retourné à la mine.",
+		"base": {"endurance": 20, "productivite": 10, "armure": 1, "vitesse": -5, "aimant": -10},
 		"tree": [
 			["Ouvrier modèle", [["cadence", 5], ["productivite", 6], ["cadence", 5], ["productivite", 8], ["ult_power", 30]]],
 			["Mineur de fond", [["endurance", 20], ["armure", 1.5], ["endurance", 20], ["regen", 0.4], ["slam_bonus", 50]]],
@@ -46,9 +47,10 @@ const CHARACTERS := {
 	},
 	"ilitch": {
 		"name": "Ilitch le Chauve", "model": "character-male-b", "acc": ["chapka"], "cost": 150, "weapon": "hautparleur",
-		"passive": "Le théoricien : +12 % d'XP.",
+		"passive": "Le théoricien : +15 % d'XP, +15 % de taille des zones. Ses discours portent loin, ses bras beaucoup moins.",
 		"ult": "Discours au peuple", "ult_desc": "Étourdit tous les ennemis proches 3 s. Ils subissent +50 % de dégâts.",
-		"base": {"propagande": 12},
+		"bio": "Il a lu tous les livres, surtout les siens. Son corps est conservé dans du formol depuis un siècle, ce qui explique sa santé fragile et son teint de cire. Il parle encore très bien, et très longtemps.",
+		"base": {"propagande": 15, "expansion": 15, "endurance": -20, "productivite": -5},
 		"tree": [
 			["Orateur", [["ult_charge", 15], ["ult_power", 25], ["expansion", 8], ["ult_charge", 15], ["ult_stun", 1.5]]],
 			["Idéologue", [["propagande", 8], ["chance", 5], ["reroll", 1], ["propagande", 8], ["chance", 8]]],
@@ -57,9 +59,10 @@ const CHARACTERS := {
 	},
 	"moustache": {
 		"name": "Petit Père Moustache", "model": "character-male-g", "acc": ["chapka"], "cost": 250, "weapon": "kalach",
-		"passive": "Le paranoïaque : +8 % de coup critique.",
+		"passive": "Le paranoïaque : +12 % de critique, +5 % de dégâts. Il ne se soigne jamais : il ne fait confiance à aucun médecin.",
 		"ult": "Grande Purge", "ult_desc": "Élimine tous les ennemis normaux à moins de 14 m. Coûte 15 % de tes PV actuels.",
-		"base": {"critique": 8},
+		"bio": "Il soupçonne tout le monde, y compris son reflet. Ses amis disparaissent des photos, ses ennemis aussi, et il compte bien ajouter les capitalistes à la liste. Sa moustache a son propre service de sécurité.",
+		"base": {"critique": 12, "productivite": 5, "regen": -0.4, "chance": -10},
 		"tree": [
 			["Purge", [["critique", 4], ["productivite", 6], ["critique", 5], ["ult_charge", 20], ["crit_dmg", 50]]],
 			["Paranoïa", [["vitesse", 6], ["armure", 1], ["dodge", 8], ["vitesse", 6], ["dodge", 7]]],
@@ -68,9 +71,10 @@ const CHARACTERS := {
 	},
 	"babouchka": {
 		"name": "Babouchka Olga", "model": "character-female-f", "acc": ["chapka"], "cost": 350, "weapon": "samovar",
-		"passive": "Elle a connu pire : +40 PV, régénération +0.6/s, mais -10 % de vitesse.",
+		"passive": "Elle a connu pire : +50 PV, régénération +0,6/s, +1 d'armure. Mais elle ne court plus depuis 1953.",
 		"ult": "Elle a connu pire", "ult_desc": "Invincible 4 s et soin complet.",
-		"base": {"endurance": 40, "regen": 0.6, "vitesse": -10},
+		"bio": "Elle a survécu à deux guerres, trois famines et quatorze réformes agraires. Les balles rebondissent sur son fichu. Elle avance lentement, mais rien de ce qui se met en travers de son chemin n'a jamais survécu à son thé.",
+		"base": {"endurance": 50, "regen": 0.6, "armure": 1, "vitesse": -12, "jump": -15, "cadence": -5},
 		"tree": [
 			["Fourneau", [["expansion", 8], ["productivite", 6], ["duree", 12], ["expansion", 10], ["ult_power", 30]]],
 			["Datcha", [["endurance", 25], ["regen", 0.4], ["armure", 1.5], ["endurance", 30], ["revive", 1]]],
@@ -81,7 +85,8 @@ const CHARACTERS := {
 		"name": "Comandante Barbudo", "model": "", "acc": [], "cost": 450, "weapon": "cigare",
 		"passive": "Révolution permanente : +3 % de dégâts par élite ou boss abattu (max +30 %).",
 		"ult": "¡Viva la Revolución!", "ult_desc": "Pendant 8 s, chaque ennemi tué explose et blesse ses voisins.",
-		"base": {"chance": 5},
+		"bio": "Guérillero de profession, mannequin de t-shirt malgré lui. Il a appris que son visage se vend très bien dans les centres commerciaux : il vient récupérer les droits d'auteur, au cigare explosif.",
+		"base": {"chance": 10, "vitesse": 5, "endurance": -10, "armure": -1},
 		"tree": [
 			["Guérilla", [["vitesse", 5], ["dodge", 5], ["productivite", 6], ["dodge_cd", 15], ["ult_power", 30]]],
 			["Sierra", [["endurance", 20], ["regen", 0.3], ["armure", 1], ["endurance", 25], ["revive", 1]]],
@@ -90,19 +95,22 @@ const CHARACTERS := {
 	},
 	"youri": {
 		"name": "Youri l'Orbital", "model": "", "acc": [], "cost": 550, "weapon": "spoutnik",
-		"passive": "Apesanteur : sauts plus hauts, chute ralentie, +10 % de vitesse.",
+		"passive": "Apesanteur : saute 45 % plus haut et 30 % plus loin, chute ralentie, aimant +20 %. Au sol, il marche comme dans un scaphandre, parce que c'en est un.",
 		"ult": "Retour sur Terre", "ult_desc": "Une capsule s'écrase sur le plus gros groupe d'ennemis proche : énormes dégâts et étourdissement.",
-		"base": {"vitesse": 10},
+		"bio": "Premier camarade dans l'espace, dernier à avoir retiré son casque. Il dit que la Terre est belle vue d'en haut, et que de là-haut on ne voit pas les actionnaires. Il redescend uniquement pour leur tomber dessus.",
+		"base": {"jump": 45, "air": 30, "aimant": 20, "vitesse": -12, "cadence": -5, "endurance": -10},
 		"tree": [
 			["Cosmonaute", [["expansion", 8], ["duree", 10], ["expansion", 8], ["slam_bonus", 50], ["ult_power", 30]]],
 			["Entraînement", [["endurance", 20], ["vitesse", 5], ["dodge_cd", 15], ["endurance", 25], ["armure", 1.5]]],
 			["Héros national", [["chance", 6], ["aimant", 25], ["ult_charge", 15], ["propagande", 8], ["start_level", 2]]],
 		],
-	},	"natacha": {
+	},
+	"natacha": {
 		"name": "Natacha la Kolkhozienne", "model": "", "acc": [], "cost": -1, "weapon": "tracteur",
-		"passive": "Récolte record : +20 % de ramassage, +10 % d'XP.",
+		"passive": "Récolte collective : aimant +30 %, chance +5 %. Rien ne se perd, tout se collectivise.",
 		"ult": "Moisson collective", "ult_desc": "Aspire toute l'XP de la carte et lance 8 tracteurs en étoile.",
-		"base": {"aimant": 20, "propagande": 10},
+		"bio": "Kolkhozienne de l'année, élue par un jury qu'elle a elle-même nommé. Elle moissonne le blé, le seigle et désormais les cadres supérieurs. Son tracteur n'a jamais eu de permis, ses victimes non plus.",
+		"base": {"aimant": 30, "endurance": 10, "chance": 5, "cadence": -5, "critique": -3},
 		"unlock": {"kind": "weapon_kills_total", "weapon": "tracteur", "n": 8000, "text": "Faire 8000 éliminations avec le Tracteur du Kolkhoze (toutes runs confondues)"},
 		"tree": [
 			["Moissonneuse", [["productivite", 6], ["expansion", 8], ["productivite", 8], ["expansion", 10], ["ult_power", 30]]],
@@ -112,9 +120,10 @@ const CHARACTERS := {
 	},
 	"vodkine": {
 		"name": "Sergent Vodkine", "model": "", "acc": [], "cost": -1, "weapon": "vodka",
-		"passive": "Ivresse tactique : +12 % d'esquive des coups.",
+		"passive": "Ivresse tactique : 15 % d'esquive, régénération +0,3/s. Il titube, donc personne ne sait où il va, lui non plus.",
 		"ult": "Tournée du sergent", "ult_desc": "Soigne 40 % des PV et +60 % de cadence pendant 6 s.",
-		"base": {"dodge": 12},
+		"bio": "Sergent depuis 1979, toujours pas démobilisé : personne n'a osé lui annoncer la fin de la guerre froide. Sa gourde contient un antiseptique, un carburant et son petit-déjeuner. C'est la même bouteille.",
+		"base": {"dodge": 15, "regen": 0.3, "critique": 5, "vitesse": -5, "expansion": -10},
 		"unlock": {"kind": "weapon_evo", "weapon": "vodka", "text": "Faire évoluer la Vodka Frappée en Tournée Générale pendant une run"},
 		"tree": [
 			["Bouteille", [["cadence", 5], ["productivite", 6], ["cadence", 6], ["crit_dmg", 40], ["ult_power", 30]]],
@@ -124,9 +133,10 @@ const CHARACTERS := {
 	},
 	"tamara": {
 		"name": "Tankiste Tamara", "model": "", "acc": [], "cost": -1, "weapon": "t34",
-		"passive": "Blindée : +3 d'armure, mais -8 % de vitesse.",
+		"passive": "Blindée : +3 d'armure, +30 PV, +10 % de dégâts. Elle ne saute pas : elle écrase ce qui dépasse.",
 		"ult": "Percée blindée", "ult_desc": "Fonce droit devant, invulnérable, en écrasant tout sur 14 m.",
-		"base": {"armure": 3, "vitesse": -8},
+		"bio": "Tankiste décorée, elle a gardé le char après la démobilisation « pour les courses ». Elle se gare toujours sur les places réservées aux SUV de luxe, généralement par-dessus.",
+		"base": {"armure": 3, "endurance": 30, "productivite": 10, "vitesse": -10, "jump": -20, "cadence": -10},
 		"unlock": {"kind": "weapon_kills_run", "weapon": "t34", "n": 2500, "text": "Faire 2500 éliminations avec le Char du Peuple pendant une run"},
 		"tree": [
 			["Canon", [["productivite", 6], ["expansion", 8], ["productivite", 8], ["critique", 5], ["ult_power", 30]]],
@@ -138,7 +148,8 @@ const CHARACTERS := {
 		"name": "Mikhaïl le Dresseur", "model": "", "acc": [], "cost": -1, "weapon": "ours",
 		"passive": "Ami des bêtes : un ours de plus à ses côtés.",
 		"ult": "Réveil de la taïga", "ult_desc": "Trois ours géants rejoignent la lutte pendant 10 s.",
-		"base": {"endurance": 20},
+		"bio": "Dresseur au cirque d'État jusqu'à ce que les ours votent sa promotion. Ils sont syndiqués, nourris, logés, et ont droit à un capitaliste par jour. Le planning ne précise pas lequel.",
+		"base": {"endurance": 20, "regen": 0.3, "productivite": -5, "aimant": -10},
 		"unlock": {"kind": "survive_with", "weapon": "ours", "time": 1500, "text": "Tenir 25 minutes au total (3 zones) avec l'Ours de Sibérie dans son arsenal"},
 		"tree": [
 			["Meute", [["productivite", 6], ["cadence", 5], ["productivite", 8], ["expansion", 10], ["ult_power", 30]]],
@@ -148,9 +159,10 @@ const CHARACTERS := {
 	},
 	"timonier": {
 		"name": "Le Grand Timonier", "model": "", "acc": [], "cost": -1, "weapon": "tracts",
-		"passive": "Petit livre : +15 % d'XP et une relance de cartes.",
+		"passive": "Petit livre : +15 % d'XP, une relance de cartes, zones +10 %. Il commande, d'autres tapent.",
 		"ult": "Grand bond en avant", "ult_desc": "Tous les ennemis proches perdent 20 % de leurs PV max.",
-		"base": {"propagande": 15, "reroll": 1},
+		"bio": "Grand nageur, grand bondisseur, grand tout. Il a écrit un petit livre rouge pour chaque occasion, dont un sur la modestie. Ses tracts tranchent mieux que ses réformes, ce qui n'est pas difficile.",
+		"base": {"propagande": 15, "reroll": 1, "expansion": 10, "endurance": -20, "armure": -1, "productivite": -5},
 		"unlock": {"kind": "level_run", "n": 70, "text": "Atteindre le niveau 70 pendant une run"},
 		"tree": [
 			["Pensée", [["propagande", 8], ["reroll", 1], ["propagande", 8], ["banish", 1], ["ult_power", 30]]],
@@ -160,9 +172,10 @@ const CHARACTERS := {
 	},
 	"lev": {
 		"name": "Lev le Bâtisseur", "model": "", "acc": [], "cost": -1, "weapon": "rideau",
-		"passive": "Planificateur : +15 % de taille des zones.",
+		"passive": "Planificateur : zones +20 %, +2 d'armure. Il construit des murs, des murs, et quelques murs.",
 		"ult": "Mur de la Honte", "ult_desc": "Huit murs d'acier surgissent en cercle autour de lui.",
-		"base": {"expansion": 15},
+		"bio": "Architecte du peuple, il a bâti 3 000 immeubles identiques et un mur dont il refuse de parler. Il pose une brique toutes les quatre secondes, même sur les gens. Surtout sur les gens.",
+		"base": {"expansion": 20, "armure": 2, "endurance": 10, "vitesse": -8, "critique": -5},
 		"unlock": {"kind": "weapon_level", "weapon": "rideau", "level": 10, "text": "Monter le Rideau de Fer au niveau maximum (10) pendant une run"},
 		"tree": [
 			["Béton", [["expansion", 6], ["duree", 12], ["expansion", 8], ["duree", 15], ["ult_power", 30]]],
@@ -172,9 +185,10 @@ const CHARACTERS := {
 	},
 	"svetlana": {
 		"name": "Svetlana la Pyromane", "model": "", "acc": [], "cost": -1, "weapon": "molotov",
-		"passive": "Feu sacré : +25 % de durée des effets.",
+		"passive": "Feu sacré : effets +25 % plus longs, +10 % de dégâts, +8 % de vitesse. Elle brûle tout, surtout ses PV.",
 		"ult": "Grand incendie", "ult_desc": "Douze flaques de feu s'embrasent tout autour d'elle.",
-		"base": {"duree": 25},
+		"bio": "Ancienne chimiste d'une usine de cocktails, fermée après un léger incident (la ville). Elle croit au progrès, à l'égalité et à l'essence. Les pompiers du quartier d'affaires connaissent son prénom.",
+		"base": {"duree": 25, "productivite": 10, "vitesse": 8, "endurance": -25, "armure": -1},
 		"unlock": {"kind": "weapon_kills_total", "weapon": "molotov", "n": 15000, "text": "Faire 15000 éliminations avec le Cocktail Molotov (toutes runs confondues)"},
 		"tree": [
 			["Essence", [["duree", 10], ["productivite", 6], ["expansion", 8], ["productivite", 8], ["ult_power", 30]]],
@@ -184,9 +198,10 @@ const CHARACTERS := {
 	},
 	"dmitri": {
 		"name": "Dmitri le Musicien", "model": "", "acc": [], "cost": -1, "weapon": "balalaika",
-		"passive": "Rythme folklorique : +12 % de cadence.",
+		"passive": "Rythme folklorique : +15 % de cadence, +5 % de vitesse. Ses notes font peu de dégâts, mais beaucoup de notes.",
 		"ult": "Kalinka !", "ult_desc": "Tous les ennemis proches dansent (étourdis) 4 s et subissent +50 % de dégâts.",
-		"base": {"cadence": 12},
+		"bio": "Virtuose de la balalaïka, il joue si vite que le Bureau politique l'a classé arme stratégique. Ses concerts durent jusqu'à ce que le public s'effondre. Il appelle ça « le rappel ».",
+		"base": {"cadence": 15, "vitesse": 5, "endurance": -20, "productivite": -10},
 		"unlock": {"kind": "weapon_kills_run", "weapon": "balalaika", "n": 3000, "text": "Faire 3000 éliminations avec la Balalaïka pendant une run"},
 		"tree": [
 			["Cordes", [["cadence", 5], ["productivite", 6], ["cadence", 6], ["critique", 5], ["ult_power", 30]]],
@@ -196,9 +211,10 @@ const CHARACTERS := {
 	},
 	"valentina": {
 		"name": "Valentina de l'Observatoire", "model": "", "acc": [], "cost": -1, "weapon": "etoile",
-		"passive": "Regard des étoiles : +10 % de critique.",
+		"passive": "Regard des étoiles : +12 % de critique, +25 % de dégâts critiques. Elle vise lentement, elle ne rate jamais.",
 		"ult": "Pluie de météores", "ult_desc": "Douze étoiles rouges s'abattent sur les ennemis les plus coriaces.",
-		"base": {"critique": 10},
+		"bio": "Astronome de l'Observatoire, elle a découvert que les étoiles sont rouges, comme prévu par le Plan. Elle a ensuite appris à les faire tomber. Les actionnaires feraient bien de regarder en l'air.",
+		"base": {"critique": 12, "crit_dmg": 25, "chance": 5, "endurance": -25, "cadence": -5},
 		"unlock": {"kind": "boss_with", "weapon": "etoile", "zone": 3, "text": "Vaincre La Main Invisible (boss final) avec l'Étoile Rouge dans son arsenal"},
 		"tree": [
 			["Télescope", [["critique", 4], ["crit_dmg", 30], ["critique", 5], ["crit_dmg", 40], ["ult_power", 30]]],
@@ -395,15 +411,29 @@ func load_save():
 	if not data.has("chal"): data["chal"] = {}
 	if data["plan"].is_empty(): new_plan()
 	run_char = data.get("last_char", "stakhanov")
+	apply_quality.call_deferred()
 
 func opt(k: String) -> float:
 	var o: Dictionary = data.get("options", {})
-	return float(o.get(k, {"numbers": 2, "fx": 100, "shake": 100, "minimap": 1, "music": 70, "sfx": 80}.get(k, 0)))
+	return float(o.get(k, {"numbers": 2, "fx": 100, "shake": 100, "minimap": 1, "music": 70, "sfx": 80, "quality": 2}.get(k, 0)))
 
 func set_opt(k: String, v: float):
 	if not data.has("options"): data["options"] = {}
 	data["options"][k] = v
 	save()
+	if k == "quality": apply_quality()
+
+# graphics quality: 2 = high (default), 1 = medium, 0 = performance (no sun shadows, 80 % 3D resolution)
+func apply_quality():
+	var q := int(opt("quality"))
+	RenderingServer.directional_shadow_atlas_set_size([2048, 2048, 4096][q], true)
+	RenderingServer.directional_soft_shadow_filter_set_quality([RenderingServer.SHADOW_QUALITY_HARD, RenderingServer.SHADOW_QUALITY_SOFT_VERY_LOW, RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM][q])
+	var vp := get_tree().root
+	vp.msaa_3d = Viewport.MSAA_DISABLED if q == 0 else Viewport.MSAA_2X
+	vp.scaling_3d_scale = 0.8 if q == 0 else 1.0
+	vp.mesh_lod_threshold = [16.0, 10.0, 8.0][q]      # project default: 8 px
+	for l in get_tree().get_nodes_in_group("sun"):
+		(l as DirectionalLight3D).shadow_enabled = q > 0
 
 func save():
 	var f := FileAccess.open(save_path, FileAccess.WRITE)
@@ -484,10 +514,11 @@ func equip_module(w: String, m: String):
 		save()
 
 # ---------------------------------------------------------------- run modifiers
-func run_modifiers(c: String) -> Dictionary:
+func run_modifiers(c: String, with_base := true) -> Dictionary:
 	var mods := {}
 	var add := func(k: String, v: float): mods[k] = mods.get(k, 0.0) + v
-	for k in CHARACTERS[c]["base"]: add.call(k, float(CHARACTERS[c]["base"][k]))
+	if with_base:
+		for k in CHARACTERS[c]["base"]: add.call(k, float(CHARACTERS[c]["base"][k]))
 	var t: Array = data["chars"][c]["talents"]
 	for b in 3:
 		var nodes: Array = CHARACTERS[c]["tree"][b][1]

@@ -248,9 +248,22 @@ static func label(parent: Node, text: String, pos: Vector3, size: int, color: Co
 	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED if billboard else BaseMaterial3D.BILLBOARD_DISABLED
 	l.no_depth_test = billboard
 	l.shaded = false
-	l.double_sided = true
+	l.double_sided = billboard      # painted text only shows on its own side (no mirror image through walls)
 	parent.add_child(l)
 	return l
+
+# shrink a 3D label so it stays inside its sign (max_w x max_h metres)
+static func fit_label(l: Label3D, max_w: float, max_h := 0.0):
+	var f: Font = l.font if l.font else font_num
+	var sz: Vector2 = f.get_multiline_string_size(l.text, HORIZONTAL_ALIGNMENT_CENTER, -1, l.font_size) if l.autowrap_mode == TextServer.AUTOWRAP_OFF else f.get_multiline_string_size(l.text, HORIZONTAL_ALIGNMENT_CENTER, l.width, l.font_size)
+	var w := sz.x * l.pixel_size
+	var h := sz.y * l.pixel_size
+	var k := 1.0
+	if w > max_w and w > 0.0: k = max_w / w
+	if max_h > 0.0 and h * k > max_h: k = max_h / maxf(h, 0.001)
+	if k < 1.0:
+		l.pixel_size *= k
+		if l.autowrap_mode != TextServer.AUTOWRAP_OFF: l.width /= k
 
 static func fx_material(tex: String, color: Color, energy := 2.0, billboard := true) -> StandardMaterial3D:
 	var key := "fx_%s_%s_%f_%s" % [tex, color.to_html(), energy, billboard]
@@ -370,6 +383,8 @@ static func attach_head(n: Node, kinds: Array):
 	ba.add_child(root)
 	_build_accessories(root, kinds, w, top, cz, front)
 
+# eye height below the top of the head, as a fraction of the head width (KayKit heroes vs Quaternius capitalists)
+static var eye_k := 0.6
 static func _build_accessories(root: Node3D, kinds: Array, w: float, top: float, cz: float, front: float):
 	fonts()
 	for k in kinds:
@@ -403,12 +418,12 @@ static func _build_accessories(root: Node3D, kinds: Array, w: float, top: float,
 			"monocle":
 				var m := MeshInstance3D.new(); var tm := TorusMesh.new(); tm.inner_radius = w * 0.09; tm.outer_radius = w * 0.115
 				m.mesh = tm; m.material_override = solid(Color(1, 0.8, 0.3), 0.0, 0.2, 1.0)
-				m.position = Vector3(w * 0.2, top - w * 0.48, front + w * 0.02); m.rotation = Vector3(PI / 2, 0, 0)
+				m.position = Vector3(w * 0.2, top - w * eye_k, front + w * 0.02); m.rotation = Vector3(PI / 2, 0, 0)
 				root.add_child(m)
 			"sunglasses":
 				for sx in [-1.0, 1.0]:
-					box(root, Vector3(w * 0.26, w * 0.13, w * 0.03), Vector3(sx * w * 0.2, top - w * 0.6, front + w * 0.02), solid(Color(0.05, 0.05, 0.06), 0.0, 0.1))
-				box(root, Vector3(w * 0.16, w * 0.03, w * 0.03), Vector3(0, top - w * 0.57, front + w * 0.02), solid(Color(0.05, 0.05, 0.06), 0.0, 0.1))
+					box(root, Vector3(w * 0.26, w * 0.13, w * 0.03), Vector3(sx * w * 0.2, top - w * eye_k, front + w * 0.02), solid(Color(0.05, 0.05, 0.06), 0.0, 0.1))
+				box(root, Vector3(w * 0.16, w * 0.03, w * 0.03), Vector3(0, top - w * (eye_k - 0.03), front + w * 0.02), solid(Color(0.05, 0.05, 0.06), 0.0, 0.1))
 			"miner":
 				var y := solid(Color(0.95, 0.75, 0.1), 0.0, 0.4)
 				sphere(root, w * 0.55, Vector3(0, top - w * 0.05, cz), y, w * 0.6)

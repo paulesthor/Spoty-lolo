@@ -15,6 +15,21 @@ func _ready():
 	cam.global_position = c + Vector3(0, 3.6, 12.5)
 	cam.look_at(c + Vector3(0, 1.4, 0))
 	var ids: Array = Chars.HEROES.keys()
+	if "enemies" in OS.get_cmdline_user_args():
+		# every capitalist with its accessories, close up
+		var kinds := ["stagiaire", "cadre", "trader", "influenceur", "banquier", "crypto", "avocat", "huissier", "coach", "lobbyiste", "drh", "golden"]
+		cam.fov = 22
+		cam.global_position = c + Vector3(-2.5, 2.2, 6.0)
+		cam.look_at(c + Vector3(-2.5, 1.55, 0))
+		for j in kinds.size():
+			var kind: String = kinds[j]
+			var e := Chars.build_enemy(self, kind, c + Vector3(-5.5 + j * 1.0, 0, 0), 1.6)
+			var acc: Array = Data.ENEMIES[kind]["acc"]
+			if kind == "cadre": acc = ["tophat", "cigar"]
+			if not acc.is_empty(): Chars.attach(e, acc)
+			var eap := U.anim_player(e)
+			if eap: eap.play("Idle"); eap.seek(0.3, true); eap.pause()
+		return
 	if "close" in OS.get_cmdline_user_args():
 		ids = ids.slice(0, 8) if not "back" in OS.get_cmdline_user_args() else ids.slice(8)
 		for a in OS.get_cmdline_user_args():

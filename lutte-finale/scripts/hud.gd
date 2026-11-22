@@ -562,15 +562,61 @@ func screen_buttons(list: Array):
 		b.pressed.connect(it[1])
 	if not list.is_empty(): screen_btns.get_child(0).call_deferred("grab_focus")
 
-func show_screen(title: String, body: String, hint: String, title_col := Color.WHITE):
+func show_screen(title: String, body: String, hint: String, title_col := Color.WHITE, stats: Array = []):
 	screen_buttons([])
 	screen_poster.texture = load("res://assets/posters/" + U.propaganda_tex(randi()))
-	_fit(screen_title, title, 96, 40, 1000.0, 130.0)
+	_fit(screen_title, title, 96 if stats.is_empty() else 80, 40, 1000.0, 130.0 if stats.is_empty() else 105.0)
+	_vplace(screen_title, -300.0 if stats.is_empty() else -318.0, 130.0 if stats.is_empty() else 105.0)
 	screen_title.add_theme_color_override("font_color", title_col)
 	screen_title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_fit(screen_body, body, 26, 13, 960.0, 370.0)
+	_screen_stats(stats)
+	if stats.is_empty():
+		_vplace(screen_body, -150.0, 380.0)
+		_fit(screen_body, body, 26, 13, 960.0, 370.0)
+	else:
+		_vplace(screen_body, -10.0, 236.0)
+		_fit(screen_body, body, 22, 12, 960.0, 232.0)
 	_fit(screen_hint, hint, 30, 16, 1000.0, 40.0)
 	screen_root.visible = true
+
+func _vplace(c: Control, y: float, h: float):
+	c.offset_top = y; c.offset_bottom = y + h
+
+# end-of-run report: a grid of big numbers (whole run, not only the last zone)
+var stats_grid: GridContainer
+func _screen_stats(stats: Array):
+	if stats_grid == null:
+		stats_grid = GridContainer.new()
+		stats_grid.columns = 4
+		stats_grid.add_theme_constant_override("h_separation", 10)
+		stats_grid.add_theme_constant_override("v_separation", 8)
+		stats_grid.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_at(stats_grid, Control.PRESET_CENTER, Vector2(-280, -200), Vector2(960, 176))
+		screen_root.add_child(stats_grid)
+	for c in stats_grid.get_children(): c.queue_free()
+	stats_grid.visible = not stats.is_empty()
+	for st in stats:
+		var tile := PanelContainer.new()
+		var sb := StyleBoxFlat.new(); sb.bg_color = Color(0.13, 0.08, 0.07, 0.95); sb.skew = Vector2(-0.12, 0)
+		sb.border_color = Color(0.75, 0.12, 0.1); sb.border_width_left = 4
+		sb.content_margin_left = 12; sb.content_margin_right = 8; sb.content_margin_top = 4; sb.content_margin_bottom = 4
+		tile.add_theme_stylebox_override("panel", sb)
+		tile.custom_minimum_size = Vector2(232, 84)
+		tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		stats_grid.add_child(tile)
+		var v := VBoxContainer.new()
+		v.add_theme_constant_override("separation", -2)
+		v.alignment = BoxContainer.ALIGNMENT_CENTER
+		tile.add_child(v)
+		var big := _label(v, "", 34, Color(1, 0.82, 0.35) if st.size() < 3 or not st[2] else Color(1, 0.35, 0.25))
+		big.add_theme_font_override("font", load("res://fonts/RussoOne.woff2"))
+		big.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_fit(big, str(st[1]), 34, 16, 205.0, 44.0)
+		big.custom_minimum_size = Vector2(205, 44)
+		var lab := _label(v, "", 15, Color(0.85, 0.8, 0.74))
+		lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_fit(lab, str(st[0]), 15, 10, 205.0, 22.0)
+		lab.custom_minimum_size = Vector2(205, 22)
 
 func hide_screen():
 	screen_root.visible = false

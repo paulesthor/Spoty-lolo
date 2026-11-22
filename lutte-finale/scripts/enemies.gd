@@ -49,6 +49,7 @@ class Enemy:
 	var act_t := 0.0          # an action animation (punch, throw, flinch...) is playing
 	var flinch_cd := 0.0       # diminishing returns: immune to new stuns while > 0           # -1 ground, otherwise index of the plateau it stands on
 	var hit_from := {}
+	var knock_res := 0.0      # knockback diminishing returns: repeated pushes hurt but push less
 
 var game
 var list: Array = []
@@ -185,6 +186,7 @@ func spawn(kind: String, pos: Vector3, hp_mult := 1.0, dmg_mult := 1.0) -> Enemy
 	e.slow_t = 0.0
 	e.hop_t = 0.0
 	e.hit_from.clear()
+	e.knock_res = 0.0
 	if e.ap:
 		e.act_t = 0.0
 		var an: String = Chars.ENEMY_ANIMS["run"] if e.speed > 3.4 else Chars.ENEMY_ANIMS["walk"]
@@ -281,6 +283,7 @@ func _process(d: float):
 		var dir := to / maxf(dist, 0.001)
 		e.stun_t = maxf(0.0, e.stun_t - d)
 		e.stun_imm = maxf(0.0, e.stun_imm - d)
+		e.knock_res = maxf(0.0, e.knock_res - 0.3 * d)
 		e.slow_t = maxf(0.0, e.slow_t - d)
 		e.vuln_t = maxf(0.0, e.vuln_t - d)
 		var spd: float = e.speed * slow_world * (0.6 if e.slow_t > 0.0 else 1.0)
@@ -377,7 +380,11 @@ func _process(d: float):
 		if not grid.has(key): grid[key] = []
 		grid[key].append(e)
 		var py: float = pp.y
-		if dist < e.r + 0.45 and absf(py - p.y) < 1.4 and e.stun_t <= 0.0 and e.node.visible:
+		# a comrade perched on a car, a dumpster or a counter is still within reach (no safe spot off the ground)
+		var perched: bool = pl_player < 0 and py > 0.9 and e.level < 0
+		var reach_y := py - p.y + 0.6 if perched else 1.4
+		var reach_xz: float = e.r + (1.7 if perched else 0.45)
+		if dist < reach_xz and absf(py - p.y) < reach_y and e.stun_t <= 0.0 and e.node.visible:
 			if e.tgt.take_damage(e.dmg, false, p, ("un " + AFFIX_INFO[e.affix][0].to_lower() + " · " if e.affix != "" else "") + e.def["name"]):
 				_act(e, "Punch_Right" if randf() < 0.5 else "Punch_Left", 0.45, 1.6)
 				if e.affix == "vampire": e.hp = minf(e.max_hp, e.hp + e.max_hp * 0.3)
@@ -685,7 +692,8 @@ func damage(e: Enemy, amount: float, knock_from := Vector3.INF, knock_force := 0
 			e.knock = kv0.normalized() * knock_force * 0.3
 		return
 	var crit := randf() < crit_chance
-	var amt: float = amount * ((2.0 + game.mods.get("crit_dmg", 0.0) / 100.0) if crit else 1.0)
+	var cm: float = game.players[clampi(e.last_p, 0, game.players.size() - 1)].cmods.get("crit_dmg", 0.0) if wid != "" else 0.0
+	var amt: float = amount * ((2.0 + (game.mods.get("crit_dmg", 0.0) + cm) / 100.0) if crit else 1.0)
 	if e.vuln_t > 0.0: amt *= 1.5
 	if wid != "": e.last_w = wid
 	if not ignore_armor:
@@ -698,7 +706,8 @@ func damage(e: Enemy, amount: float, knock_from := Vector3.INF, knock_force := 0
 	if knock_from != Vector3.INF and not e.boss and e.ai != "slammer":
 		var kv: Vector3 = e.node.position - knock_from
 		kv.y = 0
-		e.knock = kv.normalized() * knock_force * (0.35 if e.elite else (0.5 if e.affix != "" or e.ai == "slammer" else 1.0))
+		e.knock = kv.normalized() * knock_force * (0.35 if e.elite else (0.5 if e.affix != "" or e.ai == "slammer" else 1.0)) * (1.0 - e.knock_res)
+		if knock_force >= 4.0: e.knock_res = minf(0.85, e.knock_res + 0.3)
 	if show_num or crit: Snd.play("hit", -16.0, 0.25, 0.045)
 	if e.hp <= 0.0:
 		kill(e)

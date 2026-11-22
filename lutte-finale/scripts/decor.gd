@@ -178,11 +178,15 @@ func _blimp(id: String):
 		fin.rotation.z = k * PI / 2
 	U.box(blimp, Vector3(1.2, 0.8, 2.4), Vector3(0, -3.3, 0), U.solid(Color(0.3, 0.3, 0.32)))
 	var txt: String = w.template.get("blimp", "ACHETEZ")
+	# the slogan is painted on a banner strapped along each flank (the hull is round, the banner is flat)
 	for sd in [-1.0, 1.0]:
+		U.box(blimp, Vector3(0.08, 2.4, 11.0), Vector3(sd * 2.98, -0.2, 0), U.solid(Color(0.95, 0.93, 0.86), 0.0, 0.8))
+		for zz in [-5.3, 5.3]: U.box(blimp, Vector3(0.1, 2.6, 0.12), Vector3(sd * 3.0, -0.2, zz), U.solid(Color(0.75, 0.08, 0.1)))
 		var l := Label3D.new(); l.text = txt; l.font = U.font_main; l.font_size = 200; l.pixel_size = 0.02
-		l.modulate = Color(0.15, 0.3, 0.6); l.outline_size = 0; l.position = Vector3(sd * 3.05, 0, 0); l.rotation.y = sd * PI / 2
-		l.shaded = true
+		l.modulate = Color(0.75, 0.08, 0.1); l.outline_size = 0; l.position = Vector3(sd * 3.03, -0.2, 0); l.rotation.y = sd * PI / 2
+		l.shaded = true; l.double_sided = false
 		blimp.add_child(l)
+		U.fit_label(l, 10.2, 2.0)
 
 # ---------------------------------------------------------------- zone 1: hypermarket
 func _hypermarche():
@@ -568,7 +572,14 @@ func _startup():
 		var tr := U.place(self, U.CAR + ["delivery", "van", "delivery-flat"][i % 3] + ".glb", p, 2.6, rng.randf() * TAU)
 		w.add_obstacle(tr)
 		var a := U.world_aabb(tr)
-		var l := U.label(self, ["QUINOA BOWL", "KOMBUCHA", "AVOCADO TOAST", "POKÉ"][i % 4], Vector3(p.x, a.end.y + 0.6, p.z), 70, Color(1, 0.6, 0.85), Color(0.1, 0, 0.1, 1), true))
+		# a menu board fixed on the roof, the dish written on both faces
+		var rot: float = tr.rotation.y
+		var bb := U.box(self, Vector3(2.6, 0.7, 0.08), Vector3(p.x, a.end.y + 0.55, p.z), U.solid(Color(0.95, 0.4, 0.7)), Vector3(0, rot, 0))
+		for k in 2: U.box(self, Vector3(0.06, 0.25, 0.06), Vector3(p.x, a.end.y + 0.12, p.z) + Vector3(cos(rot), 0, -sin(rot)) * (k * 2.0 - 1.0), U.solid(Color(0.3, 0.3, 0.32)))
+		for f in [1.0, -1.0]:
+			var fl := U.label(self, ["QUINOA BOWL", "KOMBUCHA", "AVOCADO TOAST", "POKÉ"][i % 4], Vector3(p.x, a.end.y + 0.55, p.z) + Vector3(sin(rot), 0, cos(rot)) * 0.045 * f, 70, Color(1, 1, 1), Color(0, 0, 0, 0), false, U.font_main)
+			fl.rotation.y = rot + (0.0 if f > 0.0 else PI); fl.outline_size = 0
+			U.fit_label(fl, 2.4, 0.6))
 	var neon := [Color(1, 0.3, 0.8), Color(0.3, 0.9, 1.0), Color(0.7, 0.4, 1.0)]
 	_scatter(10, 1.0, func(p: Vector3, i: int):
 		U.cyl(self, 0.06, 3.6, p + Vector3(0, 1.8, 0), U.solid(Color(0.2, 0.2, 0.22)))

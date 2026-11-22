@@ -529,6 +529,13 @@ func _tab_options():
 		var b := _btn(("● " if int(Meta.opt("fx")) == o else "○ ") + "%d %%" % o, 20)
 		b.pressed.connect(func(): Meta.set_opt("fx", o); _refresh())
 		row2.add_child(b)
+	v.add_child(_lbl("QUALITÉ GRAPHIQUE", 24, C_GOLD))
+	v.add_child(_lbl("Si le jeu rame quand la horde grossit : « Performance » coupe les ombres du soleil et l'anticrénelage, et calcule la 3D à 80 %.", 16, C_DIM))
+	var rowq := HBoxContainer.new(); rowq.add_theme_constant_override("separation", 10); v.add_child(rowq)
+	for o in [[2, "HAUTE"], [1, "MOYENNE"], [0, "PERFORMANCE"]]:
+		var b := _btn(("● " if int(Meta.opt("quality")) == o[0] else "○ ") + o[1], 20)
+		b.pressed.connect(func(): Meta.set_opt("quality", o[0]); _refresh())
+		rowq.add_child(b)
 	v.add_child(_lbl("TREMBLEMENT DE L'ÉCRAN", 24, C_GOLD))
 	var row3 := HBoxContainer.new(); row3.add_theme_constant_override("separation", 10); v.add_child(row3)
 	for o in [100, 50, 0]:

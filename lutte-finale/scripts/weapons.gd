@@ -461,8 +461,10 @@ func _update_fires(d: float):
 		if gl: (gl as Node3D).scale = Vector3.ONE * (0.9 + 0.12 * sin(t * 11.0 + f["area"]) + 0.06 * sin(t * 23.0))
 		if f["tick"] <= 0.0:
 			f["tick"] = 0.3
+			# overlapping pools no longer stack: an enemy burns at most once per tick, whatever the number of pools
 			for e in game.enemies.in_radius(f["n"].global_position, f["area"]):
-				_hit(e, f["s"]["dmg"], f["s"], Vector3.INF, 0.0, "", false, true)
+				_hit(e, f["s"]["dmg"], f["s"], Vector3.INF, 0.0, "fire", false, true)
+				game.enemies.set_hit_cd(e, "fire", 0.27)
 		if f["life"] <= 0.0:
 			fires.erase(f)
 			var n: Node3D = f["n"]

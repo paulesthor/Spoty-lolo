@@ -13,8 +13,9 @@ const PITCH_MAX := 1.15    # ~66°: nearly top-down
 var cam_pitch := atan2(7.5, 10.5)
 
 # camera offset/look target for the current pitch (same distance as the default framing)
+const CAM_DIST := 17.0     # was 12.9: the horde and the weapon effects need room
 func cam_offset() -> Vector3:
-	var dist := Vector2(10.5, 7.5).length()
+	var dist := CAM_DIST
 	return Vector3(0, sin(cam_pitch) * dist, cos(cam_pitch) * dist)
 
 func cam_look() -> Vector3:
@@ -107,6 +108,7 @@ var test_pos := Vector3.INF
 var test_yaw := 0.0
 var test_dur := 0.0
 var shot_every := 0.0
+var test_endshot := false   # test: at the end of dur, die on purpose to capture the end report
 var shot_t := 0.0
 var shot_dir := "res://proto_shots"
 var shot_n := 0
@@ -136,6 +138,7 @@ func _ready():
 		elif a.begins_with("tier="): Meta.run_tier = int(a.substr(5))
 		elif a == "endless": Meta.run_endless = true
 		elif a == "killboss": test_killboss = true
+		elif a == "endshot": test_endshot = true
 		elif a == "god": test_god = true
 		elif a.begins_with("give="): test_give = a.substr(5)
 		elif a.begins_with("coop="): coop_test = int(a.substr(5))
@@ -375,8 +378,15 @@ func _load_meta():
 		if a2.begins_with("char=") and Meta.CHARACTERS.has(a2.substr(5)): char_id = a2.substr(5)    # test hook
 	if net_client: char_id = String(party[Net.my_idx].get("char", char_id))
 	dirs = Meta.run_directives.duplicate()
-	mods = Meta.run_modifiers(char_id)
-	rerolls = int(mods.get("reroll", 0.0))
+	mods = Meta.run_modifiers(char_id, false)      # talents and bureau: the whole collective
+	var extra_rerolls := 0.0
+	for i0 in players.size():
+		var cid0: String = char_id if (i0 == 0 and not Net.in_game) else String(party[i0].get("char", "stakhanov"))
+		if not Meta.CHARACTERS.has(cid0): cid0 = "stakhanov"
+		players[i0].cmods = {}
+		for k in Meta.CHARACTERS[cid0]["base"]: players[i0].cmods[k] = float(Meta.CHARACTERS[cid0]["base"][k])
+		extra_rerolls += players[i0].cmods.get("reroll", 0.0)
+	rerolls = int(mods.get("reroll", 0.0) + extra_rerolls)
 	banishes = int(mods.get("banish", 0.0))
 	skips = int(mods.get("skip", 0.0))
 	base_time_scale = Engine.time_scale
@@ -386,7 +396,7 @@ func _load_meta():
 		var cid: String = char_id if (i == 0 and not Net.in_game) else String(party[i].get("char", "stakhanov"))
 		if not Meta.CHARACTERS.has(cid): cid = "stakhanov"
 		pl.apply_character(cid, -1 if i == 0 else int(party[i].get("skin", 0)))
-		pl.max_hp = 120.0 + mods.get("endurance", 0.0)
+		pl.max_hp = maxf(60.0, 120.0 + mods.get("endurance", 0.0) + pl.cmods.get("endurance", 0.0))
 		pl.hp = pl.max_hp
 	if dirs.has("surveillance"): pass
 	if dirs.has("opa"):
@@ -408,6 +418,7 @@ func dv(id: String, p = null) -> float:
 	var v: float = (decrets[id]["v"] if decrets.has(id) else 0.0)
 	if id == "endurance": return v
 	v += mods.get(id, 0.0)
+	if p: v += p.cmods.get(id, 0.0)
 	var cid: String = p.char_id if p else char_id
 	var ut: float = p.ult_t if p else 0.0
 	if id == "productivite": v += 1.5 * (level - 1)       # "Expérience du Parti": every level makes you hit harder
@@ -684,7 +695,7 @@ func _make_shrine(kind: String, p: Vector3):
 			for m in st.find_children("*", "MeshInstance3D", true, false):
 				(m as MeshInstance3D).material_override = U.solid(Color(0.75, 0.12, 0.12), 0.0, 0.45, 0.3)
 			world.obstacles.append(Rect2(p.x - 1.5, p.z - 1.5, 3, 3))
-			_static_box(p + Vector3(0, 1.1, 0), Vector3(3, 2.2, 3))
+			_static_box(p + Vector3(0, 8.0, 0), Vector3(3, 16.0, 3))
 			for fx in [-3.0, 3.0]:
 				U.box(n, Vector3(0.15, 5.0, 0.15), Vector3(fx, 2.5, 0), U.solid(Color(0.3, 0.3, 0.32), 0.0, 0.4, 0.8))
 				U.box(n, Vector3(2.4, 1.5, 0.05), Vector3(fx + 1.25, 4.2, 0), U.solid(Color(0.72, 0.05, 0.1)))
@@ -702,14 +713,14 @@ func _make_shrine(kind: String, p: Vector3):
 			U.box(n, Vector3(2.6, 2.6, 2.0), Vector3(0, 1.3, 0), U.solid(Color(0.12, 0.35, 0.18)))
 			U.box(n, Vector3(2.2, 1.2, 0.1), Vector3(0, 3.4, 0), U.solid(Color(0.05, 0.05, 0.06)))
 			U.label(n, "▲ +312 %", Vector3(0, 3.4, 0.08), 70, Color(0.3, 1, 0.4), Color(0, 0, 0, 0), false)
-			world.obstacles.append(Rect2(p.x - 1.3, p.z - 1.0, 2.6, 2.0)); _static_box(p + Vector3(0, 1.3, 0), Vector3(2.6, 2.6, 2.0))
+			world.obstacles.append(Rect2(p.x - 1.3, p.z - 1.0, 2.6, 2.0)); _static_box(p + Vector3(0, 8.0, 0), Vector3(2.6, 16.0, 2.0))
 		"goulag":
 			U.box(n, Vector3(4, 2.6, 3), Vector3(0, 1.3, 0), U.solid(Color(0.32, 0.3, 0.3)))
 			U.box(n, Vector3(4.4, 0.3, 3.4), Vector3(0, 2.75, 0), U.solid(Color(0.2, 0.2, 0.22)))
 			for i in 5:
 				U.box(n, Vector3(0.06, 1.6, 0.06), Vector3(-2.4 + i * 1.2, 0.8, 2.2), U.solid(Color(0.4, 0.4, 0.4), 0.0, 0.3, 0.8))
 			U.box(n, Vector3(5.0, 0.04, 0.04), Vector3(0, 1.4, 2.2), U.solid(Color(0.5, 0.5, 0.5), 0.0, 0.3, 0.8))
-			world.obstacles.append(Rect2(p.x - 2.0, p.z - 1.5, 4, 3)); _static_box(p + Vector3(0, 1.3, 0), Vector3(4, 2.6, 3))
+			world.obstacles.append(Rect2(p.x - 2.0, p.z - 1.5, 4, 3)); _static_box(p + Vector3(0, 8.0, 0), Vector3(4, 16.0, 3))
 		"marche":
 			U.box(n, Vector3(3.2, 1.0, 1.2), Vector3(0, 0.5, 0), U.solid(Color(0.3, 0.2, 0.25)))
 			U.box(n, Vector3(3.6, 0.12, 2.0), Vector3(0, 2.6, 0.2), U.solid(Color(0.35, 0.15, 0.45)))
@@ -719,7 +730,7 @@ func _make_shrine(kind: String, p: Vector3):
 			var gm := U.place(n, U.SHOP + "gacha-machine.glb", p + Vector3(2.4, 0, 0), 1.8, 0.0)
 			var lamp := OmniLight3D.new(); lamp.light_color = col; lamp.light_energy = 1.5; lamp.omni_range = 5.0; lamp.position = Vector3(0, 2.2, 0.6)
 			n.add_child(lamp)
-			world.obstacles.append(Rect2(p.x - 1.6, p.z - 0.6, 3.2, 1.2)); _static_box(p + Vector3(0, 0.5, 0), Vector3(3.2, 1.0, 1.2))
+			world.obstacles.append(Rect2(p.x - 1.6, p.z - 0.6, 3.2, 1.2)); _static_box(p + Vector3(0, 8.0, 0), Vector3(3.2, 16.0, 1.2))
 		"aimant":
 			var fr := U.place(n, U.SHOP + "freezer.glb", p, 2.2, 0.0)
 			var fa := U.world_aabb(fr)
@@ -734,7 +745,7 @@ func _make_shrine(kind: String, p: Vector3):
 				ap2.play("Wave"); ap2.seek(0.4, true); ap2.pause()
 			for m in g.find_children("*", "MeshInstance3D", true, false):
 				(m as MeshInstance3D).material_override = U.solid(Color(1.0, 0.72, 0.2), 0.0, 0.25, 1.0)
-			world.obstacles.append(Rect2(p.x - 1.2, p.z - 1.2, 2.4, 2.4)); _static_box(p + Vector3(0, 0.6, 0), Vector3(2.4, 1.2, 2.4))
+			world.obstacles.append(Rect2(p.x - 1.2, p.z - 1.2, 2.4, 2.4)); _static_box(p + Vector3(0, 8.0, 0), Vector3(2.4, 16.0, 2.4))
 	_beam(n, col)
 	var lab := U.label(n, info[0], Vector3(0, 6.0 if kind == "statue" else 4.2, 0), 60, col, Color(0.05, 0.03, 0, 1))
 	if kind == "statue": lab.position.y = 7.0
@@ -1240,13 +1251,13 @@ func nearest_gem(p: Vector3, maxd: float):
 	return best
 
 func _update_pickups(d: float):
-	var magnet := 4.0 * (1.0 + dv("aimant") / 100.0)
 	var t := Time.get_ticks_msec() / 1000.0
 	for arr in [gems, coins]:
 		for g in arr.duplicate():
 			var n: Node3D = g["n"]
 			var who = g.get("who") if g.get("who") != null and not g["who"].downed else nearest_player(n.global_position)
 			var pp: Vector3 = who.global_position + Vector3(0, 0.6, 0)
+			var magnet: float = 4.0 * maxf(0.3, 1.0 + dv("aimant", who) / 100.0)
 			var v := pp - n.global_position
 			var dist := v.length()
 			if dist < magnet:
@@ -2034,9 +2045,10 @@ func _finish_over():
 	get_tree().paused = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	var rep := _report(false)
+	hud.set_hud_visible(false)
 	hud.show_screen("TU ES MORT",
-		("Tué par : " + player.last_cause + "\n" if player.last_cause != "" else "") + "Officiellement, tu n'as jamais existé.\nTemps : %s   ·   Niveau %d   ·   %d capitalistes bonkés\n\n%s" % [_fmt(time), level, kills, "\n".join(rep["lines"])],
-		"ENTRÉE ou A : retour au Kolkhoze", Color(0.85, 0.15, 0.15))
+		("Tué par : " + player.last_cause + "  ·  " if player.last_cause != "" else "") + "Officiellement, tu n'as jamais existé.\n" + _loadout_text() + ("\n\n" + "\n".join(rep["lines"]) if not rep["lines"].is_empty() else ""),
+		"ENTRÉE ou A : retour au Kolkhoze", Color(0.85, 0.15, 0.15), _end_stats())
 	hud.screen_buttons([["RETOUR AU KOLKHOZE", _back_to_hub], ["REJOUER", _replay]])
 	print("[game] GAME OVER t=%s level=%d kills=%d" % [_fmt(time), level, kills])
 
@@ -2048,10 +2060,40 @@ func _win():
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	var rep := _report(true)
 	hud.show_screen("LE CAPITALISME EST TOMBÉ",
-		"La Main Invisible a été bonkée. La Bourse, les tours et l'hypermarché appartiennent au peuple.\nLe Parti te remercie et t'oubliera dès demain.\nTemps total : %s   ·   Niveau %d   ·   %d capitalistes bonkés\n\n%s" % [_fmt(run_time + time), level, kills, "\n".join(rep["lines"])],
-		"ENTRÉE ou A : retour au Kolkhoze", Color(0.95, 0.75, 0.25))
+		"La Main Invisible a été bonkée. Le Parti te remercie et t'oubliera dès demain.\n" + _loadout_text() + ("\n\n" + "\n".join(rep["lines"]) if not rep["lines"].is_empty() else ""),
+		"ENTRÉE ou A : retour au Kolkhoze", Color(0.95, 0.75, 0.25), _end_stats())
 	hud.screen_buttons([["RETOUR AU KOLKHOZE", _back_to_hub], ["REJOUER", _replay]])
 	print("[game] WIN t=%s level=%d kills=%d" % [_fmt(time), level, kills])
+
+# the whole run (every zone crossed), not only the zone where it ended
+func _end_stats(client := false) -> Array:
+	var evo := 0
+	for id in weapons.owned:
+		if weapons.owned[id]["evo"]: evo += 1
+	var nd := 0
+	for id in decrets: nd += int(decrets[id]["n"])
+	var out := [["TEMPS TOTAL", _fmt(run_time + time)], ["ZONE ATTEINTE", "%d / %d" % [zone, Levels.count()]],
+		["NIVEAU", str(level)], ["CAPITALISTES BONKÉS", str(kills)]]
+	if not client:
+		out += [["MINI-BOSS LIQUIDÉS", str(elites_killed)], ["BOSS RENVERSÉS", str(bosses_killed.size())]]
+	out += [["ARMES" + (" (%d ÉVOLUÉE%s)" % [evo, "S" if evo > 1 else ""] if evo > 0 else ""), str(weapons.owned.size())], ["DÉCRETS SIGNÉS", str(nd)]]
+	if client: out += [["CAMARADES", str(players.size())], ["ROUBLES", str(rubles)]]
+	return out
+
+func _loadout_text() -> String:
+	var wl := []
+	for id in weapons.owned:
+		var w: Dictionary = weapons.owned[id]
+		wl.append("%s %d%s" % [weapons.display_name(id), w["lv"], "★" if w["evo"] else ""])
+	var dl := []
+	for id in decrets:
+		dl.append(Data.DECRETS[id]["name"] + (" ×%d" % decrets[id]["n"] if decrets[id]["n"] > 1 else ""))
+	var best := ""
+	var bk := 0
+	for id in kills_by_weapon:
+		if int(kills_by_weapon[id]) > bk and weapons.owned.has(id): bk = int(kills_by_weapon[id]); best = id
+	return "Armes : " + (", ".join(wl) if not wl.is_empty() else "aucune") + "\nDécrets : " + (", ".join(dl) if not dl.is_empty() else "aucun") + \
+		("\nArme du peuple : %s (%d bonkés)" % [weapons.display_name(best), bk] if best != "" else "")
 
 func _report(win: bool) -> Dictionary:
 	if report_done: return {"lines": []}
@@ -2137,6 +2179,10 @@ func _bot_tick(d: float):
 		_back_to_hub()
 		return
 	if multi_run and time >= 720.0:
+		game_over(true)
+		return
+	if test_endshot and test_dur > 0.0 and time >= test_dur and state == "play":
+		player.last_cause = "Trader"
 		game_over(true)
 		return
 	if test_dur > 0.0 and (time >= test_dur or state in ["over", "win"]):
@@ -2428,8 +2474,8 @@ func _client_end(win: bool, abandon: bool):
 	get_tree().paused = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	hud.show_screen("LE CAPITALISME EST TOMBÉ" if win else ("L'HÔTE A ABANDONNÉ" if abandon else "LE COLLECTIF EST TOMBÉ"),
-		"Temps : %s   ·   Niveau %d   ·   %d capitalistes bonkés\n\nLes médailles et les défis sont comptés chez l'hôte." % [_fmt(run_time + time), level, kills],
-		"ENTRÉE ou A : retour au menu en ligne", Color(0.95, 0.75, 0.25) if win else Color(0.85, 0.15, 0.15))
+		_loadout_text() + "\n\nLes médailles et les défis sont comptés chez l'hôte.",
+		"ENTRÉE ou A : retour au menu en ligne", Color(0.95, 0.75, 0.25) if win else Color(0.85, 0.15, 0.15), _end_stats(true))
 	hud.screen_buttons([["RETOUR AU MENU EN LIGNE", _back_to_hub]])
 
 # test hook: stand on a container (or a platform) and check that capitalists come up

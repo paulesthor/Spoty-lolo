@@ -9,6 +9,48 @@ var sel := 0
 var cam_x := 0.0
 var t := 0.0
 var info: VBoxContainer
+var sheet: VBoxContainer
+
+# characteristics shown on the sheet: [key, label, base value, unit, min, max]
+const STATS := [["hp", "PV", 120.0, "", 80.0, 180.0], ["productivite", "DÉGÂTS", 100.0, "%", 85.0, 115.0], ["cadence", "CADENCE", 100.0, "%", 85.0, 115.0],
+	["vitesse", "VITESSE", 100.0, "%", 85.0, 115.0], ["jump", "SAUT", 100.0, "%", 75.0, 150.0], ["critique", "CRITIQUE", 5.0, "%", 0.0, 20.0],
+	["chance", "CHANCE", 0.0, "%", -10.0, 12.0], ["expansion", "ZONE", 100.0, "%", 85.0, 120.0], ["aimant", "AIMANT", 100.0, "%", 85.0, 135.0],
+	["armure", "ARMURE", 0.0, "", -1.0, 3.0]]
+const EXTRAS := {"regen": "Régénération %+.1f PV/s", "dodge": "Esquive %d %%", "propagande": "XP %+d %%", "duree": "Durée des effets %+d %%",
+	"crit_dmg": "Dégâts critiques %+d %%", "reroll": "Relance de cartes +%d", "air": "Portée en l'air %+d %%"}
+
+func _sheet(c: String):
+	for ch in sheet.get_children(): ch.queue_free()
+	var def: Dictionary = Meta.CHARACTERS[c]
+	var b: Dictionary = def["base"]
+	UIK.label(sheet, "FICHE DU CAMARADE", 22, UIK.GOLD, "RussoOne")
+	for st in STATS:
+		var key: String = st[0]
+		var base: float = st[2]
+		var v: float = base + float(b.get("endurance" if key == "hp" else key, 0.0))
+		var row := HBoxContainer.new(); row.add_theme_constant_override("separation", 8); sheet.add_child(row)
+		var nl := UIK.label(row, st[1], 16, UIK.PAPER); nl.custom_minimum_size = Vector2(90, 0)
+		var bar := ProgressBar.new(); bar.show_percentage = false; bar.custom_minimum_size = Vector2(190, 12)
+		bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		bar.value = clampf((v - st[4]) / (st[5] - st[4]), 0.03, 1.0) * 100.0
+		var good: bool = v > base + 0.01
+		var bad: bool = v < base - 0.01
+		var fill := StyleBoxFlat.new(); fill.bg_color = Color(0.35, 0.8, 0.35) if good else (Color(0.85, 0.22, 0.2) if bad else Color(0.8, 0.74, 0.62))
+		var bgs := StyleBoxFlat.new(); bgs.bg_color = Color(0, 0, 0, 0.45)
+		bar.add_theme_stylebox_override("fill", fill); bar.add_theme_stylebox_override("background", bgs)
+		row.add_child(bar)
+		var txt := ("%d" % int(v)) if st[3] == "" else ("%d %%" % int(round(v)))
+		UIK.label(row, txt, 16, Color(0.6, 1, 0.6) if good else (Color(1, 0.5, 0.45) if bad else UIK.DIM))
+	var extra := []
+	for k in EXTRAS:
+		if not b.has(k): continue
+		if k == "regen": extra.append("Aucune régénération" if 0.4 + float(b[k]) <= 0.0 else (EXTRAS[k] as String) % float(b[k]))
+		else: extra.append((EXTRAS[k] as String) % int(b[k]))
+	if not extra.is_empty():
+		UIK.label(sheet, " · ".join(extra), 15, UIK.GOLD, "Oswald", true).custom_minimum_size = Vector2(380, 0)
+	var sp := Control.new(); sp.custom_minimum_size = Vector2(0, 4); sheet.add_child(sp)
+	var bio := UIK.label(sheet, String(def.get("bio", "")), 16, Color(0.86, 0.82, 0.74), "Oswald", true)
+	bio.custom_minimum_size = Vector2(380, 0)
 var skins_row: HBoxContainer
 var go_btn: Button
 var medals_lbl: Label
@@ -62,6 +104,10 @@ func _ui():
 	var p := UIK.panel(root)
 	p.set_anchors_preset(Control.PRESET_RIGHT_WIDE); p.offset_left = -500; p.offset_right = -40; p.offset_top = 40; p.offset_bottom = -170
 	info = VBoxContainer.new(); info.add_theme_constant_override("separation", 8); p.add_child(info)
+	# character sheet (left): characteristics as bars + a short (dark) biography
+	var sp := UIK.panel(root, Color(0.08, 0.065, 0.06, 0.86))
+	sp.position = Vector2(40, 140); sp.custom_minimum_size = Vector2(400, 0)
+	sheet = VBoxContainer.new(); sheet.add_theme_constant_override("separation", 4); sp.add_child(sheet)
 	# bottom bar: navigation, run settings, launch
 	var bar := HBoxContainer.new()
 	bar.set_anchors_preset(Control.PRESET_BOTTOM_WIDE); bar.offset_left = 60; bar.offset_right = -40; bar.offset_top = -140; bar.offset_bottom = -40
@@ -115,6 +161,7 @@ func _select(i: int, cheer := true):
 	var c: String = ids[i]
 	for k in ids.size():
 		var on: bool = k == i
+		if k < stage.plates.size(): stage.plates[k].visible = on      # one name at a time: the plates used to overlap
 		var sp: SpotLight3D = stage.spots[k]
 		sp.light_energy = 9.0 if on else 1.2
 		sp.shadow_enabled = on
@@ -140,6 +187,7 @@ func _select(i: int, cheer := true):
 func _info():
 	for ch in info.get_children(): ch.queue_free()
 	var c: String = ids[sel]
+	_sheet(c)
 	var def: Dictionary = Meta.CHARACTERS[c]
 	var unlocked := _unlocked(c)
 	UIK.label(info, (def["name"] as String).to_upper(), 40, UIK.RED if unlocked else UIK.DIM, "RussoOne", true)

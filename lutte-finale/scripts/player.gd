@@ -47,6 +47,7 @@ var prompt := ""             # interaction hint for this player
 var choices: Array = []      # card choices waiting for this comrade
 var cur_choice = null        # the card set on their screen
 var bot_wait := 0.0
+var cmods := {}              # this comrade's own characteristics (Meta.CHARACTERS[char]["base"])
 var tag: Label3D
 var down_fx: Node3D
 var bot_angle := 0.0
@@ -108,7 +109,7 @@ func oneshot(state: String, dur: float, speed := 1.0):
 	oneshot_t = dur
 
 func stat_speed() -> float:
-	var sp: float = base_speed * (1.0 + game.dv("vitesse") / 100.0)
+	var sp: float = base_speed * (1.0 + game.dv("vitesse", self) / 100.0)
 	if status.get("slow", 0.0) > 0.0: sp *= 0.62
 	if status.get("debt", 0.0) > 0.0: sp *= 0.55
 	return sp
@@ -144,7 +145,7 @@ func _physics_process(d: float):
 		velocity = Vector3.ZERO
 		return
 	if game.dirl("rationnement") == 0:
-		hp = minf(max_hp, hp + (0.4 + game.mods.get("regen", 0.0)) * d)
+		hp = minf(max_hp, hp + maxf(0.0, 0.4 + game.mods.get("regen", 0.0) + cmods.get("regen", 0.0)) * d)
 	if remote:
 		_remote_step(d)
 		return
@@ -197,7 +198,9 @@ func _physics_process(d: float):
 		elif side < -0.5: st = "dodge_l"
 		oneshot(st, 0.4, 1.6)
 	var hv := Vector3(velocity.x, 0, velocity.z)
-	var accel := 70.0 if is_on_floor() else 30.0
+	var air_k: float = 1.0 + cmods.get("air", 0.0) / 100.0
+	if not is_on_floor(): spd *= air_k        # Youri carries his momentum further in the air
+	var accel := 70.0 if is_on_floor() else 30.0 * air_k
 	hv = hv.move_toward(dir * spd, accel * d)
 	if dodge_t > 0.0:
 		dodge_t -= d
@@ -209,10 +212,12 @@ func _physics_process(d: float):
 	var low_g := char_id == "youri"
 	velocity.y -= GRAVITY * grav_mult * d * (0.72 if low_g and velocity.y < 0.0 else 1.0)
 	if want_jump:
+		# jump height scales with the square root of the take-off speed: +45 % height = x1.2 speed
+		var jk := sqrt(maxf(0.2, 1.0 + cmods.get("jump", 0.0) / 100.0))
 		if is_on_floor():
-			velocity.y = JUMP_V * (1.15 if char_id == "youri" else 1.0)
+			velocity.y = JUMP_V * jk
 		elif jumps_left > 0:
-			velocity.y = DOUBLE_JUMP_V * (1.15 if char_id == "youri" else 1.0)
+			velocity.y = DOUBLE_JUMP_V * jk
 			jumps_left -= 1
 	last_vy = velocity.y
 	move_and_slide()
@@ -254,10 +259,10 @@ func take_damage(amount: float, dot := false, from := Vector3.INF, cause := "") 
 	if not dot and oneshot_t <= 0.0 and slide_t <= 0.0: oneshot("hit", 0.25, 1.6)
 	if from != Vector3.INF and not dot: game.player_hit_from(self, from)
 	if not dot: Snd.play("hurt", -2.0, 0.1, 0.18)
-	if not dot and randf() * 100.0 < game.mods.get("dodge", 0.0):
+	if not dot and randf() * 100.0 < game.mods.get("dodge", 0.0) + cmods.get("dodge", 0.0):
 		invuln = 0.3
 		return false
-	hp -= maxf(amount - game.dv("armure"), amount * 0.25)
+	hp -= maxf(amount - game.dv("armure", self), amount * 0.25)
 	if not dot: invuln = 0.6
 	game.on_player_hit(amount, self)
 	if hp <= 0.0:
