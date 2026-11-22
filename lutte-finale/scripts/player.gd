@@ -51,6 +51,7 @@ func apply_character(c: String):
 
 var oneshot_t := 0.0
 var air_t := 0.0
+var step_t := 0.0
 var char_id := "stakhanov"
 
 func _build_model(c: String):
@@ -161,6 +162,7 @@ func _physics_process(d: float):
 		dodge_dir = dir.normalized() if dir.length() > 0.1 else facing
 		invuln = maxf(invuln, 0.38)
 		game.weapons.dodge_fx(global_position, dodge_dir)
+		Snd.play("whoosh", -4.0, 0.1, 0.1)
 		var side := facing.cross(Vector3.UP).dot(dodge_dir)
 		var fwd := facing.dot(dodge_dir)
 		var st := "dodge_f"
@@ -210,6 +212,12 @@ func _physics_process(d: float):
 		_anim("run", clampf(hv.length() / 7.0, 0.7, 1.6))
 	else:
 		_anim("idle")
+	# footsteps while running on the ground
+	if on_floor and hv.length() > 3.0 and slide_t <= 0.0:
+		step_t -= d * hv.length() / 7.0
+		if step_t <= 0.0:
+			step_t = 0.36
+			Snd.play(["step1", "step2", "step3"][randi() % 3], -20.0, 0.1, 0.1)
 	if global_position.y < -5.0:
 		global_position = Vector3(0, 1, 0)
 
@@ -219,6 +227,7 @@ func take_damage(amount: float, dot := false, from := Vector3.INF, cause := "") 
 	if cause != "": last_cause = cause
 	if not dot and oneshot_t <= 0.0 and slide_t <= 0.0: oneshot("hit", 0.25, 1.6)
 	if from != Vector3.INF and not dot: game.hud.hit_from(from)
+	if not dot: Snd.play("hurt", -2.0, 0.1, 0.18)
 	if not dot and randf() * 100.0 < game.mods.get("dodge", 0.0):
 		invuln = 0.3
 		return false

@@ -615,6 +615,7 @@ func break_in_radius(c: Vector3, r: float):
 		if v.length() < r: _break(b)
 
 func _break(b: Dictionary):
+	Snd.play("break", -10.0, 0.15, 0.06)
 	breakables.erase(b)
 	var p: Vector3 = b["pos"]
 	var n: Node3D = b["n"]
@@ -637,6 +638,7 @@ func _show_menu():
 
 func start():
 	state = "play"
+	Snd.music("boss" if zone >= 3 else "battle")
 	hud.hide_screen()
 	hud.set_hud_visible(true)
 	if not bot: Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
@@ -780,7 +782,8 @@ func _pause():
 	var dl := []
 	for id in decrets:
 		dl.append("%s (%s)" % [Data.DECRETS[id]["name"], Data.decret_text(id, dv(id))])
-	hud.show_screen("PAUSE", "Niveau %d · %d KO · %s\n\nArmes : %s\nDécrets : %s" % [level, kills, _fmt(time), ", ".join(lines), ", ".join(dl) if not dl.is_empty() else "aucun"], "ÉCHAP pour reprendre · RETOUR ARRIÈRE pour abandonner (retour au Kolkhoze)")
+	hud.show_screen("PAUSE", "Niveau %d · %d KO · %s\n\nArmes : %s\nDécrets : %s" % [level, kills, _fmt(time), ", ".join(lines), ", ".join(dl) if not dl.is_empty() else "aucun"], "Échap : reprendre · Retour arrière : abandonner")
+	hud.screen_buttons([["REPRENDRE", _unpause], ["ABANDONNER LA RUN", func(): game_over(true)]])
 
 func _unpause():
 	state = "play"
@@ -870,6 +873,7 @@ func _director(d: float):
 	if not boss_spawned and time >= BOSS_TIME:
 		boss_spawned = true
 		var bk: String = tpl["boss"]
+		Snd.music("boss", 2.0); Snd.play("explosion", 0.0, 0.0, 1.0, 0.6)
 		var zl := 1.0 + 1.2 * floorf((zone - 1) / 3.0)     # endless: bosses get tougher every loop
 		boss = enemies.spawn(bk, spawn_point(20.0, 24.0), (1.0 + 0.2 * bets) * zl * float(Meta.TIERS[tier - 1]["hp"]), float(Meta.TIERS[tier - 1]["dmg"]))
 		hud.toast("%s ARRIVE" % Data.ENEMIES[bk]["name"].to_upper(), 3.0)
@@ -1016,6 +1020,7 @@ func pop_word(pos: Vector3, text: String, col: Color, size := 1.0, force := fals
 	tw.tween_callback(l.queue_free)
 
 func stamp(pos: Vector3, text: String):
+	Snd.play("stamp", -2.0, 0.05, 0.1); Snd.play("bell", -12.0, 0.05, 0.3)
 	pop_word(pos, text, Color(0.85, 0.08, 0.1), 1.4, true)
 
 func toast(t: String, dur := 2.0):
@@ -1077,12 +1082,15 @@ func _update_pickups(d: float):
 				if dist < 0.7:
 					arr.erase(g)
 					n.queue_free()
-					if arr == gems: add_xp(g["v"])
+					if arr == gems:
+						add_xp(g["v"])
+						Snd.play("gem", -16.0, 0.0, 0.035, 0.9 + minf(float(g["v"]), 10.0) * 0.04 + randf() * 0.15)
 					elif g.has("heal"):
 						var hh: float = g["heal"] * (1.0 + mods.get("heal_pickup", 0.0) / 100.0)
 						player.heal(hh)
 						hud.toast("TARTINE · +%d PV" % int(hh), 1.0)
 					else:
+						Snd.play("coin", -10.0, 0.1, 0.06)
 						rubles += int(ceil(g["v"] * (1.0 + 0.35 * bets) * (1.0 + mods.get("rubles_pct", 0.0) / 100.0) * (0.6 if dirl("inflation") > 0 else 1.0)))
 			else:
 				n.rotation.y = t * 2.0
@@ -1118,6 +1126,7 @@ func _update_interactions(d: float):
 				if not c["free"]: chest_cost = int(chest_cost * 1.45) + 4
 				chests.erase(c)
 				_chest_open_fx(c["n"])
+				Snd.play("chest", -2.0, 0.05, 0.2); Snd.play("coin", -6.0, 0.1, 0.0, 0.8)
 				player.oneshot("interact", 0.5, 1.6)
 				chests_opened += 1
 				_open_chest(c["bonus"])
@@ -1382,10 +1391,12 @@ func _apply(o: Dictionary):
 		"pack":
 			rerolls += 2; banishes += 1; skips += 1
 		"fusion":
+			Snd.play("evolve", 0.0, 0.0, 0.3)
 			got_evo = true
 			weapons.fuse(o["id"])
 			hud.toast("FUSION : " + (Data.FUSIONS[o["id"]]["name"] as String).to_upper(), 3.0)
 		"evo":
+			Snd.play("evolve", 0.0, 0.0, 0.3)
 			got_evo = true
 			weapons.evolve(o["id"])
 			hud.toast("ÉVOLUTION : " + Data.WEAPONS[o["id"]]["evo_name"].to_upper(), 3.0)
@@ -1418,6 +1429,7 @@ func _apply(o: Dictionary):
 				player.heal(v)
 
 func _open_levelup():
+	Snd.play("levelup", -6.0, 0.0, 0.3)
 	var opts := _roll_options(2 if dirl("bureaucratie") > 0 else 3)
 	if opts.is_empty():
 		pending_levels = 0
@@ -1440,6 +1452,7 @@ func _open_choice(title: String, opts: Array, source: String, leave := ""):
 
 func _on_chosen(i: int):
 	if state != "choice": return
+	Snd.play("ui_confirm", -6.0, 0.03, 0.1)
 	if i >= 0 and i < hud.options.size():
 		var o: Dictionary = hud.options[i]
 		if choice_source == "market":
@@ -1543,6 +1556,7 @@ func _boss_down(e):
 	player.heal(player.max_hp * 0.3)
 
 func _open_door(p: Vector3):
+	Snd.play("door", 0.0, 0.0, 1.0); Snd.play("evolve", -4.0, 0.0, 1.0)
 	door = Node3D.new()
 	add_child(door)
 	door.global_position = Vector3(p.x, 0, p.z)
@@ -1620,6 +1634,7 @@ func game_over(abandon := false):
 	_finish_over()
 
 func _finish_over():
+	Snd.stop_music(0.3); Snd.music("defeat", 0.2)
 	state = "over"
 	get_tree().paused = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
@@ -1627,9 +1642,11 @@ func _finish_over():
 	hud.show_screen("TU ES MORT",
 		("Tué par : " + player.last_cause + "\n" if player.last_cause != "" else "") + "Officiellement, tu n'as jamais existé.\nTemps : %s   ·   Niveau %d   ·   %d capitalistes bonkés\n\n%s" % [_fmt(time), level, kills, "\n".join(rep["lines"])],
 		"ENTRÉE ou A : retour au Kolkhoze", Color(0.85, 0.15, 0.15))
+	hud.screen_buttons([["RETOUR AU KOLKHOZE", _back_to_hub], ["REJOUER", _replay]])
 	print("[game] GAME OVER t=%s level=%d kills=%d" % [_fmt(time), level, kills])
 
 func _win():
+	Snd.music("victory", 0.3)
 	state = "win"
 	get_tree().paused = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
@@ -1637,6 +1654,7 @@ func _win():
 	hud.show_screen("LE CAPITALISME EST TOMBÉ",
 		"La Main Invisible a été bonkée. La Bourse, les tours et l'hypermarché appartiennent au peuple.\nLe Parti te remercie et t'oubliera dès demain.\nTemps total : %s   ·   Niveau %d   ·   %d capitalistes bonkés\n\n%s" % [_fmt(run_time + time), level, kills, "\n".join(rep["lines"])],
 		"ENTRÉE ou A : retour au Kolkhoze", Color(0.95, 0.75, 0.25))
+	hud.screen_buttons([["RETOUR AU KOLKHOZE", _back_to_hub], ["REJOUER", _replay]])
 	print("[game] WIN t=%s level=%d kills=%d" % [_fmt(time), level, kills])
 
 func _report(win: bool) -> Dictionary:
@@ -1651,6 +1669,10 @@ func _report(win: bool) -> Dictionary:
 	var out: Dictionary = Meta.end_run(r)
 	print("[meta] run=%d char=%s zone=%d time=%s win=%s lvl=%d kills=%d medals=%d total=%d" % [Meta.data["runs"], char_id, zone, _fmt(run_time + time), win, level, kills, out["medals"], Meta.data["medals"]])
 	return out
+
+func _replay():
+	get_tree().paused = false
+	get_tree().change_scene_to_file("res://scenes/charselect.tscn")
 
 func _back_to_hub():
 	get_tree().paused = false

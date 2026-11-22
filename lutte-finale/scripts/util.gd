@@ -119,6 +119,16 @@ static func detailize(n: Node, name: String, scale := 0.5, brighten := 1.12):
 
 const POSTERS := "res://assets/posters/"
 
+# poster-style pictograms: weapons by id, décrets/surplus as "d_<id>"
+static func icon(kind: String, id: String) -> Texture2D:
+	var name := id
+	if kind in ["decret", "surplus"]:
+		name = "d_" + {"regen": "endurance", "crit_dmg": "critique"}.get(id, id)
+	elif kind == "fusion":
+		name = Data.FUSIONS[id]["a"]
+	var p := "res://assets/icons/%s.png" % name
+	return load(p) if ResourceLoader.exists(p) else null
+
 # a printed poster (texture on a quad), facing +Z of its rotation
 static func poster(parent: Node, tex: String, pos: Vector3, size: Vector2, rot_y: float) -> MeshInstance3D:
 	var key := "poster_" + tex

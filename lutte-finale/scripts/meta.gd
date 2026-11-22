@@ -280,7 +280,7 @@ func load_save():
 
 func opt(k: String) -> float:
 	var o: Dictionary = data.get("options", {})
-	return float(o.get(k, {"numbers": 2, "fx": 100, "shake": 100, "minimap": 1}.get(k, 0)))
+	return float(o.get(k, {"numbers": 2, "fx": 100, "shake": 100, "minimap": 1, "music": 70, "sfx": 80}.get(k, 0)))
 
 func set_opt(k: String, v: float):
 	if not data.has("options"): data["options"] = {}

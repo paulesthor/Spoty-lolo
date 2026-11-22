@@ -16,6 +16,7 @@ var settings := {}
 var set_btns := {}
 
 func _ready():
+	Snd.music("march")
 	ids = Meta.CHARACTERS.keys()
 	stage = load("res://scripts/stage.gd").new()
 	add_child(stage)
@@ -108,6 +109,7 @@ func _cycle(k: String):
 	_refresh_settings()
 
 func _select(i: int, cheer := true):
+	if cheer: Snd.play("ui_hover", -6.0, 0.05, 0.05, 0.8)
 	sel = i
 	var c: String = ids[i]
 	for k in ids.size():
@@ -149,7 +151,11 @@ func _info():
 		go_btn.disabled = true
 		return
 	go_btn.disabled = false
-	UIK.label(info, "Niveau %d  ·  arme de départ : %s" % [Meta.char_level(c), Data.WEAPONS[def["weapon"]]["name"]], 22, UIK.GOLD)
+	var wrow := HBoxContainer.new(); wrow.add_theme_constant_override("separation", 10); info.add_child(wrow)
+	var wic := TextureRect.new(); wic.texture = U.icon("weapon", def["weapon"]); wic.custom_minimum_size = Vector2(56, 56)
+	wic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; wic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	wrow.add_child(wic)
+	UIK.label(wrow, "Niveau %d  ·  arme : %s" % [Meta.char_level(c), Data.WEAPONS[def["weapon"]]["name"]], 22, UIK.GOLD)
 	UIK.label(info, Data.WEAPONS[def["weapon"]]["desc"], 18, UIK.DIM, "Oswald", true)
 	UIK.label(info, "PASSIF", 20, UIK.RED, "RussoOne")
 	UIK.label(info, def["passive"], 20, UIK.PAPER, "Oswald", true)
@@ -170,7 +176,8 @@ func _info():
 			_place(sel); _select(sel, false); _refresh_settings())
 
 func _launch():
-	if not _unlocked(ids[sel]): return
+	if not _unlocked(ids[sel]): Snd.play("ui_error"); return
+	Snd.play("ui_confirm"); Snd.stop_music(0.7)
 	Meta.data["launch"] = settings
 	Meta.run_zone = int(settings["zone"]); Meta.run_tier = int(settings["tier"]); Meta.run_endless = bool(settings["endless"])
 	Meta.carry = {}

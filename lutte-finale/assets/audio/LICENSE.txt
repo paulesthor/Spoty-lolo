@@ -1,0 +1,2 @@
+Sound effects: Kenney (kenney.nl), CC0 1.0. Synthesised effects (gun, fire, whoosh, stamp): original.
+Music: original compositions for Communiste Land, rendered with the FluidR3_GM soundfont (MIT licence, Frank Wen).

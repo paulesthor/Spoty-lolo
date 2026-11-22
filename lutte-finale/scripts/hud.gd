@@ -108,20 +108,29 @@ func setup(g):
 	for i in Data.DECRET_SLOTS:
 		var p := _panel(bottom, Color(0, 0, 0, 0.3), 2, 0)
 		p.position = Vector2(i * 160, 28); p.size = Vector2(150, 34)
-		var l := _label(p, "", 16, Color.WHITE)
-		l.size = Vector2(150, 34); l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		decret_slots.append([p, l])
+		var dic := TextureRect.new()
+		dic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; dic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		dic.position = Vector2(4, 2); dic.size = Vector2(30, 30); dic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		p.add_child(dic)
+		var l := _label(p, "", 14, Color.WHITE)
+		l.size = Vector2(114, 34); l.position = Vector2(34, 0); l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		l.clip_text = true
+		decret_slots.append([p, l, dic])
 	var wl := _label(bottom, "ARMES", 18, Color.WHITE)
 	wl.position = Vector2(2, 74)
 	for i in Data.MAX_SLOTS:
 		var p := _panel(bottom, C_BG, 2, 1)
 		p.position = Vector2(i * 108, 102); p.size = Vector2(98, 98)
-		var n := _label(p, "", 14, C_FG)
-		n.size = Vector2(94, 50); n.position = Vector2(2, 8); n.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		n.vertical_alignment = VERTICAL_ALIGNMENT_CENTER; n.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		var lv := _label(p, "", 18, C_ACC)
-		lv.size = Vector2(98, 30); lv.position = Vector2(0, 58); lv.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		weapon_slots.append([p, n, lv])
+		var ic := TextureRect.new()
+		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		ic.position = Vector2(22, 2); ic.size = Vector2(56, 56); ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		p.add_child(ic)
+		var n := _label(p, "", 12, C_FG)
+		n.size = Vector2(94, 20); n.position = Vector2(2, 57); n.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		n.clip_text = true
+		var lv := _label(p, "", 15, C_ACC)
+		lv.size = Vector2(98, 22); lv.position = Vector2(0, 74); lv.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		weapon_slots.append([p, n, lv, ic])
 	# boss bar
 	boss_box = Control.new()
 	_at(boss_box, Control.PRESET_CENTER_TOP, Vector2(-420, 170), Vector2(840, 60))
@@ -230,10 +239,12 @@ func _process(d: float):
 			var nm: String = game.weapons.display_name(wids[i])
 			s[1].text = nm.to_upper().replace("COCKTAIL MOLOTOV", "MOLOTOV").replace("RÉVOLUTION ", "RÉVOL. ")
 			s[2].text = ("NV %d ★" if w["evo"] else "NV %d") % w["lv"]
+			s[3].texture = U.icon("weapon", wids[i])
 			(s[0] as Panel).modulate = Color(1, 0.35, 0.35, 1) if wids[i] == game.player.seized_weapon else Color(1, 1, 1, 1)
 		else:
 			s[1].text = "+"
 			s[2].text = ""
+			s[3].texture = null
 			(s[0] as Panel).modulate = Color(1, 1, 1, 0.45)
 	var dids: Array = game.decrets.keys()
 	for i in decret_slots.size():
@@ -241,9 +252,11 @@ func _process(d: float):
 		var sb: StyleBoxFlat = (s[0] as Panel).get_theme_stylebox("panel")
 		if i < dids.size():
 			s[1].text = "%s %d" % [Data.DECRETS[dids[i]]["name"].to_upper(), game.decrets[dids[i]]["n"]]
+			s[2].texture = U.icon("decret", dids[i])
 			sb.bg_color = C_ACC
 		else:
 			s[1].text = ""
+			s[2].texture = null
 			sb.bg_color = Color(0, 0, 0, 0.3)
 	var boss = game.boss
 	boss_box.visible = boss != null and boss.alive
@@ -347,25 +360,29 @@ func _build_choices():
 		card.add_child(band)
 		var tag := _label(card, "", 17, Color.WHITE)
 		tag.position = Vector2(18, 20); tag.size = Vector2(320, 30)
+		var ico := TextureRect.new()
+		ico.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; ico.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		ico.position = Vector2(126, 46); ico.size = Vector2(108, 108); ico.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		card.add_child(ico)
 		var emb := _label(card, "★", 64, Color(0.8, 0.1, 0.12))
 		emb.add_theme_font_override("font", sym)
 		emb.position = Vector2(0, 52); emb.size = Vector2(360, 80); emb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		var title := _label(card, "", 32, ink)
 		title.add_theme_font_override("font", russo)
-		title.position = Vector2(20, 136); title.size = Vector2(320, 44)
+		title.position = Vector2(20, 156); title.size = Vector2(320, 44)
 		title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		var lv := _label(card, "", 20, Color(0.75, 0.1, 0.12))
-		lv.position = Vector2(20, 186); lv.size = Vector2(320, 30); lv.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lv.position = Vector2(20, 204); lv.size = Vector2(320, 30); lv.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		var desc := _label(card, "", 20, ink)
-		desc.position = Vector2(28, 222); desc.size = Vector2(304, 170)
+		desc.position = Vector2(28, 236); desc.size = Vector2(304, 160)
 		desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		var key := _label(card, str(i + 1), 26, Color(0.1, 0.07, 0.06, 0.35))
 		key.position = Vector2(318, 396)
 		var price := _label(card, "", 26, Color(0.75, 0.1, 0.12))
 		price.position = Vector2(24, 396)
-		cards.append({"card": card, "sb": sb, "tag": tag, "title": title, "lv": lv, "desc": desc, "price": price, "band": bsb, "emb": emb})
+		cards.append({"card": card, "sb": sb, "tag": tag, "title": title, "lv": lv, "desc": desc, "price": price, "band": bsb, "emb": emb, "ico": ico})
 
 var hint_label: Label
 var leave_label := ""
@@ -395,6 +412,9 @@ func show_choices(title: String, opts: Array, leave := ""):
 			(c["band"] as StyleBoxFlat).bg_color = Color(0.8, 0.1, 0.12) if o["rarity"] == 0 else rc.darkened(0.25)
 			var glyph := {"weapon_new": "☭", "weapon_up": "☭", "decret": "★", "evo": "☭★", "fusion": "☭☭", "surplus": "★★", "surcharge": "☭", "pack": "★"}
 			c["emb"].text = glyph.get(o["kind"], "★")
+			var tex: Texture2D = U.icon(o["kind"], str(o.get("id", "")))
+			c["ico"].texture = tex
+			c["emb"].visible = tex == null
 	_highlight()
 	choice_root.visible = true
 	toast_label.visible = false
@@ -404,6 +424,7 @@ func hide_choices():
 	choice_root.visible = false
 
 func _highlight():
+	if choice_root.visible: Snd.play("ui_hover", -14.0, 0.05, 0.04)
 	for i in cards.size():
 		var sb: StyleBoxFlat = cards[i]["sb"]
 		var rc: Color = cards[i].get("rcol", C_BORDER)
@@ -438,7 +459,7 @@ func _build_screen():
 	screen_root = Control.new()
 	screen_root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	screen_root.visible = false
-	screen_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	screen_root.mouse_filter = Control.MOUSE_FILTER_PASS
 	root.add_child(screen_root)
 	var dim := ColorRect.new()
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -469,10 +490,29 @@ func _build_screen():
 	screen_body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	screen_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	screen_hint = _label(screen_root, "", 30, Color(1, 0.8, 0.35))
-	_at(screen_hint, Control.PRESET_CENTER, Vector2(-300, 250), Vector2(1000, 50))
+	_at(screen_hint, Control.PRESET_CENTER, Vector2(-300, 300), Vector2(1000, 40))
 	screen_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
+# clickable buttons under an overlay: [[label, Callable], ...]
+var screen_btns: HBoxContainer
+func screen_buttons(list: Array):
+	if screen_btns == null:
+		screen_btns = HBoxContainer.new()
+		screen_btns.add_theme_constant_override("separation", 16)
+		screen_btns.alignment = BoxContainer.ALIGNMENT_CENTER
+		screen_btns.theme = UIK.theme()
+		_at(screen_btns, Control.PRESET_CENTER, Vector2(-300, 230), Vector2(1000, 64))
+		screen_root.add_child(screen_btns)
+	for c in screen_btns.get_children(): c.queue_free()
+	for it in list:
+		var b := UIK.button(screen_btns, it[0], 24, 300)
+		b.alignment = HORIZONTAL_ALIGNMENT_CENTER
+		b.process_mode = Node.PROCESS_MODE_ALWAYS
+		b.pressed.connect(it[1])
+	if not list.is_empty(): screen_btns.get_child(0).call_deferred("grab_focus")
+
 func show_screen(title: String, body: String, hint: String, title_col := Color.WHITE):
+	screen_buttons([])
 	screen_poster.texture = load("res://assets/posters/" + U.propaganda_tex(randi()))
 	screen_title.text = title
 	screen_title.add_theme_color_override("font_color", title_col)

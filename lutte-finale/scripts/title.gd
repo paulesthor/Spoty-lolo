@@ -22,6 +22,7 @@ var credits: Control
 var menu: VBoxContainer
 
 func _ready():
+	Snd.music("march")
 	stage = load("res://scripts/stage.gd").new()
 	add_child(stage)
 	stage.build(1)
@@ -86,11 +87,13 @@ func _credits(root: Control):
 	root.add_child(credits)
 	var dim := ColorRect.new(); dim.color = Color(0, 0, 0, 0.7); dim.set_anchors_preset(Control.PRESET_FULL_RECT); credits.add_child(dim)
 	var p := UIK.panel(credits)
-	p.set_anchors_preset(Control.PRESET_CENTER); p.offset_left = -470; p.offset_right = 470; p.offset_top = -300; p.offset_bottom = 300
+	p.set_anchors_preset(Control.PRESET_CENTER); p.offset_left = -470; p.offset_right = 470; p.offset_top = -340; p.offset_bottom = 340
 	var v := VBoxContainer.new(); v.add_theme_constant_override("separation", 8); p.add_child(v)
 	UIK.label(v, "CRÉDITS DU COMITÉ CENTRAL", 40, UIK.RED, "RussoOne")
-	UIK.label(v, "Conception, code et propagande : le Parti (et Claude, camarade numérique)\n\nModèles 3D : Kenney (CC0), KayKit · Kay Lousberg (CC0), Quaternius (CC0)\nTextures : ambientCG (CC0) · Végétation : Quaternius Ultimate Stylized Nature (CC0)\nPolices : Russo One, Oswald, Bangers (SIL Open Font License)\nMoteur : Godot Engine (MIT)\n\nAucun capitaliste réel n'a été blessé. Les caricatures sont des caricatures.\nLe Plan remercie les camarades testeurs, qui seront décorés à titre posthume.", 21, UIK.PAPER, "Oswald", true)
-	UIK.button(v, "RETOUR", 24, 240).pressed.connect(func(): credits.visible = false)
+	UIK.label(v, "Conception, code et propagande : le Parti (et Claude, camarade numérique)\n\nModèles 3D : Kenney (CC0), KayKit · Kay Lousberg (CC0), Quaternius (CC0)\nTextures : ambientCG (CC0) · Végétation : Quaternius Ultimate Stylized Nature (CC0)\nIcônes : game-icons.net (CC BY 3.0) · Delapouite, Lorc, Sbed, Skoll, Zeromancer\nSons : Kenney (CC0) · Musique originale, banque de sons FluidR3 (MIT)\nPolices : Russo One, Oswald, Bangers (SIL Open Font License)\nMoteur : Godot Engine (MIT)\n\nAucun capitaliste réel n'a été blessé. Les caricatures sont des caricatures.\nLe Plan remercie les camarades testeurs, qui seront décorés à titre posthume.", 21, UIK.PAPER, "Oswald", true)
+	var crow := HBoxContainer.new(); crow.add_theme_constant_override("separation", 12); v.add_child(crow)
+	UIK.button(crow, "RETOUR", 24, 240).pressed.connect(func(): credits.visible = false)
+	UIK.button(crow, "REVOIR L'INTRO", 24, 300).pressed.connect(func(): _go("res://scenes/intro.tscn"))
 
 func _go(scene: String):
 	UIK.fade_out(self, func(): get_tree().change_scene_to_file(scene))

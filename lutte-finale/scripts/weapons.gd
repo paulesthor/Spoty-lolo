@@ -256,6 +256,7 @@ func on_landed(fall_speed: float):
 	game.pop_word(game.player.global_position + Vector3(0, 2.6, 0), ["BONK !", "KRACH !", "BAM !"][randi() % 3], Color(1.0, 0.85, 0.2), 1.1)
 
 func _shockwave(center: Vector3, area: float, dmg: float, col: Color, s: Dictionary, stun := false):
+	Snd.play("hammer", -4.0, 0.1, 0.12)
 	for e in game.enemies.in_radius(center, area):
 		_hit(e, dmg, s, center, 8.0)
 		if stun: game.enemies.stun(e, 0.6)
@@ -373,6 +374,7 @@ func _update_sats(d: float):
 				_beam(sats[0].global_position, t.node.position + Vector3(0, 1.0, 0))
 
 func _beam(a: Vector3, b: Vector3):
+	Snd.play("laser", -12.0, 0.1, 0.2)
 	var beam := MeshInstance3D.new()
 	var bc := CylinderMesh.new(); bc.top_radius = 0.04; bc.bottom_radius = 0.04; bc.height = a.distance_to(b)
 	beam.mesh = bc
@@ -390,6 +392,7 @@ func _beam(a: Vector3, b: Vector3):
 
 # ---------------------------------------------------------------- kalach
 func _bullet(from: Vector3, dir: Vector3, s: Dictionary):
+	Snd.play("gun", -10.0, 0.12, 0.07)
 	var n := Node3D.new()
 	add_child(n)
 	n.global_position = from
@@ -404,6 +407,7 @@ func _bullet(from: Vector3, dir: Vector3, s: Dictionary):
 
 # ---------------------------------------------------------------- faucille
 func _sickle(dir: Vector3, s: Dictionary):
+	Snd.play("slice", -8.0, 0.15, 0.15)
 	var n := Node3D.new()
 	add_child(n)
 	var blade := MeshInstance3D.new()
@@ -426,6 +430,7 @@ func _molotov(from: Vector3, to: Vector3, s: Dictionary):
 	projectiles.append({"t": "molotov", "n": n, "from": from, "to": to, "age": 0.0, "dur": 0.6, "s": s})
 
 func _spawn_fire(p: Vector3, s: Dictionary):
+	Snd.play("glass", -6.0, 0.1, 0.12); Snd.play("fire", -10.0, 0.1, 0.2)
 	var root := Node3D.new()
 	add_child(root)
 	root.global_position = p
@@ -469,6 +474,7 @@ func _doll(from: Vector3, to: Vector3, s: Dictionary, depth: int, size: float):
 	projectiles.append({"t": "doll", "n": n, "from": from, "to": Vector3(to.x, 0.3, to.z), "age": 0.0, "dur": 0.45 if size >= 1.0 else 0.3, "s": s, "depth": depth, "size": size})
 
 func _doll_burst(p: Vector3, s: Dictionary, depth: int, size: float):
+	Snd.play("hit_soft", -8.0, 0.2, 0.08, 1.0 + (1.0 - size) * 0.6)
 	var rad := 1.8 * size + 0.4
 	var dmg: float = s["dmg"] * size
 	for e in game.enemies.in_radius(p, rad):
@@ -709,6 +715,7 @@ func _toughest(p: Vector3, rad: float, n: int) -> Array:
 	return l.slice(0, n)
 
 func _blast(p: Vector3, rad: float, dmg: float, s: Dictionary, col: Color, show := true):
+	Snd.play("explosion" if rad >= 2.4 else "explosion2", -6.0 if rad >= 2.4 else -9.0, 0.12, 0.08)
 	if rad >= 2.5 and randf() < 0.25: game.pop_word(p + Vector3(0, 2.2, 0), ["BOUM !", "PAF !", "VLAN !"][randi() % 3], Color(1.0, 0.55, 0.15), 0.9)
 	for e in game.enemies.in_radius(p, rad):
 		_hit(e, dmg, s, p, 6.0, "", show)
@@ -778,6 +785,7 @@ func _update_bears(d: float):
 
 # ---------------------------------------------------------------- vodka
 func _vodka(from: Vector3, target, s: Dictionary, chain: int, hit: Array, mult: float):
+	Snd.play("whoosh", -16.0, 0.2, 0.1, 1.6)
 	var n := Node3D.new()
 	add_child(n)
 	n.global_position = from
@@ -787,6 +795,7 @@ func _vodka(from: Vector3, target, s: Dictionary, chain: int, hit: Array, mult: 
 
 # ---------------------------------------------------------------- piolet
 func _swing(pp: Vector3, dir: Vector3, s: Dictionary, full: bool):
+	Snd.play("slice", -4.0, 0.1, 0.1, 0.8)
 	for e in game.enemies.in_radius(pp, s["area"]):
 		var v: Vector3 = e.node.position - pp
 		v.y = 0
@@ -799,6 +808,7 @@ func _swing(pp: Vector3, dir: Vector3, s: Dictionary, full: bool):
 
 # ---------------------------------------------------------------- rideau de fer
 func _wall(c: Vector3, along: Vector3, s: Dictionary):
+	Snd.play("slam", -4.0, 0.05, 0.2)
 	var n := Node3D.new()
 	add_child(n)
 	n.global_position = Vector3(c.x, 0, c.z)
@@ -868,6 +878,7 @@ func _note(from: Vector3, dir: Vector3, s: Dictionary):
 
 # ---------------------------------------------------------------- goulag
 func _cage(p: Vector3, s: Dictionary):
+	Snd.play("hammer", -6.0, 0.05, 0.2, 0.7)
 	var n := Node3D.new()
 	add_child(n)
 	p = Vector3(p.x, 0, p.z)

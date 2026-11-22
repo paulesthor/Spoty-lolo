@@ -57,7 +57,10 @@ Ce fichier garde en mémoire les décisions prises avec le créateur du jeu, pou
 - [x] Sélection des camarades 3D : 6 estrades sous projecteurs, le choisi s'avance et salue, silhouettes « ??? » pour les camarades à réhabiliter (achat direct), tenues, zone, difficulté et mode, lancement.
 - [x] Kit d'interface constructiviste partagé (boutons inclinés, liseré rouge, Russo One), Kolkhoze restylé (filigrane d'affiche), écrans de mort, victoire et pause avec affiche, cartes de récompense en forme d'affiches.
 - Parcours : Titre → Sélection → Partie → Kolkhoze → Titre/Sélection.
-- À poursuivre : musique et sons, icônes d'armes dessinées, animation d'introduction.
+- [x] Musique originale (marche du Kolkhoze pour les menus, thème de combat, thème de boss, fanfare de victoire, trombone triste à la mort) rendue avec la banque FluidR3 ; bruitages Kenney (CC0) + quelques sons synthétisés ; gestionnaire audio avec fondus et anti-cacophonie ; volumes réglables.
+- [x] Icônes des 20 armes et 13 décrets : bibliothèque game-icons.net (CC BY 3.0, crédits dans le jeu) dans des médaillons aux couleurs du jeu (cartes, HUD, Usine, Bureau, sélection). Consigne du créateur : chercher d'abord dans les bibliothèques d'assets plutôt que dessiner soi-même.
+- [x] Introduction animée (premier lancement, passable, rejouable depuis les crédits).
+- [x] Boutons cliquables sur la pause et les écrans de fin (reprendre, abandonner, rejouer, Kolkhoze).
 
 ## Réponses du créateur (questionnaire du 21/11/2026)
 **À faire maintenant :**

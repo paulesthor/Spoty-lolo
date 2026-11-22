@@ -37,6 +37,7 @@ func _ready():
 		elif a == "nospend": bot_nospend = true
 		elif a.begins_with("hubshots="): shots_dir = a.substr(9)
 	theme = _make_theme()
+	Snd.music("march")
 	tab = Meta.hub_tab
 	Meta.hub_tab = "lancer"
 	var bg := ColorRect.new()
@@ -156,6 +157,8 @@ func _btn(t: String, size := 20, enabled := true) -> Button:
 	b.disabled = not enabled
 	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	b.focus_mode = Control.FOCUS_ALL
+	b.pressed.connect(func(): Snd.play("ui_click", -4.0, 0.05, 0.05))
+	b.mouse_entered.connect(func(): Snd.play("ui_hover", -14.0, 0.05, 0.04))
 	return b
 
 func _space(h: int) -> Control:
@@ -338,8 +341,14 @@ func _tab_bureau():
 		var greq := Meta.bureau_grade_req(id, r)
 		var locked := Meta.grade() < greq
 		var v := _card(g, C_PANEL, C_BAD if purged else Color(1, 1, 1, 0.06), 2 if purged else 1, 300)
-		v.add_child(_lbl(b["name"].to_upper(), 22, C_BAD if purged else C_GOLD))
-		v.add_child(_lbl(Meta.stat_text(b["stat"], b["per"]) + " par rang", 17, C_TEXT))
+		var brow := HBoxContainer.new(); brow.add_theme_constant_override("separation", 10); v.add_child(brow)
+		var stat_icon := {"regen": "endurance", "rubles_pct": "chance", "reroll": "chance", "banish": "critique", "skip": "vitesse", "revive": "endurance", "weapon_slot": "productivite"}
+		var bic := TextureRect.new(); bic.texture = U.icon("decret", stat_icon.get(b["stat"], b["stat"])); bic.custom_minimum_size = Vector2(52, 52)
+		bic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; bic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		brow.add_child(bic)
+		var bcol := VBoxContainer.new(); bcol.size_flags_horizontal = Control.SIZE_EXPAND_FILL; brow.add_child(bcol)
+		bcol.add_child(_lbl(b["name"].to_upper(), 22, C_BAD if purged else C_GOLD))
+		bcol.add_child(_lbl(Meta.stat_text(b["stat"], b["per"]) + " par rang", 17, C_TEXT))
 		v.add_child(_lbl(_pips(r, b["max"]) + ("   PURGÉ" if purged else ""), 20, C_BAD if purged else C_GOLD))
 		var txt := "MAX"
 		if not maxed: txt = ("GRADE %d REQUIS" % greq) if locked else "ACHETER · %d" % cost
@@ -419,7 +428,11 @@ func _tab_usine():
 		var v := _card(g, C_PANEL, Color(1, 1, 1, 0.06), 1, 420)
 		if not Meta.weapon_unlocked(w):
 			var wg: int = Meta.WEAPON_GRADE.get(w, 1)
-			v.add_child(_lbl(name.to_upper() + "  · VERROUILLÉ", 24, C_DIM))
+			var lrow := HBoxContainer.new(); lrow.add_theme_constant_override("separation", 12); v.add_child(lrow)
+			var lic := TextureRect.new(); lic.texture = U.icon("weapon", w); lic.custom_minimum_size = Vector2(64, 64); lic.modulate = Color(0.35, 0.35, 0.35)
+			lic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; lic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			lrow.add_child(lic)
+			lrow.add_child(_lbl(name.to_upper() + "  · VERROUILLÉ", 24, C_DIM))
 			v.add_child(_lbl(Data.WEAPONS[w]["desc"], 16, C_DIM))
 			var ub := _btn("DÉBLOQUER · %d médailles%s" % [Meta.WEAPON_UNLOCK[w], (" · grade %d requis" % wg) if Meta.grade() < wg else ""], 18, Meta.data["medals"] >= Meta.WEAPON_UNLOCK[w] and Meta.grade() >= wg)
 			ub.pressed.connect(func(): Meta.unlock_weapon(w); _refresh())
@@ -427,7 +440,11 @@ func _tab_usine():
 			continue
 		var dmg := float(Meta.data["mastery"].get(w, 0.0))
 		var ml := Meta.weapon_mastery(w)
-		v.add_child(_lbl("%s · MAÎTRISE %s" % [name.to_upper(), _pips(ml, 5)], 24, C_GOLD))
+		var hrow := HBoxContainer.new(); hrow.add_theme_constant_override("separation", 12); v.add_child(hrow)
+		var wic := TextureRect.new(); wic.texture = U.icon("weapon", w); wic.custom_minimum_size = Vector2(64, 64)
+		wic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; wic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		hrow.add_child(wic)
+		hrow.add_child(_lbl("%s · MAÎTRISE %s" % [name.to_upper(), _pips(ml, 5)], 24, C_GOLD))
 		v.add_child(_lbl(Data.WEAPONS[w]["desc"], 15, C_DIM))
 		var evl := "Évolution : %s (niv %d + décret %s)" % [Data.WEAPONS[w]["evo_name"], Data.EVO_MIN_LV, Data.DECRETS[Data.WEAPONS[w]["evo"]]["name"]]
 		var fid := Data.fusion_of(w)
@@ -512,6 +529,14 @@ func _tab_options():
 		var b := _btn(("● " if int(Meta.opt("shake")) == o else "○ ") + "%d %%" % o, 20)
 		b.pressed.connect(func(): Meta.set_opt("shake", o); _refresh())
 		row3.add_child(b)
+	for vk in [["music", "VOLUME DE LA MUSIQUE"], ["sfx", "VOLUME DES EFFETS SONORES"]]:
+		v.add_child(_lbl(vk[1], 24, C_GOLD))
+		var rowv := HBoxContainer.new(); rowv.add_theme_constant_override("separation", 10); v.add_child(rowv)
+		for o in [100, 70, 40, 0]:
+			var b := _btn(("● " if int(Meta.opt(vk[0])) == o else "○ ") + ("%d %%" % o if o > 0 else "Coupé"), 20)
+			var key: String = vk[0]
+			b.pressed.connect(func(): Meta.set_opt(key, o); Snd.apply_volumes(); _refresh())
+			rowv.add_child(b)
 	v.add_child(_lbl("MINI-CARTE", 24, C_GOLD))
 	var row4 := HBoxContainer.new(); row4.add_theme_constant_override("separation", 10); v.add_child(row4)
 	for o in [1, 0]:
@@ -532,7 +557,7 @@ func _launch():
 
 # ---------------------------------------------------------------- screenshots (tests)
 func _take_shots():
-	for t in ["lancer", "bureau", "caserne", "usine", "plan", "directives"]:
+	for t in ["lancer", "bureau", "caserne", "usine", "plan", "directives", "options"]:
 		tab = t
 		_refresh()
 		for i in 4: await get_tree().process_frame

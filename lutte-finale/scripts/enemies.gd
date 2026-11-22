@@ -608,6 +608,7 @@ func damage(e: Enemy, amount: float, knock_from := Vector3.INF, knock_force := 0
 		var kv: Vector3 = e.node.position - knock_from
 		kv.y = 0
 		e.knock = kv.normalized() * knock_force * (0.35 if e.elite else (0.5 if e.affix != "" or e.ai == "slammer" else 1.0))
+	if show_num or crit: Snd.play("hit", -16.0, 0.25, 0.045)
 	if e.hp <= 0.0:
 		kill(e)
 	elif knock_force >= 6.0 or crit:

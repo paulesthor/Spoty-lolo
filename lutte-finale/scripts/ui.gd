@@ -57,7 +57,10 @@ static func button(parent: Node, text: String, size := 26, min_w := 360) -> Butt
 	b.custom_minimum_size = Vector2(min_w, size * 2.1)
 	b.focus_mode = Control.FOCUS_ALL
 	# a little jolt on hover: menus should feel alive
+	b.pressed.connect(func(): Snd.play("ui_click", -4.0, 0.05, 0.05))
+	b.focus_entered.connect(func(): Snd.play("ui_hover", -14.0, 0.05, 0.05))
 	b.mouse_entered.connect(func():
+		Snd.play("ui_hover", -12.0, 0.05, 0.04)
 		b.pivot_offset = b.size * Vector2(0.0, 0.5)
 		var tw := b.create_tween()
 		tw.tween_property(b, "scale", Vector2(1.04, 1.04), 0.08)
