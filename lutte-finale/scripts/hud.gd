@@ -14,6 +14,7 @@ var game
 var font: Font
 var root: Control
 var minimap: Control
+var screen_poster: TextureRect
 var xp_fill: Panel
 var lvl_label: Label
 var timer_label: Label
@@ -414,18 +415,35 @@ func _build_screen():
 	dim.color = Color(0.03, 0.02, 0.02, 0.72)
 	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	screen_root.add_child(dim)
-	screen_title = _label(screen_root, "", 140, Color.WHITE)
-	_at(screen_title, Control.PRESET_CENTER, Vector2(-800, -300), Vector2(1600, 180))
+	# slanted red band + a Party poster on the left: the overlays share the menus' poster identity
+	var band := Panel.new()
+	var bs := StyleBoxFlat.new(); bs.bg_color = Color(0.07, 0.05, 0.045, 0.9); bs.skew = Vector2(-0.16, 0)
+	bs.border_color = C_ACC; bs.border_width_left = 10; bs.border_width_right = 10
+	band.add_theme_stylebox_override("panel", bs)
+	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_at(band, Control.PRESET_CENTER, Vector2(-760, -340), Vector2(1520, 680))
+	screen_root.add_child(band)
+	screen_poster = TextureRect.new()
+	screen_poster.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	screen_poster.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	screen_poster.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_at(screen_poster, Control.PRESET_CENTER, Vector2(-700, -300), Vector2(400, 600))
+	screen_root.add_child(screen_poster)
+	screen_title = _label(screen_root, "", 96, Color.WHITE)
+	screen_title.add_theme_font_override("font", load("res://fonts/RussoOne.woff2"))
+	screen_title.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.8)); screen_title.add_theme_constant_override("shadow_offset_x", 5); screen_title.add_theme_constant_override("shadow_offset_y", 5)
+	_at(screen_title, Control.PRESET_CENTER, Vector2(-300, -300), Vector2(1000, 130))
 	screen_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	screen_body = _label(screen_root, "", 26, Color(0.9, 0.86, 0.8))
-	_at(screen_body, Control.PRESET_CENTER, Vector2(-600, -100), Vector2(1200, 300))
+	_at(screen_body, Control.PRESET_CENTER, Vector2(-280, -150), Vector2(960, 380))
 	screen_body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	screen_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	screen_hint = _label(screen_root, "", 30, Color(1, 0.8, 0.35))
-	_at(screen_hint, Control.PRESET_CENTER, Vector2(-600, 230), Vector2(1200, 50))
+	_at(screen_hint, Control.PRESET_CENTER, Vector2(-300, 250), Vector2(1000, 50))
 	screen_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
 func show_screen(title: String, body: String, hint: String, title_col := Color.WHITE):
+	screen_poster.texture = load("res://assets/posters/" + U.propaganda_tex(randi()))
 	screen_title.text = title
 	screen_title.add_theme_color_override("font_color", title_col)
 	screen_body.text = body

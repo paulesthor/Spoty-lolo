@@ -37,10 +37,20 @@ func _ready():
 		elif a == "nospend": bot_nospend = true
 		elif a.begins_with("hubshots="): shots_dir = a.substr(9)
 	theme = _make_theme()
+	tab = Meta.hub_tab
+	Meta.hub_tab = "lancer"
 	var bg := ColorRect.new()
 	bg.color = C_BG
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
+	# a Party poster in watermark behind the content
+	var wm := TextureRect.new()
+	wm.texture = load("res://assets/posters/" + U.propaganda_tex(randi()))
+	wm.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	wm.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	wm.set_anchors_preset(Control.PRESET_FULL_RECT)
+	wm.modulate = Color(1, 1, 1, 0.07)
+	add_child(wm)
 	var band := ColorRect.new()
 	band.color = C_RED
 	band.set_anchors_preset(Control.PRESET_LEFT_WIDE)
@@ -57,7 +67,9 @@ func _ready():
 	nav.add_theme_constant_override("separation", 8)
 	root.add_child(nav)
 	nav.add_child(_lbl("COMMUNISTE LAND", 24, C_DIM))
-	nav.add_child(_lbl("LE KOLKHOZE", 58, C_RED))
+	var kt := _lbl("LE KOLKHOZE", 44, C_RED, false)
+	kt.add_theme_font_override("font", load("res://fonts/RussoOne.woff2"))
+	nav.add_child(kt)
 	var hb := _card(nav, C_PANEL, C_RED, 2)
 	header_medals = _lbl("", 34, C_GOLD); hb.add_child(header_medals)
 	header_grade = _lbl("", 22, C_TEXT); hb.add_child(header_grade)
@@ -79,8 +91,8 @@ func _ready():
 	art.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	art.custom_minimum_size = Vector2(0, 120)
 	nav.add_child(art)
-	var quit := _btn("QUITTER LE JEU", 18)
-	quit.pressed.connect(func(): get_tree().quit())
+	var quit := _btn("◀ MENU PRINCIPAL", 18)
+	quit.pressed.connect(func(): Meta.save(); get_tree().change_scene_to_file("res://scenes/title.tscn"))
 	nav.add_child(quit)
 	# ---- content
 	var scroll := ScrollContainer.new()
@@ -97,12 +109,14 @@ func _ready():
 
 # ---------------------------------------------------------------- ui helpers
 func _sb(col: Color, border := Color(0, 0, 0, 0), bw := 0, radius := 6) -> StyleBoxFlat:
+	# constructivist: square corners, a thick coloured edge on the left
 	var s := StyleBoxFlat.new()
 	s.bg_color = col
-	s.set_corner_radius_all(radius)
+	s.set_corner_radius_all(0)
 	if bw > 0:
-		s.set_border_width_all(bw)
-		s.border_color = border
+		s.border_color = border if border.a > 0.2 else Color(C_RED.r, C_RED.g, C_RED.b, 0.55)
+		s.border_width_left = maxi(4, bw * 3)
+		s.border_width_bottom = bw
 	s.content_margin_left = 14; s.content_margin_right = 14; s.content_margin_top = 8; s.content_margin_bottom = 8
 	return s
 
@@ -183,8 +197,11 @@ func _pips(n: int, mx: int) -> String:
 	return "●".repeat(n) + "○".repeat(maxi(0, mx - n))
 
 func _title(t: String, sub := ""):
-	content.add_child(_lbl(t, 40, Color.WHITE))
-	if sub != "": content.add_child(_lbl(sub, 19, C_DIM))
+	var h := _lbl(t, 48, C_TEXT, false)
+	h.add_theme_font_override("font", load("res://fonts/RussoOne.woff2"))
+	h.add_theme_color_override("font_shadow_color", C_RED); h.add_theme_constant_override("shadow_offset_x", 4); h.add_theme_constant_override("shadow_offset_y", 4)
+	content.add_child(h)
+	if sub != "": content.add_child(_lbl(sub, 18, C_DIM))
 
 func _clear():
 	for c in content.get_children():
@@ -221,24 +238,14 @@ func _refresh():
 
 # ---------------------------------------------------------------- LANCER
 func _tab_lancer():
-	_title("CHOISIS TON CAMARADE", "Clique sur une carte pour la sélectionner. Les camarades se recrutent à la Caserne.")
-	var g := _grid(4)
-	for c in Meta.CHARACTERS:
-		var def: Dictionary = Meta.CHARACTERS[c]
-		var cd: Dictionary = Meta.data["chars"][c]
-		var sel: bool = c == Meta.run_char
-		var unlocked: bool = cd["unlocked"]
-		var v := _card(g, C_PANEL2 if sel else C_PANEL, C_GOLD if sel else Color(1, 1, 1, 0.06), 3 if sel else 1, 250)
-		v.add_child(_lbl(def["name"].to_upper(), 26, C_GOLD if sel else (C_TEXT if unlocked else C_DIM)))
-		if unlocked:
-			v.add_child(_lbl("Niveau %d · arme : %s" % [Meta.char_level(c), Data.WEAPONS[def["weapon"]]["name"]], 18, C_DIM))
-			v.add_child(_lbl(def["passive"], 17, C_TEXT))
-			v.add_child(_lbl("Ultime (E) : %s. %s" % [def["ult"], def["ult_desc"]], 17, Color(1, 0.75, 0.5)))
-			var b := _btn("SÉLECTIONNÉ" if sel else "CHOISIR", 20, not sel)
-			b.pressed.connect(func(): Meta.run_char = c; Meta.data["last_char"] = c; _refresh())
-			v.add_child(b)
-		else:
-			v.add_child(_lbl("VERROUILLÉ · À recruter à la Caserne\n%d médailles · grade %d" % [def["cost"], Meta.CHAR_GRADE.get(c, 1)], 18, C_DIM))
+	_title("LANCER UNE RUN", "Le Plan t'attend. Choisis ton camarade sur l'estrade, puis en avant !")
+	var cc := _card(content, C_PANEL2, C_RED, 2)
+	var cdef: Dictionary = Meta.CHARACTERS[Meta.run_char]
+	cc.add_child(_lbl("CAMARADE ACTUEL : %s · NIVEAU %d" % [(cdef["name"] as String).to_upper(), Meta.char_level(Meta.run_char)], 28, C_GOLD))
+	cc.add_child(_lbl("Arme : %s · %s" % [Data.WEAPONS[cdef["weapon"]]["name"], cdef["passive"]], 18, C_DIM))
+	var csel := _btn("CHOISIR SON CAMARADE  ▶", 22)
+	csel.pressed.connect(func(): Meta.save(); get_tree().change_scene_to_file("res://scenes/charselect.tscn"))
+	cc.add_child(csel)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 14)
 	content.add_child(row)
@@ -305,7 +312,7 @@ func _tab_lancer():
 	go.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	go.custom_minimum_size = Vector2(0, 80)
 	go.add_theme_stylebox_override("normal", _sb(C_RED, C_GOLD, 2))
-	go.pressed.connect(_launch)
+	go.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/charselect.tscn"))
 	content.add_child(go)
 	go.grab_focus()
 	content.add_child(_lbl("ZQSD déplacement · souris caméra · Espace saut · Maj glissade · F interagir · E ultime · T relancer les cartes · Échap pause", 17, C_DIM))

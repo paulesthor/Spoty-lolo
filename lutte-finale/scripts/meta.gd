@@ -12,7 +12,8 @@ var run_directives := {}     # id -> level
 var run_zone := 1            # zone the next game scene builds
 var run_tier := 1            # difficulty tier (1..3)
 var run_endless := false
-var carry := {}              # run state carried from one zone to the next
+var carry := {}
+var hub_tab := "lancer"       # tab the Kolkhoze opens on              # run state carried from one zone to the next
 
 const TIERS := [
 	{"name": "Camarade", "hp": 1.0, "dmg": 1.0, "rate": 1.0, "medals": 1.0, "desc": "La difficulté normale."},
