@@ -9,6 +9,7 @@ var fires: Array = []
 var trails: Array = []
 var sats: Array = []
 var aura_fx: Node3D
+var aura_steam: CPUParticles3D
 var slam_cd := 0.0
 var laser_t := 0.0
 var orbit_a := 0.0
@@ -167,7 +168,7 @@ func _hit(e, dmg: float, s: Dictionary, from := Vector3.INF, knock := 0.0, src :
 	if mod == "marteau_gel": e.slow_t = 2.0
 	if mod == "samovar_glace": e.slow_t = 1.2
 	if visual_only:
-		if randf() < 0.3: VFX.impact(self, e.node.position + Vector3(0, 1.0, 0), Color(1, 0.8, 0.3), 4)
+		game.enemies.damage(e, dmg, from, knock, src, show, ignore_armor, s["crit"], s.get("id", ""))
 		return
 	e.last_p = pl.idx
 	game.track_damage(s.get("id", ""), dmg)
@@ -334,16 +335,15 @@ func _make_aura():
 	add_child(aura_fx)
 	var ring := _fx(aura_fx, "circle_03.png", Vector3(0, 0.07, 0), 2.0, Color(1.0, 0.6, 0.25, 0.35), 1.5, false, Vector3(-PI / 2, 0, 0))
 	ring.name = "ring"
-	var st := VFX.steam_ring(aura_fx)
-	st.name = "steam"
+	aura_steam = VFX.steam_ring(aura_fx)
 
 func _update_aura_fx(d: float):
 	var s := stats("samovar")
 	aura_fx.global_position = pl.global_position
 	(aura_fx.get_node("ring") as Node3D).scale = Vector3.ONE * s["area"]
-	var st := aura_fx.get_node("steam") as CPUParticles3D
-	st.emission_ring_radius = s["area"] * 0.95
-	st.emission_ring_inner_radius = s["area"] * 0.75
+	if is_instance_valid(aura_steam):
+		aura_steam.emission_ring_radius = s["area"] * 0.95
+		aura_steam.emission_ring_inner_radius = s["area"] * 0.75
 
 # ---------------------------------------------------------------- spoutnik
 func _update_sats(d: float):
@@ -467,7 +467,7 @@ func _update_fires(d: float):
 			fires.erase(f)
 			var n: Node3D = f["n"]
 			VFX.fire_stop(f["fx"])
-			get_tree().create_timer(2.5, false).timeout.connect(func(): if is_instance_valid(n): n.queue_free())
+			VFX.free_later(n, 2.5)
 
 # ---------------------------------------------------------------- matriochka
 func _doll(from: Vector3, to: Vector3, s: Dictionary, depth: int, size: float):

@@ -125,9 +125,18 @@ static func ps(parent: Node, tex: String, cfg: Dictionary) -> CPUParticles3D:
 # free a one-shot burst once its particles are gone
 static func _auto_free(p: CPUParticles3D, extra := 0.2):
 	live += 1
+	var wr: WeakRef = weakref(p)
 	p.get_tree().create_timer(p.lifetime + extra, false).timeout.connect(func():
 		live -= 1
-		if is_instance_valid(p): p.queue_free())
+		var o = wr.get_ref()
+		if o: o.queue_free())
+
+# free a node after a delay without keeping it alive in a closure (it may be gone with its scene)
+static func free_later(n: Node, t: float):
+	var wr: WeakRef = weakref(n)
+	n.get_tree().create_timer(t, false).timeout.connect(func():
+		var o = wr.get_ref()
+		if o: o.queue_free())
 
 static func _flat_sprite(parent: Node, tex: String, pos: Vector3, size: float, col: Color, life: float, grow := 1.4, additive := true) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
@@ -252,7 +261,7 @@ static func explosion(parent: Node, pos: Vector3, radius: float, col := Color(1,
 	if r >= 1.2 and not heavy:
 		var sc := _flat_sprite(parent, ["scorch_01.png", "scorch_02.png", "scorch_03.png"][randi() % 3], Vector3(pos.x, 0.04, pos.z), r * 2.0, Color(0.05, 0.03, 0.02, 0.75), 4.0, 1.0, false)
 		sc.scale = Vector3.ONE
-	root.get_tree().create_timer(2.0, false).timeout.connect(func(): if is_instance_valid(root): root.queue_free())
+	free_later(root, 2.0)
 
 # small hit: sparks spraying away from the attack
 static func impact(parent: Node, pos: Vector3, col := Color(1, 0.8, 0.35), n := 7, dir := Vector3.UP):
@@ -294,7 +303,7 @@ static func slam(parent: Node, pos: Vector3, radius: float, col: Color):
 	_flat_sprite(parent, "circle_04.png", Vector3(pos.x, 0.07, pos.z), r * 0.6, Color(col.r * 1.5, col.g * 1.5, col.b * 1.5, 0.9), 0.32, r * 3.4)
 	var cr := _flat_sprite(parent, "scratch_01.png" if ResourceLoader.exists("res://fx/scratch_01.png") else "scorch_03.png", Vector3(pos.x, 0.04, pos.z), r * 1.4, Color(0.08, 0.06, 0.05, 0.7), 2.5, 1.0, false)
 	cr.scale = Vector3.ONE
-	root.get_tree().create_timer(1.2, false).timeout.connect(func(): if is_instance_valid(root): root.queue_free())
+	free_later(root, 1.2)
 
 # trails attached to a moving projectile (world-space particles, so they stay behind it)
 static func smoke_trail(node: Node3D, size := 0.6, dark := false) -> CPUParticles3D:

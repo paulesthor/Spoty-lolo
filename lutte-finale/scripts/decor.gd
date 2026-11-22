@@ -695,5 +695,5 @@ func _firework():
 	fx.set_meta("airborne", true)
 	add_child(fx)
 	fx.emitting = true
-	get_tree().create_timer(2.5).timeout.connect(fx.queue_free)
+	VFX.free_later(fx, 2.5)
 	if rng.randf() < 0.5: Snd.play("explosion", -22.0, 0.2, 0.3, 1.6)

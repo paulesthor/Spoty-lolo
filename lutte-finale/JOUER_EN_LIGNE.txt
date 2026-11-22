@@ -1,0 +1,28 @@
+COMMUNISTE LAND · JOUER EN LIGNE (COOP 2 À 4)
+==============================================
+
+L'HÔTE (le PC qui fait tourner la partie)
+1. Menu principal > JOUER EN LIGNE.
+2. Choisis ton nom et ton camarade, puis HÉBERGER UNE PARTIE.
+3. Le jeu essaie d'ouvrir tout seul le port 24517 (UDP) sur ta box (UPnP).
+   - Si c'est bon, l'écran affiche « Box configurée automatiquement » et ton adresse publique.
+   - Sinon : ouvre à la main le port 24517 en UDP dans l'interface de ta box, vers l'adresse locale de ton PC
+     (affichée dans le salon), ou utilisez un réseau virtuel (voir plus bas).
+4. Donne ton adresse à tes camarades. Quand ils apparaissent dans le salon, choisis la zone et la difficulté
+   puis EN AVANT, CAMARADES !
+
+LES CAMARADES (ceux qui rejoignent)
+1. Menu principal > JOUER EN LIGNE.
+2. Choisis ton nom et ton camarade, tape l'adresse de l'hôte, puis REJOINDRE.
+
+PLUS SIMPLE SI LA BOX RÉSISTE : UN RÉSEAU VIRTUEL
+Installez tous Radmin VPN ou ZeroTier (gratuits), rejoignez le même réseau, et utilisez l'adresse
+que le logiciel affiche pour l'hôte (ex. 26.x.x.x pour Radmin). Rien à ouvrir sur la box.
+
+PENDANT LA PARTIE
+- Tout est calculé chez l'hôte : ennemis, dégâts, butin, coffres. Chacun déplace son propre camarade.
+- XP, niveau, roubles et décrets sont communs ; chacun a ses armes et son ultime.
+- Au passage de niveau, chacun choisit sa carte en même temps ; la partie reprend quand tout le monde a choisi.
+- Un camarade à terre se relève si un autre reste 3 s près de lui. Tout le monde à terre : défaite.
+- Si un camarade se déconnecte, le pilote automatique du Parti prend sa place.
+- Les médailles et les défis sont comptés chez l'hôte.

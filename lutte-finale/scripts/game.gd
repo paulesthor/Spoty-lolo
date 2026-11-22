@@ -71,6 +71,15 @@ var weapons            # this PC's comrade's weapons
 var hud
 var party: Array = []    # [{char, skin, remote, peer, name}] one entry per comrade
 var coop_test := 0       # test hook: extra bot comrades
+var net_host := false     # online: this PC runs the game for everyone
+var net_client := false   # online: this PC follows the host's game
+var _map_ready := false
+var _chest_ids := 0
+var _brk_ids := 0
+var _pick_ids := 0
+var net_picks := {}       # client: pickups drawn from the host's events
+var _act_edge := false
+var _land_acc := 0.0
 var cam_rig: Node3D
 var cam: Camera3D
 var shake_amt := 0.0
@@ -130,6 +139,10 @@ func _ready():
 		elif a == "god": test_god = true
 		elif a.begins_with("give="): test_give = a.substr(5)
 		elif a.begins_with("coop="): coop_test = int(a.substr(5))
+	if Net.active and Net.in_game:
+		net_host = Net.is_host
+		net_client = Net.is_client()
+		seed_v = Net.run_seed
 	zone = Meta.run_zone
 	tier = Meta.run_tier
 	endless = Meta.run_endless
@@ -152,17 +165,19 @@ func _ready():
 		pl.setup(self)
 		pl.idx = i
 		pl.grav_mult = float(tpl.get("gravity", 1.0))
-		pl.bot = bot or party[i].get("bot", false)
+		pl.bot = party[i].get("bot", false) or (bot and not party[i].get("remote", false))
 		pl.remote = party[i].get("remote", false)
 		pl.landed.connect(_on_landed.bind(pl))
 		pl.global_position = world.player_start + Vector3(0, 0.3, 0) + (Vector3(cos(i * 2.1), 0, sin(i * 2.1)) * 2.0 if i > 0 else Vector3.ZERO)
 		players.append(pl)
-	player = players[0]
+	player = players[clampi(Net.my_idx, 0, players.size() - 1) if net_client or net_host else 0]
 	enemies = load("res://scripts/enemies.gd").new()
+	enemies.ghost = net_client
 	add_child(enemies)
 	enemies.setup(self)
 	for pl in players:
 		var w = load("res://scripts/weapons.gd").new()
+		w.visual_only = net_client
 		add_child(w)
 		pl.weapons = w
 		w.setup(self, pl)
@@ -174,7 +189,7 @@ func _ready():
 	if not Meta.carry.is_empty():
 		_restore(Meta.carry)
 		Meta.carry = {}
-	elif not "solo" in OS.get_cmdline_user_args():
+	elif not "solo" in OS.get_cmdline_user_args() and not net_client:
 		for pl in players: pl.weapons.add_weapon(Meta.CHARACTERS[pl.char_id]["weapon"])
 	for n in [world, enemies]:
 		n.process_mode = Node.PROCESS_MODE_PAUSABLE
@@ -184,6 +199,7 @@ func _ready():
 		if players.size() > 1: _make_tag(pl)
 	_setup_camera()
 	_setup_map_objects()
+	_map_ready = true
 	if "layoutcheck" in OS.get_cmdline_user_args():
 		var iss: Array = load("res://scripts/layout_check.gd").run(self)
 		for line in iss: print("[layout] " + line)
@@ -205,10 +221,11 @@ func _ready():
 	add_child(hud)
 	hud.setup(self)
 	hud.chosen.connect(_on_chosen)
-	if bot and multi_run == false and warp == 0.0 and test_pos == Vector3.INF and shot_every == 0.0:
+	if bot and multi_run == false and warp == 0.0 and test_pos == Vector3.INF and shot_every == 0.0 and not Net.active:
 		start()
 	elif bot:
 		await _warmup()
+		await _net_wait()
 		start()
 		if warp > 0.0: _do_warp()
 		if test_pos != Vector3.INF:
@@ -218,6 +235,7 @@ func _ready():
 			cam_rig.global_position = test_pos
 	else:
 		await _warmup()
+		await _net_wait()
 		start()
 
 # Pre-render every enemy, weapon effect, pickup and UI panel once behind a loading screen,
@@ -354,6 +372,7 @@ func _load_meta():
 	if not Meta.data["chars"].has(char_id) or not Meta.data["chars"][char_id]["unlocked"]: char_id = "stakhanov"
 	for a2 in OS.get_cmdline_user_args():
 		if a2.begins_with("char=") and Meta.CHARACTERS.has(a2.substr(5)): char_id = a2.substr(5)    # test hook
+	if net_client: char_id = String(party[Net.my_idx].get("char", char_id))
 	dirs = Meta.run_directives.duplicate()
 	mods = Meta.run_modifiers(char_id)
 	rerolls = int(mods.get("reroll", 0.0))
@@ -363,7 +382,7 @@ func _load_meta():
 	revives = int(mods.get("revive", 0.0))
 	for i in players.size():
 		var pl = players[i]
-		var cid: String = char_id if i == 0 else String(party[i].get("char", "stakhanov"))
+		var cid: String = char_id if (i == 0 and not Net.in_game) else String(party[i].get("char", "stakhanov"))
 		if not Meta.CHARACTERS.has(cid): cid = "stakhanov"
 		pl.apply_character(cid, -1 if i == 0 else int(party[i].get("skin", 0)))
 		pl.max_hp = 120.0 + mods.get("endurance", 0.0)
@@ -630,7 +649,9 @@ func _make_chest(p: Vector3, free: bool, rarity_bonus := 0):
 	n.add_child(st)
 	_beam(n, Color(1, 0.8, 0.3) if rarity_bonus == 0 else Color(0.8, 0.5, 1.0), 14.0)
 	var lab := U.label(n, "GRATUIT" if free else "", Vector3(0, 1.6, 0), 48, Color(1, 0.88, 0.4), Color(0, 0, 0, 1))
-	chests.append({"n": n, "free": free, "label": lab, "bonus": rarity_bonus})
+	chests.append({"n": n, "free": free, "label": lab, "bonus": rarity_bonus, "id": _chest_ids})
+	_chest_ids += 1
+	if net_host and _map_ready: Net.event_all("ch+", [_chest_ids - 1, p, free, rarity_bonus])
 
 const SHRINE_INFO := {
 	"statue": ["STATUE DU LEADER", Color(1, 0.75, 0.15), "Reste dans le cercle 5 s : une faveur rare ou mieux."],
@@ -735,9 +756,11 @@ func _static_box(center: Vector3, size: Vector3):
 func _make_breakable(p: Vector3):
 	var path := U.CAR + "box.glb" if rng.randf() < 0.65 else U.SHOP + "bottle-return.glb"
 	var n := U.place(self, path, p, 0.9 if path.ends_with("box.glb") else 1.4, rng.randf() * TAU)
-	breakables.append({"n": n, "pos": p})
+	breakables.append({"n": n, "pos": p, "id": _brk_ids})
+	_brk_ids += 1
 
 func break_in_radius(c: Vector3, r: float):
+	if net_client: return
 	for b in breakables.duplicate():
 		var v: Vector3 = b["pos"] - c
 		v.y = 0
@@ -746,12 +769,14 @@ func break_in_radius(c: Vector3, r: float):
 func _break(b: Dictionary):
 	Snd.play("break", -10.0, 0.15, 0.06)
 	breakables.erase(b)
+	if net_host: Net.event_all("brk", [b["id"]])
 	var p: Vector3 = b["pos"]
 	var n: Node3D = b["n"]
 	var tw := n.create_tween()
 	tw.tween_property(n, "scale", n.scale * 0.05, 0.15)
 	tw.tween_callback(n.queue_free)
 	spark(p + Vector3(0, 0.6, 0))
+	if net_client: return
 	var r := rng.randf() * (1.0 + dv("chance") / 100.0)
 	if r < 0.08: _drop_heal(p)
 	elif r < 0.45: _drop_gem(p, 3)
@@ -771,7 +796,9 @@ func start():
 	hud.hide_screen()
 	hud.set_hud_visible(true)
 	if not bot: Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-	_toast_all("ZONE %d · %s · %s" % [zone, tpl["name"].to_upper(), Meta.CHARACTERS[char_id]["name"].to_upper()], 2.5)
+	hud.toast("ZONE %d · %s · %s" % [zone, tpl["name"].to_upper(), Meta.CHARACTERS[player.char_id]["name"].to_upper()], 2.5)
+	if net_client: return
+	if net_host: _sync_all()
 	if test_give != "":
 		var ids: Array = Data.WEAPONS.keys() if test_give.begins_with("all") else Array(test_give.split(","))
 		for pl in players:
@@ -798,6 +825,9 @@ func _unhandled_input(ev: InputEvent):
 func _process(d: float):
 	if cam_rig == null or player == null or hud == null: return
 	var rd := minf(d, 0.05)
+	if net_client and state in ["play", "hold", "choice", "menu"]:
+		_client_process(rd, d)
+		return
 	match state:
 		"loading", "dying":
 			_update_camera(rd)
@@ -824,9 +854,9 @@ func _process(d: float):
 				_choice_action(player, "skip")
 				return
 			for p in players:
-				if p.bot and p.get_meta("cur_choice", null) != null:
-					var bw: float = p.get_meta("bot_wait", 0.4) - d / maxf(Engine.time_scale, 0.001)
-					p.set_meta("bot_wait", bw)
+				if p.bot and p.cur_choice != null:
+					var bw: float = p.bot_wait - d / maxf(Engine.time_scale, 0.001)
+					p.bot_wait = bw
 					if bw <= 0.0: _resolve_choice(p, _bot_pick(p))
 				elif p.remote and p.net_in.has("pick"):
 					var pk: int = p.net_in["pick"]
@@ -969,12 +999,14 @@ func _pick_kind() -> String:
 		if r <= 0.0: return p[0]
 	return "stagiaire"
 
+func enemy_cap() -> int:
+	return (260 if not krach else 320) + 70 * (players.size() - 1)
+
 func _director(d: float):
 	var tm := dtime() / 60.0
 	var m := mults()
-	var np := players.size()
-	var cap := (260 if not krach else 320) + 70 * (np - 1)
-	var rate := (1.1 + 0.9 * tm + 0.19 * tm * tm) * (1.0 + 0.15 * bets) * (1.0 + 0.25 * dirl("cadence")) * float(Meta.TIERS[tier - 1]["rate"]) * (1.0 + 0.55 * (np - 1))
+	var cap := enemy_cap()
+	var rate := (1.1 + 0.9 * tm + 0.19 * tm * tm) * (1.0 + 0.15 * bets) * (1.0 + 0.25 * dirl("cadence")) * float(Meta.TIERS[tier - 1]["rate"]) * (1.0 + 0.55 * (players.size() - 1))
 	if krach: rate *= 2.2
 	spawn_acc += rate * d
 	while spawn_acc >= 1.0:
@@ -1025,6 +1057,7 @@ func _events(d: float):
 			_toast_all("ÉVÉNEMENT · BLACK FRIDAY ! UNE RUÉE DE CLIENTS ARRIVE", 3.0)
 			var a := rng.randf() * TAU
 			for i in int(30 + dtime() / 20.0):
+				if enemies.count() >= enemy_cap() + 60: break
 				var p: Vector3 = players[i % players.size()].global_position + Vector3(cos(a), 0, sin(a)) * 24.0 + Vector3(rng.randf_range(-6, 6), 0, rng.randf_range(-6, 6))
 				enemies.spawn("trader" if i % 4 == 0 else "stagiaire", world.resolve(p, 0.5), m[0] * 0.7, m[1])
 		"pluie":
@@ -1092,6 +1125,7 @@ func on_player_hit(amount: float, p = null):
 
 func _on_landed(fall_speed: float, p = null):
 	(p if p != null else player).weapons.on_landed(fall_speed)
+	if net_client and (p == null or p == player): _land_acc = maxf(_land_acc, fall_speed)
 
 func damage_number(pos: Vector3, amt: float, crit: bool, resisted := false):
 	var mode := int(Meta.opt("numbers"))
@@ -1146,6 +1180,7 @@ func pop_word(pos: Vector3, text: String, col: Color, size := 1.0, force := fals
 	tw.tween_callback(l.queue_free)
 
 func stamp(pos: Vector3, text: String):
+	if net_host: Net.event_all("word", [pos, text])
 	Snd.play("stamp", -2.0, 0.05, 0.1); Snd.play("bell", -12.0, 0.05, 0.3)
 	pop_word(pos, text, Color(0.85, 0.08, 0.1), 1.4, true)
 
@@ -1169,7 +1204,9 @@ func _drop_gem(p: Vector3, val: int):
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(mi)
 	mi.global_position = Vector3(p.x, p.y + 0.35, p.z)
-	gems.append({"n": mi, "v": val, "pull": false, "spd": 0.0, "y0": p.y + 0.35})
+	_pick_ids += 1
+	gems.append({"n": mi, "v": val, "pull": false, "spd": 0.0, "y0": p.y + 0.35, "id": _pick_ids})
+	if net_host and not warming: Net.event_all("pk+", [_pick_ids, 0 if val < 4 else 1, mi.global_position])
 
 func _drop_coin(p: Vector3, val: int):
 	var mi := MeshInstance3D.new()
@@ -1179,7 +1216,9 @@ func _drop_coin(p: Vector3, val: int):
 	mi.rotation.x = PI / 2
 	add_child(mi)
 	mi.global_position = Vector3(p.x, p.y + 0.4, p.z)
-	coins.append({"n": mi, "v": val, "pull": false, "spd": 0.0, "y0": p.y + 0.4})
+	_pick_ids += 1
+	coins.append({"n": mi, "v": val, "pull": false, "spd": 0.0, "y0": p.y + 0.4, "id": _pick_ids})
+	if net_host and not warming: Net.event_all("pk+", [_pick_ids, 2, mi.global_position])
 
 func _drop_heal(p: Vector3):
 	var n := Node3D.new()
@@ -1187,7 +1226,9 @@ func _drop_heal(p: Vector3):
 	n.global_position = Vector3(p.x, p.y + 0.4, p.z)
 	U.box(n, Vector3(0.5, 0.14, 0.4), Vector3.ZERO, U.solid(Color(0.85, 0.6, 0.3)))
 	U.box(n, Vector3(0.44, 0.04, 0.34), Vector3(0, 0.09, 0), U.solid(Color(0.95, 0.2, 0.25), 0.6))
-	coins.append({"n": n, "v": 0, "heal": 25.0, "pull": false, "spd": 0.0, "y0": p.y + 0.4})
+	_pick_ids += 1
+	coins.append({"n": n, "v": 0, "heal": 25.0, "pull": false, "spd": 0.0, "y0": p.y + 0.4, "id": _pick_ids})
+	if net_host and not warming: Net.event_all("pk+", [_pick_ids, 3, n.global_position])
 
 func nearest_gem(p: Vector3, maxd: float):
 	var best = null
@@ -1216,6 +1257,7 @@ func _update_pickups(d: float):
 				if dist < 0.7:
 					arr.erase(g)
 					n.queue_free()
+					if net_host: Net.event_all("pk-", [g.get("id", 0), who.idx])
 					if arr == gems:
 						add_xp(g["v"])
 						Snd.play("gem", -16.0, 0.0, 0.035, 0.9 + minf(float(g["v"]), 10.0) * 0.04 + randf() * 0.15)
@@ -1277,6 +1319,7 @@ func _update_interactions(d: float):
 					rubles -= cost
 					if not c["free"]: chest_cost = int(chest_cost * 1.45) + 4
 					chests.erase(c)
+					if net_host: Net.event_all("ch-", [c["id"]])
 					_chest_open_fx(c["n"])
 					Snd.play("chest", -2.0, 0.05, 0.2); Snd.play("coin", -6.0, 0.1, 0.0, 0.8)
 					p.oneshot("interact", 0.5, 1.6)
@@ -1341,6 +1384,7 @@ func _update_interactions(d: float):
 
 func _use_shrine(s: Dictionary, p = null):
 	(p if p != null else player).oneshot("interact", 0.5, 1.6)
+	if net_host: Net.event_all("shr", [shrines.find(s)])
 	if not s["used"]: shrines_used += 1
 	s["used"] = true
 	s["active"] = false
@@ -1551,6 +1595,12 @@ func _describe(o: Dictionary):
 
 func _apply(o: Dictionary, p = null):
 	if p == null: p = player
+	_apply_inner(o, p)
+	if net_host:
+		_sync_loadout(p)
+		if o["kind"] in ["decret", "surplus", "pack"]: _sync_team()
+
+func _apply_inner(o: Dictionary, p):
 	var weapons = p.weapons
 	_desc_pl = p
 	match o["kind"]:
@@ -1599,11 +1649,11 @@ func _queue_levels(k: int):
 	if k <= 0: return
 	Snd.play("levelup", -6.0, 0.0, 0.3)
 	for p in players:
-		for i in k: p.set_meta("choices", _choices(p) + [{"source": "level"}])
+		for i in k: p.choices.append({"source": "level"})
 	_enter_choice()
 
 func _choices(p) -> Array:
-	return p.get_meta("choices", [])
+	return p.choices
 
 func _open_levelup():
 	_queue_levels(maxi(1, pending_levels))
@@ -1611,7 +1661,7 @@ func _open_levelup():
 
 func _open_choice(title: String, opts: Array, source: String, leave := "", p = null):
 	if p == null: p = player
-	p.set_meta("choices", _choices(p) + [{"source": source, "title": title, "opts": opts, "leave": leave}])
+	p.choices.append({"source": source, "title": title, "opts": opts, "leave": leave})
 	_enter_choice()
 
 func _enter_choice():
@@ -1625,11 +1675,9 @@ func _enter_choice():
 func _pump_choices():
 	var busy := false
 	for p in players:
-		var cur = p.get_meta("cur_choice", null)
+		var cur = p.cur_choice
 		while cur == null and not _choices(p).is_empty():
-			var q: Array = _choices(p)
-			var e: Dictionary = q.pop_front()
-			p.set_meta("choices", q)
+			var e: Dictionary = p.choices.pop_front()
 			if e["source"] == "level":
 				var opts := _roll_options(2 if dirl("bureaucratie") > 0 else 3, 0, 0, [], p)
 				if opts.is_empty():
@@ -1639,8 +1687,8 @@ func _pump_choices():
 				e["title"] = "NIVEAU %d · LE PARTI TE RÉCOMPENSE" % level
 				e["leave"] = ""
 			cur = e
-			p.set_meta("cur_choice", e)
-			p.set_meta("bot_wait", 0.4)
+			p.cur_choice = e
+			p.bot_wait = 0.4
 			if is_local(p):
 				hud.show_choices(e["title"], e["opts"], e["leave"])
 				_choice_shot()
@@ -1653,7 +1701,7 @@ func _pump_choices():
 		hud.waiting(false)
 		get_tree().paused = false
 		if not bot: Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-	elif player.get_meta("cur_choice", null) == null:
+	elif player.cur_choice == null:
 		hud.waiting(true)
 
 func _choice_shot():
@@ -1664,12 +1712,20 @@ func _choice_shot():
 		_screenshot()
 
 func _on_chosen(i: int):
+	if net_client:
+		if state != "choice": return
+		Snd.play("ui_confirm", -6.0, 0.03, 0.1)
+		Net.send_cmd("pick", [i])
+		hud.hide_choices()
+		state = "hold"
+		hud.waiting(true)
+		return
 	_resolve_choice(player, i)
 
 # a comrade picked card i (or -1 to leave, -2 after a skip)
 func _resolve_choice(p, i: int):
 	if state != "choice": return
-	var e = p.get_meta("cur_choice", null)
+	var e = p.cur_choice
 	if e == null: return
 	var opts: Array = e["opts"]
 	Snd.play("ui_confirm", -6.0, 0.03, 0.1)
@@ -1686,14 +1742,14 @@ func _resolve_choice(p, i: int):
 				player_toast(p, "ACHAT : %s" % o["title"], 1.5)
 		else:
 			_apply(o, p)
-	p.set_meta("cur_choice", null)
+	p.cur_choice = null
 	if is_local(p): hud.hide_choices()
 	elif p.remote and Net.active: Net.to_player(p.idx, "choice_end", [])
 	_pump_choices()
 
 # reroll / banish / skip on the comrade's current card set
 func _choice_action(p, what: String, sel := 0):
-	var e = p.get_meta("cur_choice", null)
+	var e = p.cur_choice
 	if e == null: return
 	var src: String = e["source"]
 	var opts: Array = e["opts"]
@@ -1878,6 +1934,7 @@ func _boss_down(e):
 	for q in players: q.heal(q.max_hp * 0.3)
 
 func _open_door(p: Vector3):
+	if net_host: Net.event_all("door", [p])
 	Snd.play("door", 0.0, 0.0, 1.0); Snd.play("evolve", -4.0, 0.0, 1.0)
 	door = Node3D.new()
 	add_child(door)
@@ -2013,12 +2070,19 @@ func _report(win: bool) -> Dictionary:
 	return out
 
 func _replay():
+	if Net.active:
+		_back_to_hub()
+		return
 	get_tree().paused = false
 	get_tree().change_scene_to_file("res://scenes/charselect.tscn")
 
 func _back_to_hub():
 	get_tree().paused = false
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	if Net.active:
+		Net.leave()
+		get_tree().change_scene_to_file("res://scenes/online.tscn")
+		return
 	get_tree().change_scene_to_file("res://scenes/hub.tscn")
 
 func track_damage(wid: String, amt: float):
@@ -2029,7 +2093,7 @@ func track_damage(wid: String, amt: float):
 func _bot_pick(p = null) -> int:
 	if p == null: p = player
 	var weapons = p.weapons
-	var e = p.get_meta("cur_choice", null)
+	var e = p.cur_choice
 	var options: Array = e["opts"] if e != null else hud.options
 	var choice_source: String = e["source"] if e != null else ""
 	var best := 0
@@ -2086,3 +2150,279 @@ func _screenshot():
 	if img == null: return
 	img.save_png("%s/shot_%03d_%s.png" % [shot_dir, shot_n, state])
 	shot_n += 1
+
+# ================================================================ online coop
+# ---------------------------------------------------------------- host side
+func _net_wait():
+	if net_client:
+		Net.register_game(self)
+		Net.client_ready()
+		return
+	if not net_host: return
+	Net.register_game(self)
+	var t := 0.0
+	if not Net.all_ready():
+		hud.show_screen("EN ATTENTE DES CAMARADES", "La zone se charge chez tes camarades…", "")
+	while not Net.all_ready() and t < 45.0:
+		await get_tree().create_timer(0.25, true, false, true).timeout
+		t += 0.25
+	hud.hide_screen()
+
+func _sync_loadout(p):
+	if net_host: Net.event_all("loadout", [p.idx, p.weapons.owned])
+
+func _sync_team():
+	if net_host: Net.event_all("team", [decrets, mods, dirs])
+
+func _sync_all():
+	_sync_team()
+	for p in players: _sync_loadout(p)
+	for c in chests:
+		if c["id"] >= 0: pass
+	for i in shrines.size():
+		if shrines[i]["used"]: Net.event_all("shr", [i])
+
+func build_snapshot(i: int) -> Dictionary:
+	var me = players[i]
+	var pl := []
+	for q in players:
+		pl.append([q.global_position, q.facing, q.anim_key(), q.ap.speed_scale if q.ap else 1.0, q.hp, q.max_hp, q.downed, q.ult_kills, q.ult_t, q.slide_t > 0.0, q.revive_t])
+	var pk: Array = enemies.pack_near(me.global_position, Net.INTEREST)
+	return {"t": time, "lv": level, "xp": xp, "rub": rubles, "k": kills, "kr": krach, "st": state, "cc": chest_cost,
+		"rr": [rerolls, banishes, skips], "boss": boss.nid if boss != null and boss.alive else 0, "pl": pl, "pr": me.prompt,
+		"ei": pk[0], "ef": pk[1]}
+
+func net_state(idx: int, st: Dictionary):
+	if idx <= 0 or idx >= players.size(): return
+	var p = players[idx]
+	for k in ["pick", "cact", "ult", "act"]:
+		if p.net_in.has(k) and not st.has(k): st[k] = p.net_in[k]
+	if st.get("act_e", false): st["act"] = true
+	if float(st.get("land", 0.0)) <= 0.0 and float(p.net_in.get("land", 0.0)) > 0.0: st["land"] = p.net_in["land"]
+	p.net_in = st
+
+func net_cmd(idx: int, cmd: String, args: Array):
+	if idx <= 0 or idx >= players.size(): return
+	var p = players[idx]
+	match cmd:
+		"pick": p.net_in["pick"] = int(args[0])
+		"cact": p.net_in["cact"] = [String(args[0]), int(args[1])]
+		"ult": p.net_in["ult"] = true
+
+# a comrade disconnected: the Party's autopilot takes over their character
+func comrade_left(i: int):
+	if i <= 0 or i >= players.size(): return
+	var p = players[i]
+	p.remote = false
+	p.bot = true
+	_toast_all("%s A PERDU LA CONNEXION · LE PILOTE AUTOMATIQUE DU PARTI PREND LE RELAIS" % Meta.CHARACTERS[p.char_id]["name"].to_upper(), 3.0)
+
+# ---------------------------------------------------------------- comrade side
+func local_net_state() -> Dictionary:
+	if not state in ["play", "hold", "choice", "menu"]: return {}
+	var st: Dictionary = player.local_state()
+	if _act_edge: st["act_e"] = true; _act_edge = false
+	if _land_acc > 0.0: st["land"] = _land_acc; _land_acc = 0.0
+	return st
+
+var _host_state := "play"
+func _client_process(rd: float, d: float):
+	if state == "play":
+		if Input.is_action_just_pressed("interact"): _act_edge = true
+		if Input.is_action_just_pressed("ultimate") and player.ult_kills >= ultimate_cost(player): Net.send_cmd("ult", [])
+		if Input.is_action_just_pressed("pause"):
+			_client_menu()
+			return
+		if Input.is_action_just_pressed("minimap"):
+			Meta.set_opt("minimap", 0.0 if Meta.opt("minimap") > 0.0 else 1.0)
+		var yaw_in := Input.get_axis("cam_left", "cam_right")
+		cam_pitch = clampf(cam_pitch + Input.get_axis("cam_up", "cam_down") * 1.2 * rd, PITCH_MIN, PITCH_MAX)
+		player.cam_yaw -= yaw_in * 2.2 * rd
+		if bot and randf() < 0.01: _act_edge = true
+	elif state == "choice":
+		if Input.is_action_just_pressed("reroll"): Net.send_cmd("cact", ["reroll", 0])
+		if Input.is_action_just_pressed("banish"): Net.send_cmd("cact", ["banish", hud.sel])
+		if Input.is_action_just_pressed("skip"): Net.send_cmd("cact", ["skip", 0])
+		if bot:
+			choice_wait -= d / maxf(Engine.time_scale, 0.001)
+			if choice_wait <= 0.0: _on_chosen(0)
+	elif state == "menu":
+		if Input.is_action_just_pressed("pause"): _client_menu_close()
+	_update_camera(rd)
+	_client_pickups(rd)
+	_bot_tick(d)
+
+func _client_menu():
+	state = "menu"
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	hud.show_screen("MENU", "La partie continue chez l'hôte : ton camarade reste sur le terrain.", "Échap : reprendre")
+	hud.screen_buttons([["REPRENDRE", _client_menu_close], ["QUITTER LA PARTIE", _back_to_hub]])
+
+func _client_menu_close():
+	hud.hide_screen()
+	state = "play" if _host_state == "play" else "hold"
+	if not bot: Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+func _client_pickups(d: float):
+	var t := Time.get_ticks_msec() / 1000.0
+	for id in net_picks:
+		var n: Node3D = net_picks[id]
+		if is_instance_valid(n) and not n.has_meta("flying"):
+			n.rotation.y = t * 2.0
+			n.position.y = float(n.get_meta("y0", 0.35)) + sin(t * 3.0 + n.position.x) * 0.08
+
+func net_snapshot(s: Dictionary):
+	time = s["t"]; level = s["lv"]; xp = s["xp"]; rubles = s["rub"]; kills = s["k"]; krach = s["kr"]
+	chest_cost = s["cc"]
+	var rr: Array = s["rr"]
+	rerolls = rr[0]; banishes = rr[1]; skips = rr[2]
+	var pl: Array = s["pl"]
+	for i in mini(pl.size(), players.size()):
+		var q = players[i]
+		var a: Array = pl[i]
+		q.hp = a[4]; q.max_hp = a[5]; q.ult_kills = a[7]; q.ult_t = a[8]
+		if a[6] != q.downed: _client_down(q, a[6])
+		q.revive_t = a[10]
+		if q != player:
+			q.net_in = {"p": a[0], "f": a[1], "a": a[2], "as": a[3], "sl": a[9]}
+	if state in ["play", "hold"]: hud.prompt(s["pr"])
+	enemies.apply_pack(s["ei"], s["ef"], player.global_position, Net.INTEREST)
+	var bn: int = s["boss"]
+	boss = enemies.by_nid.get(bn) if bn > 0 else null
+	if boss != null: boss_spawned = true
+	_host_state = s["st"]
+	if _host_state != "play" and state == "play":
+		state = "hold"
+		if _host_state == "paused": hud.show_screen("PAUSE", "L'hôte a mis la partie en pause.", "")
+	elif _host_state == "play" and state == "hold":
+		state = "play"
+		hud.waiting(false)
+		hud.hide_screen()
+		if not bot: Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+func _client_down(q, down: bool):
+	q.downed = down
+	if down:
+		q.oneshot("death", 999.0, 1.0)
+		var fx := Node3D.new(); q.add_child(fx); fx.set_meta("airborne", true)
+		U.sprite(fx, "circle_02.png", Vector3(0, 0.07, 0), 5.0, Color(1, 0.25, 0.2, 0.6), 2.0, false, Vector3(-PI / 2, 0, 0))
+		var l := U.label(fx, "À TERRE · VIENS ME RELEVER" if q != player else "TU ES À TERRE · UN CAMARADE PEUT TE RELEVER", Vector3(0, 2.2, 0), 48, Color(1, 0.25, 0.2), Color(0, 0, 0, 1))
+		l.fixed_size = true; l.pixel_size = 0.0007
+		q.down_fx = fx
+	else:
+		q.oneshot_t = 0.0
+		q.oneshot("cheer", 1.2, 1.0)
+		if q.down_fx: q.down_fx.queue_free(); q.down_fx = null
+
+func net_event(ev: String, args: Array):
+	match ev:
+		"toast": hud.toast(args[0], args[1])
+		"blind": hud.blind()
+		"hit_from": hud.hit_from(args[0])
+		"hurt":
+			hud.hurt(); shake(0.15)
+		"choice":
+			state = "choice"
+			choice_wait = 0.4
+			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+			hud.waiting(false)
+			hud.show_choices(args[0], args[1], args[2])
+		"choice_end":
+			hud.hide_choices()
+			if state == "choice": state = "hold"
+		"ult":
+			var q = players[clampi(int(args[0]), 0, players.size() - 1)]
+			var keep: int = q.ult_kills
+			q.ult_kills = 1 << 30
+			_try_ultimate(q)
+			q.ult_kills = keep
+		"hz":
+			if enemies.has_method(args[0]): enemies.callv(args[0], args[1])
+		"pk+":
+			var kind: int = args[1]
+			var p: Vector3 = args[2]
+			var n: Node3D
+			match kind:
+				0, 1:
+					var mi := MeshInstance3D.new()
+					var sm := SphereMesh.new(); sm.radius = 0.18 if kind == 0 else 0.3; sm.height = sm.radius * 2.4; sm.radial_segments = 4; sm.rings = 2
+					mi.mesh = sm
+					mi.material_override = U.solid(Color(0.2, 0.95, 0.45) if kind == 0 else Color(0.3, 0.6, 1.0), 2.5)
+					mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+					n = mi
+				2:
+					var mc := MeshInstance3D.new()
+					var cy := CylinderMesh.new(); cy.top_radius = 0.22; cy.bottom_radius = 0.22; cy.height = 0.06
+					mc.mesh = cy
+					mc.material_override = U.solid(Color(1, 0.78, 0.25), 1.2, 0.3, 1.0)
+					mc.rotation.x = PI / 2
+					n = mc
+				_:
+					n = Node3D.new()
+					U.box(n, Vector3(0.5, 0.14, 0.4), Vector3.ZERO, U.solid(Color(0.85, 0.6, 0.3)))
+					U.box(n, Vector3(0.44, 0.04, 0.34), Vector3(0, 0.09, 0), U.solid(Color(0.95, 0.2, 0.25), 0.6))
+			add_child(n)
+			n.global_position = p
+			n.set_meta("y0", p.y)
+			net_picks[args[0]] = n
+		"pk-":
+			var n2: Node3D = net_picks.get(args[0])
+			net_picks.erase(args[0])
+			if n2 and is_instance_valid(n2):
+				var q2 = players[clampi(int(args[1]), 0, players.size() - 1)]
+				n2.set_meta("flying", true)
+				var tw := n2.create_tween()
+				tw.tween_property(n2, "global_position", q2.global_position + Vector3(0, 0.8, 0), 0.12)
+				tw.tween_callback(n2.queue_free)
+				if q2 == player: Snd.play("gem", -16.0, 0.0, 0.035, 1.0 + randf() * 0.15)
+		"ch+":
+			_make_chest(args[1], args[2], args[3])
+			chests[chests.size() - 1]["id"] = args[0]
+		"ch-":
+			for c in chests:
+				if c["id"] == args[0]:
+					chests.erase(c)
+					_chest_open_fx(c["n"])
+					Snd.play("chest", -2.0, 0.05, 0.2)
+					break
+		"brk":
+			for b in breakables:
+				if b["id"] == args[0]:
+					_break(b)
+					break
+		"shr":
+			var si: int = args[0]
+			if si >= 0 and si < shrines.size():
+				var sh: Dictionary = shrines[si]
+				sh["used"] = true; sh["active"] = false
+				if sh["ring"]: sh["ring"].visible = false
+				sh["label"].modulate = Color(0.5, 0.5, 0.5)
+				for c in sh["n"].get_children():
+					if c is MeshInstance3D and c.mesh is CylinderMesh and (c.mesh as CylinderMesh).height >= 14.0:
+						c.visible = false
+		"door":
+			if door == null: _open_door(args[0])
+		"word": stamp(args[0], args[1])
+		"loadout":
+			var q3 = players[clampi(int(args[0]), 0, players.size() - 1)]
+			var owned: Dictionary = args[1]
+			for id in owned:
+				if not q3.weapons.owned.has(id): q3.weapons.add_weapon(id)
+				q3.weapons.owned[id] = (owned[id] as Dictionary).duplicate(true)
+		"team":
+			decrets = args[0]; mods = args[1]; dirs = args[2]
+		"over":
+			_client_end(false, args[0])
+		"win":
+			_client_end(true, false)
+
+func _client_end(win: bool, abandon: bool):
+	if state in ["over", "win"]: return
+	state = "win" if win else "over"
+	Snd.stop_music(0.3); Snd.music("victory" if win else "defeat", 0.2)
+	get_tree().paused = true
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	hud.show_screen("LE CAPITALISME EST TOMBÉ" if win else ("L'HÔTE A ABANDONNÉ" if abandon else "LE COLLECTIF EST TOMBÉ"),
+		"Temps : %s   ·   Niveau %d   ·   %d capitalistes bonkés\n\nLes médailles et les défis sont comptés chez l'hôte." % [_fmt(run_time + time), level, kills],
+		"ENTRÉE ou A : retour au menu en ligne", Color(0.95, 0.75, 0.25) if win else Color(0.85, 0.15, 0.15))
+	hud.screen_buttons([["RETOUR AU MENU EN LIGNE", _back_to_hub]])

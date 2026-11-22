@@ -85,6 +85,13 @@ Ce fichier garde en mémoire les décisions prises avec le créateur du jeu, pou
 - [x] Look-dev des effets : `lookdev/vfx.tscn`.
 - Ensuite (demande du créateur) : identité propre à chaque niveau avec ennemis et boss spécifiques.
 
+## Lot 10 — coop en ligne 2 à 4 (22/11/2026)
+- [x] Moteur à plusieurs camarades : armes, ultime et passif propres ; XP, niveau, roubles et décrets communs ; choix de cartes simultanés ; mise à terre et relève (3 s) ; difficulté et XP ajustées au nombre de joueurs ; les ennemis chassent le camarade le plus proche.
+- [x] Réseau (`scripts/net.gd`, ENet, port 24517 UDP, UPnP) : l'hôte calcule tout, les camarades envoient leur position et leurs actions, reçoivent 15 instantanés/s (ennemis proches, joueurs, niveau…) et les événements (butin, coffres, sanctuaires, attaques ennemies, choix, fin de partie, changement de zone).
+- [x] Écran « Jouer en ligne » (héberger / rejoindre / salon, choix du camarade, zone, difficulté). Notice : `JOUER_EN_LIGNE.txt`.
+- [x] Testé à 2 et 3 instances sur la même machine (pas encore entre deux vraies connexions internet).
+- Ensuite : identité propre à chaque niveau (ennemis et boss spécifiques).
+
 ## Réponses du créateur (questionnaire du 21/11/2026)
 **À faire maintenant :**
 - Personnages : taille des capitalistes inchangée ; ennemis tués = **disparition immédiate** (pas de cadavre) ; pas d'animation de frappe du héros ; je propose les 5e/6e camarades ; **skins débloquables** oui.

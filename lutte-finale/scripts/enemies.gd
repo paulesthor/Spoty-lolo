@@ -31,6 +31,9 @@ class Enemy:
 	var last_p := 0           # index of the comrade who hit it last (ultimate charge goes to them)
 	var tgt                   # the comrade it is chasing
 	var nid := 0              # network id
+	var gpos := Vector3.ZERO  # ghost (connected comrade's PC): position sent by the host
+	var grot := 0.0
+	var seen := 0
 	var affix := ""
 	var affix_fx: Node3D
 	var tp_t := 0.0
@@ -55,6 +58,23 @@ var heal_t := 0.0
 var _next_idx := 0
 var _frame := 0
 var aura_t := 0.0
+# online coop: on a connected comrade's PC the capitalists are "ghosts" that follow the host's snapshots
+var ghost := false
+var by_nid := {}
+var _nid := 0
+var _snap_n := 0
+var _nest := 0
+const KINDS: Array = []
+const ANIMS := ["Walk", "Run", "Idle", "Run_Back", "Run_Left", "Run_Right", "HitRecieve", "HitRecieve_2", "Death", "Punch_Right", "Punch_Left",
+	"Idle_Gun_Shoot", "Idle_Gun_Pointing", "Idle_Sword", "Sword_Slash", "Wave", "Gun_Shoot", "Jump"]
+const AFFIXES := ["", "blinde", "rapide", "diviseur", "vampire", "teleporteur"]
+
+func kind_index(k: String) -> int:
+	return Data.ENEMIES.keys().find(k)
+
+# host: tell the comrades' games to draw an enemy attack (top-level calls only)
+func _send(fn: String, args: Array):
+	if _nest == 0 and not ghost and game.net_host: Net.event_all("hz", [fn, args])
 
 func setup(g):
 	game = g
@@ -131,6 +151,9 @@ func spawn(kind: String, pos: Vector3, hp_mult := 1.0, dmg_mult := 1.0) -> Enemy
 	e.boss = def.get("boss", false)
 	e.invincible = def.get("invincible", false)
 	e.alive = true
+	if not ghost:
+		_nid += 1
+		e.nid = _nid
 	e.affix = ""
 	e.tp_t = 8.0 if e.boss else 0.0
 	if (e.boss or e.elite) and not game.warming:
@@ -147,7 +170,7 @@ func spawn(kind: String, pos: Vector3, hp_mult := 1.0, dmg_mult := 1.0) -> Enemy
 			st.tween_property(sm, "scale", Vector3.ONE * 2.0, 0.8)
 			st.chain().tween_callback(sm.queue_free)
 	if e.affix_fx: e.affix_fx.queue_free(); e.affix_fx = null
-	if not e.elite and not e.boss and not e.invincible and game.dtime() > 180.0 and not game.warming:
+	if not ghost and not e.elite and not e.boss and not e.invincible and game.dtime() > 180.0 and not game.warming:
 		var ch := clampf(0.03 + (game.dtime() - 180.0) / 360.0 * 0.12, 0.0, 0.2)
 		if randf() < ch: _give_affix(e, ["blinde", "rapide", "diviseur", "vampire", "teleporteur"][randi() % 5])
 	e.knock = Vector3.ZERO
@@ -201,6 +224,9 @@ func _process(d: float):
 	_alive_cache.clear()
 	for e in list:
 		if e.alive: _alive_cache.append(e)
+	if ghost:
+		_ghost_process(d)
+		return
 	if game.state != "play": return
 	_frame += 1
 	var grid := {}
@@ -393,7 +419,7 @@ func _ai_summoner(e: Enemy, dir: Vector3, dist: float, d: float) -> Vector3:
 	if e.t_act <= 0.0 and dist < 24.0:
 		e.t_act = 6.0
 		var m: Array = game.mults()
-		for i in 3:
+		for i in (3 if count() < game.enemy_cap() else 0):
 			var a := randf() * TAU
 			spawn("stagiaire", game.world.resolve(e.node.position + Vector3(cos(a), 0, sin(a)) * 1.5, 0.5), m[0], m[1])
 		_heal_fx(e.node.position)
@@ -480,6 +506,7 @@ func _ai_boss(e: Enemy, dir: Vector3, dist: float, d: float) -> Vector3:
 
 # ---------------------------------------------------------------- hazards
 func _shoot(from: Vector3, dir: Vector3, dmg: float, effect: String):
+	_send("_shoot", [from, dir, dmg, effect])
 	var n := Node3D.new()
 	add_child(n)
 	n.global_position = from
@@ -489,7 +516,10 @@ func _shoot(from: Vector3, dir: Vector3, dmg: float, effect: String):
 
 func _lob(from: Vector3, to: Vector3, dmg: float):
 	to = game.world.resolve(to, 0.3)
+	_send("_lob", [from, to, dmg])
+	_nest += 1
 	var tele := _telegraph_circle(to, 2.4, 1.0)
+	_nest -= 1
 	var n := Node3D.new()
 	add_child(n)
 	n.global_position = from
@@ -505,6 +535,7 @@ func _debt_zone(p: Vector3, dmg: float):
 	hazards.append({"t": "zone", "n": root, "life": 4.0, "r": 2.4, "dmg": dmg, "tick": 0.0})
 
 func _telegraph_circle(p: Vector3, r: float, dur: float) -> Node3D:
+	_send("_telegraph_circle", [p, r, dur])
 	var s := U.sprite(self, "circle_03.png", Vector3(p.x, 0.06, p.z), r * 2.0, Color(1, 0.15, 0.1, 0.8), 2.0, false, Vector3(-PI / 2, 0, 0))
 	var tw := s.create_tween()
 	tw.tween_property(s, "scale", Vector3.ONE * 1.05, dur)
@@ -512,6 +543,7 @@ func _telegraph_circle(p: Vector3, r: float, dur: float) -> Node3D:
 	return s
 
 func _telegraph_line(p: Vector3, dir: Vector3, length: float, dur: float):
+	_send("_telegraph_line", [p, dir, length, dur])
 	var m := MeshInstance3D.new()
 	var q := PlaneMesh.new(); q.size = Vector2(1.2, length)
 	m.mesh = q
@@ -525,7 +557,8 @@ func _telegraph_line(p: Vector3, dir: Vector3, length: float, dur: float):
 	tw.tween_callback(m.queue_free)
 
 func _slam(p: Vector3, r: float, dmg: float, cause := "le coup de zone d'un Actionnaire"):
-	for q in game.players:
+	_send("_slam", [p, r, dmg, cause])
+	for q in (game.players if not ghost else []):
 		var v: Vector3 = q.global_position - p
 		v.y = 0
 		if v.length() < r and q.global_position.y < 1.5:
@@ -538,13 +571,16 @@ func _slam(p: Vector3, r: float, dmg: float, cause := "le coup de zone d'un Acti
 	game.shake(0.15)
 
 func _explode(p: Vector3, dmg: float):
+	_send("_explode", [p, dmg])
+	_nest += 1
 	_telegraph_circle(p, 2.8, 0.7)
+	_nest -= 1
 	get_tree().create_timer(0.7, false).timeout.connect(func():
-		for q in game.players:
+		for q in (game.players if not ghost else []):
 			var v: Vector3 = q.global_position - p
 			v.y = 0
 			if v.length() < 2.8: q.take_damage(dmg, false, p, "l'explosion d'un Crypto-bro")
-		for o in in_radius(p, 2.8):
+		for o in (in_radius(p, 2.8) if not ghost else []):
 			damage(o, dmg * 2.0, p, 8.0)
 		var s := U.sprite(self, "star_04.png", p + Vector3(0, 0.8, 0), 5.5, Color(0.4, 1.0, 0.5), 3.0)
 		var tw := s.create_tween()
@@ -553,6 +589,7 @@ func _explode(p: Vector3, dmg: float):
 		game.shake(0.12))
 
 func _heal_fx(p: Vector3):
+	_send("_heal_fx", [p])
 	var s := U.sprite(self, "magic_02.png" if ResourceLoader.exists("res://fx/magic_02.png") else "spark_04.png", p + Vector3(0, 1.2, 0), 1.2, Color(0.3, 1, 0.4), 2.5)
 	var tw := s.create_tween()
 	tw.tween_property(s, "position:y", p.y + 2.4, 0.5)
@@ -565,7 +602,7 @@ func _update_hazards(d: float):
 			"shot":
 				n.global_position += h["v"] * d
 				h["life"] -= d
-				for q in game.players:
+				for q in (game.players if not ghost else []):
 					if n.global_position.distance_to(q.global_position + Vector3(0, 1.0, 0)) < 0.75:
 						if q.take_damage(h["dmg"], false, n.global_position, "un tir d'Influenceur") and h["eff"] != "":
 							q.apply_status(h["eff"])
@@ -588,7 +625,7 @@ func _update_hazards(d: float):
 				h["tick"] -= d
 				var tick: bool = h["tick"] <= 0.0
 				if tick: h["tick"] = 0.5
-				for q in game.players:
+				for q in (game.players if not ghost else []):
 					var v: Vector3 = q.global_position - n.global_position
 					v.y = 0
 					if v.length() < h["r"] and q.global_position.y < 1.0:
@@ -600,6 +637,17 @@ func _update_hazards(d: float):
 # ---------------------------------------------------------------- damage
 func damage(e: Enemy, amount: float, knock_from := Vector3.INF, knock_force := 0.0, src := "", show_num := true, ignore_armor := false, crit_chance := 0.05, wid := ""):
 	if not e.alive or not e.node.visible: return
+	if ghost:
+		if src != "":
+			var now0 := Time.get_ticks_msec() / 1000.0
+			if e.hit_from.get(src, -10.0) > now0: return
+		var crit0 := randf() < crit_chance
+		var a0: float = amount * (2.0 if crit0 else 1.0)
+		if not ignore_armor: a0 = maxf(a0 - e.armor, a0 * 0.15)
+		if (show_num or crit0) and not e.invincible:
+			game.damage_number(e.node.position + Vector3(0, e.def["h"] + 0.3, 0), a0, crit0)
+			Snd.play("hit", -16.0, 0.25, 0.045)
+		return
 	if not e.alive: return
 	if src != "":
 		var now := Time.get_ticks_msec() / 1000.0
@@ -645,9 +693,12 @@ func set_hit_cd(e: Enemy, src: String, cd: float):
 
 func kill(e: Enemy):
 	if not e.alive: return
+	if ghost:
+		_ghost_gone(e, true)
+		return
 	e.alive = false
 	list.erase(e)
-	if e.affix == "diviseur" and not game.warming:
+	if e.affix == "diviseur" and not game.warming and count() < game.enemy_cap() + 40:
 		var m: Array = game.mults()
 		for i in 2:
 			var c := spawn(e.kind, game.world.resolve(e.node.position + Vector3(randf_range(-1, 1), 0, randf_range(-1, 1)), e.r), m[0] * 0.4, m[1])
@@ -735,3 +786,77 @@ func flinch(e: Enemy):
 	if e.ap == null or e.act_t > 0.0 or e.flinch_cd > 0.0: return
 	e.flinch_cd = 1.2 if (e.elite or e.boss) else 2.0
 	_act(e, "HitRecieve", 0.3, 1.8)
+
+# ================================================================ online coop
+# host: the capitalists near comrade `center` (ints: id, kind|affix|flags, anim; floats: x y z rot hp anim_speed)
+func pack_near(center: Vector3, radius: float) -> Array:
+	var ints := PackedInt32Array()
+	var fl := PackedFloat32Array()
+	var r2 := radius * radius
+	for e in _alive_cache:
+		var p: Vector3 = e.node.position
+		var dx := p.x - center.x
+		var dz := p.z - center.z
+		if dx * dx + dz * dz > r2 and not e.boss: continue
+		var flags := 0
+		if not e.node.visible: flags |= 1
+		if e.stun_t > 0.0: flags |= 2
+		ints.append(e.nid)
+		ints.append(kind_index(e.kind) | (AFFIXES.find(e.affix) << 8) | (flags << 12))
+		var an := ANIMS.find(e.ap.current_animation) if e.ap else -1
+		ints.append(an)
+		fl.append(p.x); fl.append(p.y); fl.append(p.z); fl.append(e.node.rotation.y)
+		fl.append(e.hp / maxf(e.max_hp, 1.0) if (e.boss or e.elite) else 1.0)
+		fl.append(e.ap.speed_scale if e.ap else 1.0)
+	return [ints, fl]
+
+# comrade's PC: bring the ghosts in line with the host's snapshot
+func apply_pack(ints: PackedInt32Array, fl: PackedFloat32Array, center: Vector3, radius: float):
+	_snap_n += 1
+	var keys: Array = Data.ENEMIES.keys()
+	var n := ints.size() / 3
+	for i in n:
+		var nid: int = ints[i * 3]
+		var kf: int = ints[i * 3 + 1]
+		var kind: String = keys[kf & 0xff] if (kf & 0xff) < keys.size() else "stagiaire"
+		var pos := Vector3(fl[i * 6], fl[i * 6 + 1], fl[i * 6 + 2])
+		var e: Enemy = by_nid.get(nid)
+		if e == null or not e.alive or e.kind != kind:
+			e = spawn(kind, pos)
+			e.nid = nid
+			by_nid[nid] = e
+			e.node.position = pos
+			var aff: String = AFFIXES[(kf >> 8) & 0xf] if ((kf >> 8) & 0xf) < AFFIXES.size() else ""
+			if aff != "": _give_affix(e, aff)
+		e.seen = _snap_n
+		e.gpos = pos
+		e.grot = fl[i * 6 + 3]
+		e.hp = fl[i * 6 + 4] * e.max_hp
+		var flags: int = (kf >> 12) & 0xf
+		e.node.visible = (flags & 1) == 0
+		var an: int = ints[i * 3 + 2]
+		if e.ap and an >= 0 and an < ANIMS.size():
+			var name: String = ANIMS[an]
+			if e.ap.current_animation != name and e.ap.has_animation(name): e.ap.play(name, 0.12)
+			e.ap.speed_scale = fl[i * 6 + 5]
+	# those that vanished: killed if they were close to us, otherwise simply out of range
+	for e in list.duplicate():
+		if not e.alive or e.seen == _snap_n: continue
+		var dv: Vector3 = e.node.position - center
+		_ghost_gone(e, Vector2(dv.x, dv.z).length() < radius - 6.0)
+
+func _ghost_gone(e: Enemy, died: bool):
+	e.alive = false
+	list.erase(e)
+	by_nid.erase(e.nid)
+	if e.affix_fx: e.affix_fx.queue_free(); e.affix_fx = null
+	if died and e.node.visible: game.spark(e.node.position + Vector3(0, 1.0, 0), true)
+	_pool(e)
+
+func _ghost_process(d: float):
+	for e in _alive_cache:
+		var p: Vector3 = e.node.position
+		e.node.position = p.lerp(e.gpos, 1.0 - exp(-14.0 * d)) if p.distance_to(e.gpos) < 6.0 else e.gpos
+		e.node.rotation.y = lerp_angle(e.node.rotation.y, e.grot, 12.0 * d)
+		if e.ap: e.ap.advance(d)
+	_update_hazards(d)

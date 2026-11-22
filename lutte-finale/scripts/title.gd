@@ -73,6 +73,7 @@ func _ui():
 	menu = VBoxContainer.new(); menu.add_theme_constant_override("separation", 12); v.add_child(menu)
 	var play := UIK.button(menu, "▶  JOUER", 34, 420)
 	play.pressed.connect(func(): _go("res://scenes/charselect.tscn"))
+	UIK.button(menu, "JOUER EN LIGNE  ·  COOP 2 À 4", 26, 420).pressed.connect(func(): _go("res://scenes/online.tscn"))
 	UIK.button(menu, "LE KOLKHOZE  ·  PROGRESSION", 26, 420).pressed.connect(func(): Meta.hub_tab = "bureau"; _go("res://scenes/hub.tscn"))
 	UIK.button(menu, "OPTIONS", 26, 420).pressed.connect(func(): Meta.hub_tab = "options"; _go("res://scenes/hub.tscn"))
 	UIK.button(menu, "CRÉDITS", 26, 420).pressed.connect(func(): credits.visible = true)

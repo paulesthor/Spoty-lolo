@@ -44,6 +44,9 @@ var revive_t := 0.0
 var remote := false          # driven by a connected comrade (position comes from the network)
 var net_in := {}             # last input/state received from that comrade
 var prompt := ""             # interaction hint for this player
+var choices: Array = []      # card choices waiting for this comrade
+var cur_choice = null        # the card set on their screen
+var bot_wait := 0.0
 var tag: Label3D
 var down_fx: Node3D
 var bot_angle := 0.0
