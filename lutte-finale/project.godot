@@ -5,6 +5,8 @@ config/name="Communiste Land"
 config/description="Survivor-like 3D satirique (prototype)"
 run/main_scene="res://scenes/boot.tscn"
 config/features=PackedStringArray("4.5", "GL Compatibility")
+config/icon="res://icon.png"
+config/windows_native_icon="res://icon.ico"
 
 [autoload]
 
