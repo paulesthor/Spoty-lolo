@@ -32,7 +32,7 @@ func _ready():
 	# a few capitalists at the foot of the tribune, cowering before the comrade
 	var kinds := ["cadre", "banquier", "trader", "cadre"]
 	for i in 4:
-		var e: Node3D = Chars.build_enemy(stage, kinds[i], Vector3(2.0 + i * 1.3, 0, 4.2 + (i % 2) * 0.9), 1.8)
+		var e: Node3D = Chars.build_enemy(stage, kinds[i], Vector3(1.2 + i * 1.25, 0, 3.1 + (i % 2) * 0.5), 1.7)
 		Chars.attach(e, Data.ENEMIES[kinds[i]]["acc"])
 		e.rotation.y = PI + 0.3 - i * 0.15
 		var eap := U.anim_player(e)

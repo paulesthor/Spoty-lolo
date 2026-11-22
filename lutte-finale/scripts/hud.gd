@@ -311,40 +311,61 @@ func _build_choices():
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	dim.color = Color(0, 0, 0, 0.55)
 	choice_root.add_child(dim)
-	choice_title = _label(choice_root, "", 54, Color.WHITE)
+	choice_title = _label(choice_root, "", 50, Color.WHITE)
+	choice_title.add_theme_font_override("font", load("res://fonts/RussoOne.woff2"))
+	choice_title.add_theme_color_override("font_shadow_color", C_ACC); choice_title.add_theme_constant_override("shadow_offset_x", 4); choice_title.add_theme_constant_override("shadow_offset_y", 4)
 	_at(choice_title, Control.PRESET_CENTER, Vector2(-600, -330), Vector2(1200, 80))
 	choice_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint_label = _label(choice_root, "1 · 2 · 3, clic, ou manette (gauche/droite + A)", 20, Color(1, 1, 1, 0.6))
 	var hint := hint_label
 	_at(hint, Control.PRESET_CENTER, Vector2(-600, 250), Vector2(1200, 30))
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	# reward cards as little Party posters: paper, a slanted rarity band, an emblem, ink type
+	var paper := Color(0.94, 0.89, 0.78)
+	var ink := Color(0.1, 0.07, 0.06)
+	var russo: Font = load("res://fonts/RussoOne.woff2")
+	var sym: Font = load("res://fonts/Symbols.ttf")
 	for i in 3:
 		var card := Panel.new()
 		var sb := StyleBoxFlat.new()
-		sb.bg_color = Color(0.08, 0.08, 0.09, 0.95)
-		sb.set_border_width_all(3)
+		sb.bg_color = paper
+		sb.set_border_width_all(4)
 		sb.border_color = C_BORDER
-		sb.set_corner_radius_all(3)
+		sb.shadow_color = Color(0, 0, 0, 0.5); sb.shadow_size = 10; sb.shadow_offset = Vector2(6, 8)
 		card.add_theme_stylebox_override("panel", sb)
 		_at(card, Control.PRESET_CENTER, Vector2(-560 + i * 380, -220), Vector2(360, 440))
+		card.pivot_offset = Vector2(180, 220)
 		card.mouse_filter = Control.MOUSE_FILTER_STOP
 		card.gui_input.connect(_on_card_input.bind(i))
 		card.mouse_entered.connect(func(): sel = i; _highlight())
 		choice_root.add_child(card)
-		var tag := _label(card, "", 18, C_ACC)
-		tag.position = Vector2(24, 24)
-		var title := _label(card, "", 40, Color.WHITE)
-		title.position = Vector2(24, 54); title.size = Vector2(312, 60)
-		var lv := _label(card, "", 22, C_XP)
-		lv.position = Vector2(24, 112)
-		var desc := _label(card, "", 22, Color(0.85, 0.83, 0.8))
-		desc.position = Vector2(24, 160); desc.size = Vector2(312, 240)
+		var band := Panel.new()
+		var bsb := StyleBoxFlat.new(); bsb.bg_color = C_ACC; bsb.skew = Vector2(0.25, 0)
+		band.add_theme_stylebox_override("panel", bsb)
+		band.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		band.position = Vector2(-6, 14); band.size = Vector2(300, 38)
+		card.add_child(band)
+		var tag := _label(card, "", 17, Color.WHITE)
+		tag.position = Vector2(18, 20); tag.size = Vector2(320, 30)
+		var emb := _label(card, "★", 64, Color(0.8, 0.1, 0.12))
+		emb.add_theme_font_override("font", sym)
+		emb.position = Vector2(0, 52); emb.size = Vector2(360, 80); emb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		var title := _label(card, "", 32, ink)
+		title.add_theme_font_override("font", russo)
+		title.position = Vector2(20, 136); title.size = Vector2(320, 44)
+		title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		var lv := _label(card, "", 20, Color(0.75, 0.1, 0.12))
+		lv.position = Vector2(20, 186); lv.size = Vector2(320, 30); lv.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		var desc := _label(card, "", 20, ink)
+		desc.position = Vector2(28, 222); desc.size = Vector2(304, 170)
 		desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		var key := _label(card, str(i + 1), 26, Color(1, 1, 1, 0.35))
-		key.position = Vector2(318, 392)
-		var price := _label(card, "", 26, Color(1, 0.85, 0.35))
-		price.position = Vector2(24, 392)
-		cards.append({"card": card, "sb": sb, "tag": tag, "title": title, "lv": lv, "desc": desc, "price": price})
+		desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		var key := _label(card, str(i + 1), 26, Color(0.1, 0.07, 0.06, 0.35))
+		key.position = Vector2(318, 396)
+		var price := _label(card, "", 26, Color(0.75, 0.1, 0.12))
+		price.position = Vector2(24, 396)
+		cards.append({"card": card, "sb": sb, "tag": tag, "title": title, "lv": lv, "desc": desc, "price": price, "band": bsb, "emb": emb})
 
 var hint_label: Label
 var leave_label := ""
@@ -370,20 +391,29 @@ func show_choices(title: String, opts: Array, leave := ""):
 			c["desc"].text = o["desc"]
 			c["price"].text = ("%d RBL" % o["cost"]) if o.has("cost") else ""
 			c["rcol"] = Data.RARITY_COLORS[o["rarity"]]
-			c["tag"].add_theme_color_override("font_color", c["rcol"])
+			var rc: Color = c["rcol"]
+			(c["band"] as StyleBoxFlat).bg_color = Color(0.8, 0.1, 0.12) if o["rarity"] == 0 else rc.darkened(0.25)
+			var glyph := {"weapon_new": "☭", "weapon_up": "☭", "decret": "★", "evo": "☭★", "fusion": "☭☭", "surplus": "★★", "surcharge": "☭", "pack": "★"}
+			c["emb"].text = glyph.get(o["kind"], "★")
 	_highlight()
 	choice_root.visible = true
+	toast_label.visible = false
 
 func hide_choices():
+	toast_label.visible = true
 	choice_root.visible = false
 
 func _highlight():
 	for i in cards.size():
 		var sb: StyleBoxFlat = cards[i]["sb"]
 		var rc: Color = cards[i].get("rcol", C_BORDER)
-		sb.border_color = Color(1, 1, 1) if i == sel else Color(rc.r, rc.g, rc.b, 0.8)
-		sb.set_border_width_all(5 if i == sel else 3)
-		sb.bg_color = Color(0.14, 0.1, 0.09, 0.97) if i == sel else Color(0.08, 0.08, 0.09, 0.95)
+		sb.border_color = C_ACC if i == sel else Color(rc.r, rc.g, rc.b, 0.9).darkened(0.2)
+		sb.set_border_width_all(8 if i == sel else 4)
+		sb.bg_color = Color(1.0, 0.95, 0.84) if i == sel else Color(0.9, 0.85, 0.74)
+		var cd: Panel = cards[i]["card"]
+		var tw := cd.create_tween().set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+		tw.tween_property(cd, "scale", Vector2.ONE * (1.06 if i == sel else 1.0), 0.1)
+		tw.parallel().tween_property(cd, "rotation", (-0.02 if i == sel else 0.0), 0.1)
 
 func _on_card_input(ev: InputEvent, i: int):
 	if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
