@@ -22,6 +22,12 @@ var _bscale := 1.0
 var gen_tries := 0
 var decor: Node3D
 var far_smokes: Array = []
+var blocks: Array = []           # Rect2 lots turned into blocks of tall buildings (also in cuts)
+var area_k := 1.0                # map area relative to the first prototype maps (counts scale with it)
+var occluders: Array = []        # {aabb, c, meshes:[[mi, mat]], occ, ghost}: tall pieces that fade out when they hide the player
+var _ghost_mat: StandardMaterial3D
+var _ghost_t := 0.0
+var lots2                        # themed lot builders (lots.gd)
 
 func build(seed_value := 1917, tpl: Dictionary = Levels.HYPERMARCHE):
 	template = tpl
@@ -34,6 +40,9 @@ func build(seed_value := 1917, tpl: Dictionary = Levels.HYPERMARCHE):
 		_plan_layout()
 		if _validate(): break
 		s += 7777
+	area_k = (bounds.size.x * bounds.size.y) / (165.0 * 175.0)
+	lots2 = load("res://scripts/lots.gd").new()
+	lots2.w = self
 	_env()
 	_ground()
 	_sidewalks()
@@ -61,15 +70,16 @@ func _batch():
 		var gi: GeometryInstance3D = g
 		if gi is MeshInstance3D and (gi as MeshInstance3D).mesh == null: continue
 		var ab: AABB = gi.global_transform * gi.get_aabb()
-		if ab.size.x < 5.0 and ab.size.z < 5.0 and ab.size.y < 6.0:
-			gi.visibility_range_end = 62.0
+		if ab.size.x < 7.0 and ab.size.z < 7.0 and ab.size.y < 12.0:
+			# small props vanish at 62 m, trees and tall props a bit further (maps are big now)
+			gi.visibility_range_end = 62.0 if (ab.size.y < 6.0 and ab.size.x < 5.0 and ab.size.z < 5.0) else 85.0
 			gi.visibility_range_end_margin = 6.0
 			gi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_DISABLED
 			culled += 1
 	print("[world] distance-culled %d small props" % culled)
 
 func _reset():
-	obstacles.clear(); cuts.clear(); lots.clear(); plateaus.clear()
+	obstacles.clear(); cuts.clear(); lots.clear(); plateaus.clear(); blocks.clear()
 	chest_spots.clear(); shrine_spots.clear(); breakable_spots.clear()
 
 # ---------------------------------------------------------------- layout planning (no nodes yet)
@@ -123,13 +133,20 @@ func _plan_layout():
 		for i in template["min"][k]: kinds.append(k)
 	while kinds.size() < usable.size():
 		kinds.append(Levels.pick(rng, template["lots"]))
+	var n_min := 0
+	for k in template["min"]: n_min += int(template["min"][k])
 	for i in usable.size():
+		var ur: Rect2 = usable[i]
+		# some lots become blocks of tall buildings: the map can't be read in one glance any more
+		if i >= n_min and rng.randf() < float(template.get("blocks", 0.0)) and ur.get_center().distance_to(Vector2(player_start.x, player_start.z)) > 36.0:
+			blocks.append(ur); cuts.append(ur); obstacles.append(ur)
+			continue
 		lots.append([usable[i], kinds[i]])
 	# plan raised platforms (they affect pathing and validation)
 	for l in lots:
 		if l[1] in PLATEAU_LOTS: _plan_plateaus(l[0], l[1])
 
-const PLATEAU_LOTS := ["quai", "chantier", "passerelle", "estrade"]
+const PLATEAU_LOTS := ["quai", "chantier", "passerelle", "estrade", "piste"]
 
 func _split(r: Rect2, out: Array, depth: int):
 	var mn: float = template["lot_size"][0]
@@ -152,6 +169,7 @@ func _plan_plateaus(lot: Rect2, kind: String):
 	var h := 3.0 if kind == "quai" else rng.randf_range(2.6, 3.4)
 	if kind == "passerelle": h = rng.randf_range(3.8, 4.6)
 	if kind == "estrade": h = 2.2
+	if kind == "piste": h = rng.randf_range(4.0, 5.0)
 	var pw := lot.size.x * rng.randf_range(0.45, 0.6)
 	var pd := lot.size.y * rng.randf_range(0.45, 0.6)
 	var px := lot.position.x + rng.randf_range(2.0, lot.size.x - pw - 2.0)
@@ -160,7 +178,7 @@ func _plan_plateaus(lot: Rect2, kind: String):
 	var ramps := []
 	var sides := [0, 1, 2, 3]
 	sides.shuffle()
-	var n := 2 if kind in ["quai", "passerelle", "estrade"] else 1 + rng.randi() % 2
+	var n := 2 if kind in ["quai", "passerelle", "estrade", "piste"] else 1 + rng.randi() % 2
 	for i in n:
 		var side: int = sides[i]
 		var rl := h * 3.2      # ramp length (~17 degrees)
@@ -295,14 +313,20 @@ func _env():
 
 func _ground():
 	var g := MeshInstance3D.new()
-	var pm := PlaneMesh.new(); pm.size = Vector2(500, 500)
+	var pm := PlaneMesh.new(); pm.size = Vector2(700, 700)
+	if template.get("skyline", "") == "sea":
+		pm.size = Vector2(bounds.size.x + 110.0, bounds.size.y + 110.0)
+		g.position = Vector3(bounds.get_center().x, 0, bounds.get_center().y)
 	g.mesh = pm
 	# textured asphalt (trading floor tiles in La Bourse), tinted per zone
 	var gc: Color = template.get("ground", Color(0.42, 0.43, 0.46))
 	var tint := Color(gc.r * 2.0, gc.g * 2.0, gc.b * 2.0)
 	var m: StandardMaterial3D
+	var gt: String = template.get("ground_tex", "Asphalt031")
 	if template.get("id", "") == "bourse":
 		m = U.pbr("Marble012", 0.08, Color(0.42, 0.4, 0.48), 0.6)
+	elif gt != "Asphalt031":
+		m = U.pbr(gt, 0.12, tint, 0.8)
 	else:
 		m = U.pbr("Asphalt031", 0.18, tint, 0.7)
 	g.material_override = m
@@ -312,6 +336,7 @@ func _ground():
 	cs.shape = WorldBoundaryShape3D.new()
 	body.add_child(cs)
 	add_child(body)
+	if gt in ["Snow010A", "Ground080"]: return      # no road markings in the snow or the sand
 	# avenue lane markings around each lot
 	var lm := U.solid(Color(0.92, 0.9, 0.82), 0.0, 0.9)
 	for l in lots:
@@ -347,31 +372,20 @@ func _buildings():
 	_bscale = 12.0 / maxf(U.world_aabb(ref).size.y, 0.001)
 	ref.queue_free()
 	var b := bounds
-	var i := rng.randi() % 14
+	var style: String = template.get("border", "city")
 	var z := b.end.y + 4.0
 	while z > b.position.y - 6.0:
-		_dress(_bld(U.CC + BNAMES[i % 14] + ".glb", Vector3(b.position.x - 16, 0, z), PI / 2), Vector3(1, 0, 0)); i += 1
-		_dress(_bld(U.CC + BNAMES[(i + 5) % 14] + ".glb", Vector3(b.end.x + 16, 0, z), -PI / 2), Vector3(-1, 0, 0)); i += 1
+		_tall_piece(style, Vector3(b.position.x - 16, 0, z), Vector3(1, 0, 0))
+		_tall_piece(style, Vector3(b.end.x + 16, 0, z), Vector3(-1, 0, 0))
 		z -= 11.0
 	var x := b.position.x - 6.0
-	var j := rng.randi() % 5
 	while x < b.end.x + 8.0:
-		var back: String = SKY[j % 5] if rng.randf() < template.get("sky_ratio", 0.33) else BNAMES[(j * 3) % 14]
-		_dress(_bld(U.CC + back + ".glb", Vector3(x, 0, b.position.y - 16 - (6 if "sky" in back else 0)), 0.0), Vector3(0, 0, 1))
-		var front_b: String = SKY[(j + 2) % 5] if rng.randf() < template.get("sky_ratio", 0.33) * 0.6 else BNAMES[(j * 5 + 2) % 14]
-		_dress(_bld(U.CC + front_b + ".glb", Vector3(x, 0, b.end.y + 16 + (6 if "sky" in front_b else 0)), PI), Vector3(0, 0, -1))
-		x += 11.0; j += 1
-	# cut areas: blocks of buildings facing the arena
+		_tall_piece(style, Vector3(x, 0, b.position.y - 16), Vector3(0, 0, 1), true)
+		_tall_piece(style, Vector3(x, 0, b.end.y + 16), Vector3(0, 0, -1), true)
+		x += 11.0
+	# cut areas (arena shape) and inner blocks: tall buildings facing the avenues
 	for c in cuts:
-		var r: Rect2 = c
-		var cx := r.position.x + 6.0
-		while cx < r.end.x - 2.0:
-			var cz := r.position.y + 6.0
-			while cz < r.end.y - 2.0:
-				var cb: String = SKY[rng.randi() % 5] if rng.randf() < template.get("sky_ratio", 0.33) * 0.5 else BNAMES[rng.randi() % 14]
-				_bld(U.CC + cb + ".glb", Vector3(cx, 0, cz), [0.0, PI / 2, PI, -PI / 2][rng.randi() % 4])
-				cz += 11.0
-			cx += 11.0
+		_fill_block(c, template.get("block", "city") if blocks.has(c) else style)
 	_skyline()
 	# hypermarket facade on the back wall
 	var fz := b.position.y - 10.0
@@ -442,6 +456,7 @@ func _fill_lots():
 			"corbeille": _lot_corbeille(r)
 			"ecrans": _lot_ecrans(r)
 			"coffre": _lot_coffre(r)
+			_: lots2.build(l[1], r)
 	for i in plateaus.size(): _build_plateau(i)
 
 func _v(x: float, z: float) -> Vector3:
@@ -514,9 +529,18 @@ func _lot_plaza(r: Rect2):
 		var a := TAU * i / 4.0 + PI / 4
 		var tp := c + Vector3(cos(a), 0, sin(a)) * clampf(minf(r.size.x, r.size.y) * 0.45, 9.5, 12.0)
 		if not r.grow(-1.0).has_point(Vector2(tp.x, tp.z)): continue
-		U.nature(self, ["maple_tree_1", "maple_tree_2", "maple_tree_4", "birch_tree_1", "maple_tree_1", "maple_tree_4"][rng.randi() % 6], tp, rng.randf_range(5.5, 7.0), rng.randf() * TAU)
+		var tl := trees()
+		U.nature(self, tl[rng.randi() % tl.size()], tp, rng.randf_range(5.5, 7.0) * (1.25 if "palm" in tl[0] else 1.0), rng.randf() * TAU)
 		_undergrowth(tp)
 		obstacles.append(Rect2(tp.x - 0.5, tp.z - 0.5, 1.0, 1.0))      # trunk: nothing else gets placed on it
+
+func trees() -> Array:
+	match template.get("id", ""):
+		"paradis": return ["palm_tree_1", "palm_tree_2", "palm_tree_3", "palm_tree_4"]
+		"ski": return ["pine_tree_1", "pine_tree_2", "pine_tree_3", "pine_tree_4"]
+		"fusee": return ["dead_tree_1", "dead_tree_3", "dead_tree_5", "dead_tree_7"]
+		"datacenter": return ["dead_tree_2", "dead_tree_4", "birch_tree_2"]
+	return ["maple_tree_1", "maple_tree_2", "maple_tree_4", "birch_tree_1", "maple_tree_1", "maple_tree_4"]
 
 func _lot_square(r: Rect2):
 	var c := _v(r.get_center().x, r.get_center().y)
@@ -532,7 +556,8 @@ func _lot_square(r: Rect2):
 		var tp := c + Vector3(cos(a), 0, sin(a)) * rng.randf_range(7.0, minf(r.size.x, r.size.y) * 0.45)
 		if _blocked(tp, 1.5): continue
 		if i % 2 == 0:
-			U.nature(self, ["birch_tree_1", "maple_tree_2", "maple_tree_4", "maple_tree_1"][rng.randi() % 4], tp, rng.randf_range(5.0, 6.5), rng.randf() * TAU)
+			var tl := trees()
+			U.nature(self, tl[rng.randi() % tl.size()], tp, rng.randf_range(5.0, 6.5), rng.randf() * TAU)
 			_undergrowth(tp)
 		else:
 			U.nature(self, ["bush_large", "bush_large_flowers", "bush_flowers", "bush"][rng.randi() % 4], tp, rng.randf_range(1.2, 1.8), rng.randf() * TAU)
@@ -576,7 +601,7 @@ func _build_plateau(i: int):
 	var pl: Dictionary = plateaus[i]
 	var r: Rect2 = pl["rect"]
 	var h: float = pl["h"]
-	var col: Color = {"quai": Color(0.55, 0.53, 0.5), "chantier": Color(0.75, 0.6, 0.25), "passerelle": Color(0.45, 0.55, 0.62), "estrade": Color(0.55, 0.12, 0.14)}.get(pl["kind"], Color(0.6, 0.6, 0.6))
+	var col: Color = {"quai": Color(0.55, 0.53, 0.5), "chantier": Color(0.75, 0.6, 0.25), "passerelle": Color(0.45, 0.55, 0.62), "estrade": Color(0.55, 0.12, 0.14), "piste": Color(0.62, 0.64, 0.7)}.get(pl["kind"], Color(0.6, 0.6, 0.6))
 	var c := Vector3(r.get_center().x, h / 2.0, r.get_center().y)
 	var mi := U.box(self, Vector3(r.size.x, h, r.size.y), c, U.pbr("Marble012" if pl["kind"] == "estrade" else "Concrete034", 0.3, Color(col.r * 1.6, col.g * 1.6, col.b * 1.6), 1.0))
 	_plateau_dress(r, h, pl["kind"], col)
@@ -593,8 +618,14 @@ func _build_plateau(i: int):
 		U.box(self, Vector3(r.size.x, 1.0, 0.08), Vector3(c.x, h + 0.5, r.position.y), glass)
 		U.box(self, Vector3(r.size.x, 1.0, 0.08), Vector3(c.x, h + 0.5, r.end.y), glass)
 		U.label(self, "PASSERELLE DES CADRES · ACCÈS INTERDIT AU PEUPLE", Vector3(c.x, h * 0.3, r.position.y - 0.12), 60, Color(1, 1, 1), Color(0, 0, 0, 1), false)
+	elif pl["kind"] == "piste":
+		U.label(self, "PISTE NOIRE · RÉSERVÉE AUX ACTIONNAIRES", Vector3(c.x, h * 0.6, r.position.y - 0.12), 64, Color(1, 1, 1), Color(0, 0, 0, 1), false)
+		U.box(self, Vector3(r.size.x - 0.4, 0.35, r.size.y - 0.4), Vector3(c.x, h + 0.2, c.z), U.pbr("Snow010A", 0.2, Color(1.05, 1.05, 1.1), 0.5))
+		for k in 3:
+			var fl := Vector3(rng.randf_range(r.position.x + 2, r.end.x - 2), h + 0.35, rng.randf_range(r.position.y + 2, r.end.y - 2))
+			U.cyl(self, 0.04, 1.6, fl + Vector3(0, 0.8, 0), U.solid(Color(0.1, 0.1, 0.1) if k % 2 == 0 else Color(0.85, 0.1, 0.1)))
 	elif pl["kind"] == "estrade":
-		U.label(self, "ESTRADE DES ACTIONNAIRES", Vector3(c.x, h * 0.55, r.position.y - 0.12), 70, Color(1, 0.85, 0.3), Color(0, 0, 0, 1), false)
+		U.label(self, template.get("plateau_labels", {}).get("estrade", "ESTRADE DES ACTIONNAIRES"), Vector3(c.x, h * 0.55, r.position.y - 0.12), 70, Color(1, 0.85, 0.3), Color(0, 0, 0, 1), false)
 		for k in 2:
 			U.place(self, U.CAR + "box.glb", Vector3(r.position.x + 2.0 + k * 1.5, h, r.position.y + 2.0), 0.9, rng.randf() * TAU)
 	else:
@@ -629,10 +660,23 @@ func _props():
 			if not _in_cut(p):
 				U.place(self, U.CR + "light-square.glb", p, 6.5, PI / 2 if x < 0 else -PI / 2)
 				small_obstacle(p, 0.6)
-	for i in 12:
+	var clutter: Array = template.get("clutter", ["dumpster"])
+	for i in int(12 * area_k):
 		var p := free_spot(6.0, 3.0)
-		var d := U.place(self, U.CR + "dumpster.glb", p, 1.6, rng.randf() * TAU)
-		add_obstacle(d)
+		match clutter[i % clutter.size()]:
+			"palm":
+				U.nature(self, ["palm_tree_1", "palm_tree_2", "palm_tree_3", "palm_tree_5"][rng.randi() % 4], p, rng.randf_range(6.0, 9.0), rng.randf() * TAU)
+				small_obstacle(p, 0.6)
+			"pine":
+				U.nature(self, ["pine_tree_1", "pine_tree_2", "pine_tree_3", "pine_tree_5"][rng.randi() % 4], p, rng.randf_range(5.0, 8.0), rng.randf() * TAU)
+				small_obstacle(p, 0.8)
+			"rack":
+				var rk := U.box(self, Vector3(1.2, 2.2, 0.9), p + Vector3(0, 1.1, 0), U.pbr("Metal049A", 0.3, Color(0.35, 0.37, 0.42), 0.8), Vector3(0, rng.randf() * TAU, 0))
+				U.box(self, Vector3(0.9, 0.08, 0.05), p + Vector3(0, 1.6, 0.47), U.solid(Color(0.3, 1.0, 0.5), 3.0))
+				add_obstacle(rk)
+			_:
+				var d := U.place(self, U.CR + "dumpster.glb", p, 1.6, rng.randf() * TAU)
+				add_obstacle(d)
 
 func _walls():
 	var b := bounds
@@ -673,7 +717,9 @@ func free_spot(min_from_start := 6.0, pad := 1.5) -> Vector3:
 
 func _pick_spots():
 	var tries := 0
-	while shrine_spots.size() < 9 and tries < 400:
+	var n_shr := int(round(9 * area_k * 0.8))
+	var n_chest := int(round(16 * area_k * 0.8))
+	while shrine_spots.size() < n_shr and tries < 600:
 		tries += 1
 		var p := free_spot(18.0, 7.0)
 		var ok := true
@@ -681,7 +727,7 @@ func _pick_spots():
 			if p.distance_to(q) < 24.0: ok = false
 		if ok: shrine_spots.append(p)
 	tries = 0
-	while chest_spots.size() < 16 and tries < 800:
+	while chest_spots.size() < n_chest and tries < 1200:
 		tries += 1
 		var p := free_spot(8.0, 1.5)
 		var ok := true
@@ -692,7 +738,7 @@ func _pick_spots():
 	for pl in plateaus:
 		var r: Rect2 = pl["rect"]
 		chest_spots.append(Vector3(r.get_center().x + 1.5, pl["h"], r.get_center().y))
-	for i in 100:
+	for i in int(100 * area_k * 0.8):
 		breakable_spots.append(free_spot(5.0, 1.6))
 
 # push a point out of obstacles (for ground enemies); returns corrected position
@@ -825,7 +871,7 @@ func _plateau_dress(r: Rect2, h: float, kind: String, col: Color):
 
 # sidewalks with a kerb around every lot: gives the ground a street structure
 func _sidewalks():
-	var walk := U.pbr("PavingStones138", 0.45, Color(0.95, 0.93, 0.9) if template.get("id", "") != "bourse" else Color(0.7, 0.68, 0.75), 0.9)
+	var walk := U.pbr(template.get("walk_tex", "PavingStones138"), 0.45, Color(0.95, 0.93, 0.9) if template.get("id", "") != "bourse" else Color(0.7, 0.68, 0.75), 0.9)
 	var kerb := U.pbr("Concrete034", 0.5, Color(1.05, 1.05, 1.02), 0.8)
 	for l in lots:
 		var r: Rect2 = (l[0] as Rect2).grow(1.4)
@@ -855,10 +901,11 @@ func _undergrowth(p: Vector3):
 # each lot gets its own floor: paving on squares and markets, concrete in yards, marble in the stock exchange
 func _lot_floor(r: Rect2, kind: String):
 	var bourse: bool = template.get("id", "") == "bourse"
+	var ft: String = template.get("floor_tex", "PavingStones138")
 	var mat: Material = null
 	match kind:
 		"plaza", "square", "start", "market":
-			mat = U.pbr("PavingStones138", 0.5, Color(0.88, 0.85, 0.8) if not bourse else Color(0.62, 0.6, 0.7), 0.6)
+			mat = U.pbr(ft, 0.5 if ft != "Snow010A" else 0.2, Color(0.88, 0.85, 0.8) if not bourse else Color(0.62, 0.6, 0.7), 0.6)
 		"containers", "chantier", "quai", "station":
 			mat = U.pbr("Concrete034", 0.2, Color(0.95, 0.93, 0.9), 0.8)
 		"bureaux":
@@ -873,10 +920,14 @@ func _lot_floor(r: Rect2, kind: String):
 
 # distant city silhouette beyond the arena (fog fades it): towers, factory chimneys, lit windows at night
 func _skyline():
-	var night: bool = ambiance == "nuit"
+	match template.get("skyline", "city"):
+		"sea": _sky_sea(); return
+		"mountains": _sky_far("mountains"); return
+		"desert": _sky_far("desert"); return
+	var night: bool = ambiance == "nuit" or template.get("skyline", "") == "servers"
 	var c := bounds.get_center()
 	var dark := U.solid(Color(0.32, 0.3, 0.34) if not night else Color(0.08, 0.08, 0.12), 0.0, 0.9)
-	var win := U.solid(Color(1.0, 0.8, 0.45), 3.0)
+	var win := U.solid(Color(1.0, 0.8, 0.45) if template.get("skyline", "") != "servers" else Color(0.3, 0.75, 1.0), 3.0)
 	var rad := maxf(bounds.size.x, bounds.size.y) * 0.5 + 70.0
 	var n := 46
 	for i in n:
@@ -911,7 +962,7 @@ func _dress(n: Node3D, face: Vector3):
 	var rot := atan2(face.x, face.z)
 	var roll := rng.randf()
 	var bid: String = template.get("id", "hypermarche")
-	var ad_ratio: float = {"hypermarche": 0.25, "quartier": 0.5, "bourse": 0.6}.get(bid, 0.3)
+	var ad_ratio: float = {"hypermarche": 0.25, "quartier": 0.5, "bourse": 0.6, "grandsoir": 0.0, "paradis": 0.6, "startup": 0.6}.get(bid, 0.4)
 	if roll < 0.32 and a.size.y > 9.0:
 		# mural: a poster painted over most of the facade
 		var mh := minf(a.size.y * 0.55, 11.0)
@@ -925,10 +976,8 @@ func _dress(n: Node3D, face: Vector3):
 			U.poster(self, tex, lat + face * (wp + 0.05) + Vector3(0, my, 0), Vector2(mw, mh), rot)
 	elif roll < 0.6:
 		# shop / office sign over the ground floor
-		var names := {"hypermarche": ["BOULANGERIE D'ÉTAT", "COOPÉRATIVE N°7", "LAVERIE DU PEUPLE", "KIOSQUE PRAVDA", "PHARMACIE CENTRALE"],
-			"quartier": ["CABINET DE CONSEIL", "STARTUP NATION", "COWORKING PREMIUM", "BANQUE PRIVÉE", "AGENCE DE NOTATION"],
-			"bourse": ["COURTIER 24/7", "PARADIS FISCAL VOYAGES", "BIJOUTERIE", "CLUB PRIVÉ", "MONTRES DE LUXE"]}
-		var txt: String = names[bid][rng.randi() % 5]
+		var shops: Array = template.get("shops", ["COOPÉRATIVE N°7"])
+		var txt: String = shops[rng.randi() % shops.size()]
 		var col: Color = [Color(0.72, 0.08, 0.1), Color(0.12, 0.25, 0.45), Color(0.15, 0.35, 0.22), Color(0.1, 0.1, 0.12)][rng.randi() % 4]
 		# the wall plane at sign height: the furthest-out part of the building that spans 2.9-3.9 m
 		var wall := -1e9
@@ -975,3 +1024,267 @@ func _wall_plane(n: Node, face: Vector3, y0: float, y1: float) -> float:
 		if ma.position.y > y0 + 0.05 or ma.end.y < y1 - 0.05: continue
 		wall = maxf(wall, ma.get_center().dot(face) + absf((ma.size * 0.5).dot(face)))
 	return wall
+
+# ---------------------------------------------------------------- tall pieces (border ring and inner blocks)
+const IND_B := ["building-a", "building-b", "building-c", "building-d", "building-e", "building-f", "building-g", "building-h", "building-i", "building-j", "building-k", "building-l", "building-m", "building-n", "building-o", "building-p", "building-q", "building-r", "building-s", "building-t"]
+
+# one tall element of about 11 x 11 m at `pos`, its front looking along `face`. `back`: may be pushed back and taller.
+func _tall_piece(style: String, pos: Vector3, face: Vector3, back := false) -> Node3D:
+	var rot := atan2(face.x, face.z)
+	var n: Node3D
+	match style:
+		"glass", "hotel", "city", "palace":
+			var ratio: float = {"glass": 0.75, "hotel": 0.55}.get(style, template.get("sky_ratio", 0.33))
+			var sky := rng.randf() < ratio
+			var path: String = U.CC + (SKY[rng.randi() % 5] if sky else BNAMES[rng.randi() % 14]) + ".glb"
+			n = _bld(path, pos - face * (6.0 if sky and back else 0.0), rot)
+			if style == "hotel": U.detailize(n, "Plaster001", 0.5)
+			_dress(n, face)
+			if style == "palace" and rng.randf() < 0.6: _red_banners(n, face)
+			if style == "hotel" and rng.randf() < 0.5:
+				var pp := pos + face * 7.5 + Vector3(cos(rot), 0, -sin(rot)) * rng.randf_range(-3.0, 3.0)
+				if not back: U.nature(self, ["palm_tree_1", "palm_tree_2", "palm_tree_3", "palm_tree_4"][rng.randi() % 4], pp, rng.randf_range(7.0, 10.0), rng.randf() * TAU)
+		"industrial", "hangar":
+			if style == "hangar" and rng.randf() < 0.22:
+				n = _launch_tower(pos, rng.randf_range(24.0, 34.0))
+			else:
+				n = U.place(self, U.IND + IND_B[rng.randi() % IND_B.size()] + ".glb", pos, rng.randf_range(11.0, 17.0) * (1.25 if back else 1.0), rot)
+				var a := U.world_aabb(n)
+				if a.size.x > 12.5 or a.size.z > 12.5:
+					n.scale *= 11.5 / maxf(a.size.x, a.size.z)
+					var a2 := U.world_aabb(n)
+					n.position += Vector3(pos.x - a2.get_center().x, -a2.position.y, pos.z - a2.get_center().z)
+				U.detailize(n, ["CorrugatedSteel009", "Concrete034", "Bricks105"][rng.randi() % 3], 0.4)
+				_static_box(U.world_aabb(n).get_center(), U.world_aabb(n).size)
+				if rng.randf() < 0.3:
+					var top := U.world_aabb(n)
+					var ch := U.place(self, U.IND + ["chimney-large", "chimney-medium", "chimney-basic"][rng.randi() % 3] + ".glb", Vector3(top.get_center().x, top.end.y - 0.2, top.get_center().z), rng.randf_range(6.0, 10.0), 0.0)
+					far_smokes.append({"p": Vector3(top.get_center().x, U.world_aabb(ch).end.y + 0.5, top.get_center().z), "t": 0.0, "s": 5.0})
+		"servers":
+			n = _server_tower(pos, rng.randf_range(15.0, 26.0) * (1.25 if back else 1.0), face)
+		"rocks":
+			n = _cliff(pos, rng.randf_range(12.0, 20.0) * (1.3 if back else 1.0))
+		_:
+			n = _bld(U.CC + BNAMES[rng.randi() % 14] + ".glb", pos, rot)
+	if n: register_occluder(n)
+	return n
+
+# a block of tall pieces filling `r`; pieces on the edge face the avenue around it
+func _fill_block(r: Rect2, style: String):
+	var cx := r.position.x + 5.5
+	while cx < r.end.x - 1.0:
+		var cz := r.position.y + 5.5
+		while cz < r.end.y - 1.0:
+			var p := Vector3(minf(cx, r.end.x - 5.0), 0, minf(cz, r.end.y - 5.0))
+			var dl := p.x - r.position.x
+			var dr := r.end.x - p.x
+			var dt := p.z - r.position.y
+			var db := r.end.y - p.z
+			var m := minf(minf(dl, dr), minf(dt, db))
+			var face := Vector3(-1, 0, 0) if m == dl else (Vector3(1, 0, 0) if m == dr else (Vector3(0, 0, -1) if m == dt else Vector3(0, 0, 1)))
+			_tall_piece(style, p, face)
+			cz += 11.0
+		cx += 11.0
+	# the block's corners get a street lamp and a bit of greenery so its foot doesn't look cut out
+	for k in 4:
+		var q := Vector3(r.position.x if k % 2 == 0 else r.end.x, 0, r.position.y if k < 2 else r.end.y)
+		q += Vector3(-1.2 if k % 2 == 0 else 1.2, 0, -1.2 if k < 2 else 1.2)
+		if inside(q) and not _blocked(q, 0.8):
+			U.place(self, U.CR + "light-square.glb", q, 6.5, 0.0)
+			small_obstacle(q, 0.5)
+
+func _red_banners(n: Node3D, face: Vector3):
+	var a := U.world_aabb(n)
+	if a.size.y < 9.0: return
+	var c := a.get_center()
+	var depth: float = (a.size.z if absf(face.x) < 0.5 else a.size.x) * 0.5
+	var lat := Vector3(face.z, 0, -face.x)
+	var red := U.solid(Color(0.75, 0.05, 0.07), 0.0, 0.85)
+	var rot := atan2(face.x, face.z)
+	var sym: Font = load("res://fonts/Symbols.ttf")
+	for k in [-1.0, 1.0]:
+		var bp: Vector3 = Vector3(c.x, a.position.y + a.size.y * 0.55, c.z) + face * (depth + 0.25) + lat * k * minf(a.size.x, a.size.z) * 0.25
+		U.box(self, Vector3(2.4, a.size.y * 0.6, 0.06), bp, red, Vector3(0, rot, 0))
+		var s := Label3D.new(); s.text = "☭"; s.font = sym; s.font_size = 200; s.pixel_size = 0.012
+		s.modulate = Color(1, 0.8, 0.25); s.outline_size = 0; s.position = bp + face * 0.05 + Vector3(0, a.size.y * 0.12, 0); s.rotation.y = rot
+		add_child(s)
+
+func _server_tower(pos: Vector3, h: float, face: Vector3) -> Node3D:
+	var root := Node3D.new(); add_child(root); root.position = pos
+	var wd := rng.randf_range(8.5, 10.0)
+	var metal := U.pbr("Metal049A", 0.3, Color(0.42, 0.45, 0.52), 0.8)
+	U.box(root, Vector3(wd, h, wd), Vector3(0, h / 2.0, 0), metal)
+	U.box(root, Vector3(wd + 0.4, 0.5, wd + 0.4), Vector3(0, 0.25, 0), U.solid(Color(0.12, 0.13, 0.16), 0.0, 0.6))
+	var leds := [U.solid(Color(0.2, 0.7, 1.0), 3.0), U.solid(Color(0.3, 1.0, 0.5), 3.0), U.solid(Color(1.0, 0.25, 0.3), 3.0)]
+	var rot := atan2(face.x, face.z)
+	# rows of rack lights on the front and sides
+	for sd in [0.0, PI / 2, -PI / 2]:
+		var f := face.rotated(Vector3.UP, sd)
+		var y := 2.0
+		while y < h - 1.5:
+			var strip := U.box(root, Vector3(wd * rng.randf_range(0.4, 0.85), 0.14, 0.06), Vector3(0, y, 0) + f * (wd * 0.5 + 0.03), leds[rng.randi() % 3], Vector3(0, rot + sd, 0))
+			strip.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			y += rng.randf_range(1.2, 2.4)
+	# cooling units and an antenna on the roof
+	for k in 2:
+		U.box(root, Vector3(2.4, 1.4, 2.4), Vector3(rng.randf_range(-2.5, 2.5), h + 0.7, rng.randf_range(-2.5, 2.5)), U.solid(Color(0.6, 0.62, 0.66), 0.0, 0.5, 0.6))
+	U.cyl(root, 0.08, 5.0, Vector3(wd * 0.3, h + 2.5, -wd * 0.3), U.solid(Color(0.2, 0.2, 0.22)))
+	U.sphere(root, 0.22, Vector3(wd * 0.3, h + 5.1, -wd * 0.3), U.solid(Color(1, 0.15, 0.15), 5.0))
+	U.batch_static(root)
+	_static_box(pos + Vector3(0, h / 2.0, 0), Vector3(wd, h, wd))
+	return root
+
+func _cliff(pos: Vector3, h: float) -> Node3D:
+	var root := Node3D.new(); add_child(root); root.position = pos
+	var rk := ["rock_1", "rock_2", "rock_3", "rock_4", "rock_5"]
+	var main := U.nature(root, rk[rng.randi() % 5], Vector3.ZERO, h, rng.randf() * TAU)
+	var ma := U.world_aabb(main)
+	if ma.size.x > 13.0 or ma.size.z > 13.0:
+		main.scale *= 12.0 / maxf(ma.size.x, ma.size.z)
+		var a2 := U.world_aabb(main)
+		main.position += Vector3(pos.x - a2.get_center().x, pos.y - a2.position.y, pos.z - a2.get_center().z)
+	for k in 2:
+		var off := Vector3(rng.randf_range(-4, 4), 0, rng.randf_range(-4, 4))
+		var sm := U.nature(root, rk[rng.randi() % 5], off, h * rng.randf_range(0.3, 0.55), rng.randf() * TAU)
+		var sa := U.world_aabb(sm)
+		if sa.size.x > 8.0 or sa.size.z > 8.0: sm.scale *= 7.0 / maxf(sa.size.x, sa.size.z)
+	# snow cap and a few pines clinging to it
+	var top := U.world_aabb(main)
+	var cap := U.sphere(root, minf(top.size.x, top.size.z) * 0.32, Vector3(0, top.end.y - pos.y - 0.6, 0), U.pbr("Snow010A", 0.2, Color(1.05, 1.05, 1.1), 0.6), top.size.y * 0.14)
+	cap.position.x = top.get_center().x - pos.x; cap.position.z = top.get_center().z - pos.z
+	for k in rng.randi_range(0, 1):
+		var a := rng.randf() * TAU
+		U.nature(root, ["pine_tree_1", "pine_tree_2", "pine_tree_3", "pine_tree_4"][rng.randi() % 4], Vector3(cos(a) * 5.5, 0, sin(a) * 5.5), rng.randf_range(6.0, 10.0), rng.randf() * TAU)
+	var ra := U.world_aabb(root)
+	_static_box(Vector3(pos.x, ra.size.y / 2.0, pos.z), Vector3(minf(ra.size.x, 11.0), ra.size.y, minf(ra.size.z, 11.0)))
+	return root
+
+func _launch_tower(pos: Vector3, h: float) -> Node3D:
+	var root := Node3D.new(); add_child(root); root.position = pos
+	var red := U.solid(Color(0.78, 0.15, 0.1), 0.0, 0.5, 0.6)
+	var white := U.solid(Color(0.9, 0.9, 0.88), 0.0, 0.5, 0.6)
+	var s := 4.0
+	for cx in [-1.0, 1.0]:
+		for cz in [-1.0, 1.0]:
+			U.box(root, Vector3(0.45, h, 0.45), Vector3(cx * s, h / 2.0, cz * s), red)
+	var y := 3.0
+	var k := 0
+	while y < h:
+		var m := red if k % 2 == 0 else white
+		U.box(root, Vector3(s * 2.0, 0.3, 0.3), Vector3(0, y, -s), m); U.box(root, Vector3(s * 2.0, 0.3, 0.3), Vector3(0, y, s), m)
+		U.box(root, Vector3(0.3, 0.3, s * 2.0), Vector3(-s, y, 0), m); U.box(root, Vector3(0.3, 0.3, s * 2.0), Vector3(s, y, 0), m)
+		U.box(root, Vector3(0.18, 4.2, 0.18), Vector3(0, y + 1.5, -s), m, Vector3(0, 0, 0.9 if k % 2 == 0 else -0.9))
+		y += 3.0; k += 1
+	U.box(root, Vector3(s * 2.4, 0.4, s * 2.4), Vector3(0, h, 0), U.solid(Color(0.3, 0.3, 0.32)))
+	U.sphere(root, 0.3, Vector3(0, h + 0.5, 0), U.solid(Color(1, 0.2, 0.15), 5.0))
+	U.batch_static(root)
+	_static_box(pos + Vector3(0, h / 2.0, 0), Vector3(s * 2.0, h, s * 2.0))
+	return root
+
+# ---------------------------------------------------------------- see-through when a tall piece hides the player
+func register_occluder(n: Node3D):
+	var a := U.world_aabb(n)
+	if a.size.y < 6.0: return
+	var meshes := []
+	for m in n.find_children("*", "MeshInstance3D", true, false):
+		if m.is_queued_for_deletion(): continue
+		meshes.append([m, (m as MeshInstance3D).material_override, (m as MeshInstance3D).cast_shadow])
+	if meshes.is_empty(): return
+	# real occlusion culling behind big pieces (what's behind a block isn't drawn)
+	var occ := OccluderInstance3D.new()
+	var bo := BoxOccluder3D.new()
+	bo.size = Vector3(maxf(a.size.x - 1.5, 1.0), maxf(a.size.y - 1.5, 1.0), maxf(a.size.z - 1.5, 1.0))
+	occ.occluder = bo
+	add_child(occ)
+	occ.global_position = a.get_center()
+	occluders.append({"aabb": a.grow(0.3), "c": a.get_center(), "meshes": meshes, "occ": occ, "ghost": false})
+
+func update_ghosts(cam_pos: Vector3, target: Vector3, d: float):
+	_ghost_t -= d
+	if _ghost_t > 0.0: return
+	_ghost_t = 0.08
+	if _ghost_mat == null:
+		_ghost_mat = StandardMaterial3D.new()
+		_ghost_mat.albedo_color = Color(0.85, 0.8, 0.75, 0.16)
+		_ghost_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_ghost_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_ghost_mat.cull_mode = BaseMaterial3D.CULL_BACK
+	var t2 := target + Vector3(0, 1.0, 0)
+	var reach := cam_pos.distance_to(t2) + 14.0
+	for o in occluders:
+		var c: Vector3 = o["c"]
+		var hide := false
+		if Vector2(c.x - target.x, c.z - target.z).length() < reach:
+			var ab: AABB = o["aabb"]
+			hide = ab.intersects_segment(cam_pos, t2) or ab.intersects_segment(cam_pos, target + Vector3(0, 2.2, 0)) or ab.has_point(cam_pos)
+		if hide == o["ghost"]: continue
+		o["ghost"] = hide
+		(o["occ"] as OccluderInstance3D).visible = not hide
+		for pair in o["meshes"]:
+			if not is_instance_valid(pair[0]): continue
+			var mi: MeshInstance3D = pair[0]
+			mi.material_override = _ghost_mat if hide else pair[1]
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF if hide else pair[2]
+
+# ---------------------------------------------------------------- other horizons
+func _sky_sea():
+	var c := bounds.get_center()
+	var water := MeshInstance3D.new(); var pm := PlaneMesh.new(); pm.size = Vector2(1400, 1400); water.mesh = pm
+	var wm := StandardMaterial3D.new(); wm.albedo_color = Color(0.1, 0.5, 0.62); wm.roughness = 0.08; wm.metallic = 0.3
+	water.material_override = wm; water.position = Vector3(c.x, -0.15, c.y)
+	water.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(water)
+	# a strip of foam where the sand meets the sea, then islands and yachts on the horizon
+	var foam := U.solid(Color(0.92, 0.96, 1.0), 0.0, 0.6)
+	var hb := Vector2(bounds.size.x + 110.0, bounds.size.y + 110.0) * 0.5
+	for e in [[Vector3(c.x, -0.05, c.y - hb.y), Vector3(hb.x * 2.0, 0.1, 1.2)], [Vector3(c.x, -0.05, c.y + hb.y), Vector3(hb.x * 2.0, 0.1, 1.2)],
+			[Vector3(c.x - hb.x, -0.05, c.y), Vector3(1.2, 0.1, hb.y * 2.0)], [Vector3(c.x + hb.x, -0.05, c.y), Vector3(1.2, 0.1, hb.y * 2.0)]]:
+		U.box(self, e[1], e[0], foam).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var rad := maxf(bounds.size.x, bounds.size.y) * 0.5 + 120.0
+	var green := U.solid(Color(0.3, 0.5, 0.3), 0.0, 0.9)
+	var sand := U.solid(Color(0.9, 0.8, 0.6), 0.0, 0.9)
+	for i in 9:
+		var a := TAU * i / 9.0 + rng.randf_range(-0.2, 0.2)
+		var p := Vector3(c.x + cos(a) * (rad + rng.randf_range(0, 80)), 0, c.y + sin(a) * (rad + rng.randf_range(0, 80)))
+		var r := rng.randf_range(12.0, 30.0)
+		U.sphere(self, r, p, sand, r * 0.25).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		U.sphere(self, r * 0.75, p + Vector3(0, r * 0.05, 0), green, r * 0.5).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		if i % 3 == 0:
+			# offshore tower on the island: the money sleeps there
+			var h := rng.randf_range(30.0, 55.0)
+			U.box(self, Vector3(8, h, 8), p + Vector3(0, h / 2.0, 0), U.solid(Color(0.85, 0.88, 0.9), 0.2, 0.2, 0.6)).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	for i in 6:
+		var a := rng.randf() * TAU
+		var p := Vector3(c.x + cos(a) * (rad - 30.0), 0, c.y + sin(a) * (rad - 30.0))
+		lots2.yacht(p, rng.randf() * TAU, rng.randf_range(1.6, 2.6))
+
+func _sky_far(kind: String):
+	var c := bounds.get_center()
+	var rad := maxf(bounds.size.x, bounds.size.y) * 0.5 + 95.0
+	var rock := U.solid(Color(0.5, 0.5, 0.56) if kind == "mountains" else Color(0.72, 0.42, 0.28), 0.0, 0.95)
+	var snow := U.solid(Color(0.95, 0.97, 1.0), 0.0, 0.8)
+	var n := 34
+	for i in n:
+		var a := TAU * i / n + rng.randf_range(-0.04, 0.04)
+		var r := rad + rng.randf_range(0.0, 70.0)
+		var p := Vector3(c.x + cos(a) * r, 0, c.y + sin(a) * r)
+		var m := MeshInstance3D.new()
+		var cm := CylinderMesh.new()
+		if kind == "mountains":
+			var h := rng.randf_range(70.0, 150.0)
+			cm.top_radius = 0.0; cm.bottom_radius = h * rng.randf_range(0.6, 0.9); cm.height = h; cm.radial_segments = 7
+			m.mesh = cm; m.material_override = rock; m.position = p + Vector3(0, h / 2.0, 0)
+			var cap := MeshInstance3D.new(); var cc := CylinderMesh.new()
+			cc.top_radius = 0.0; cc.bottom_radius = cm.bottom_radius * 0.36; cc.height = h * 0.36; cc.radial_segments = 7
+			cap.mesh = cc; cap.material_override = snow; cap.position = p + Vector3(0, h - h * 0.18 + 0.3, 0)
+			cap.rotation.y = m.rotation.y
+			cap.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			add_child(cap)
+		else:
+			# desert mesas
+			var h := rng.randf_range(20.0, 55.0)
+			cm.top_radius = rng.randf_range(14.0, 30.0); cm.bottom_radius = cm.top_radius * 1.25; cm.height = h; cm.radial_segments = 8
+			m.mesh = cm; m.material_override = rock; m.position = p + Vector3(0, h / 2.0, 0)
+		m.rotation.y = rng.randf() * TAU
+		m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(m)

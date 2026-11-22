@@ -3,6 +3,7 @@ extends Node3D
 # Test flags (after "--"): bot  speed=4  dur=600  shots=60  shotdir=res://proto_shots  seed=1  warp=300  pos=x,z yaw=deg
 
 const ZONE_TIME := 600.0      # 10:00, then the Krach
+const ACT_OFFSET := 150.0     # each act starts as if this much more time had passed
 const ZONE_OFFSET := 240.0    # each later zone starts as if this much more time had passed (difficulty)
 const BOSS_TIME := 480.0      # 08:00
 const CAM_OFFSET := Vector3(0, 7.5, 10.5)
@@ -131,6 +132,7 @@ func _ready():
 	tier = Meta.run_tier
 	endless = Meta.run_endless
 	tpl = Levels.zone(zone)
+	Levels.set_zone(tpl)
 	seed_v += zone * 101
 	rng.seed = seed_v
 	seed(seed_v)
@@ -142,6 +144,7 @@ func _ready():
 	player = load("res://scripts/player.gd").new()
 	add_child(player)
 	player.setup(self)
+	player.grav_mult = float(tpl.get("gravity", 1.0))
 	player.bot = bot
 	player.landed.connect(_on_landed)
 	player.global_position = world.player_start + Vector3(0, 0.3, 0)
@@ -654,7 +657,7 @@ func _show_menu():
 
 func start():
 	state = "play"
-	Snd.music("boss" if zone >= 3 else "battle")
+	Snd.music("boss" if Levels.act_end(zone) else "battle")
 	hud.hide_screen()
 	hud.set_hud_visible(true)
 	if not bot: Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
@@ -670,7 +673,7 @@ func start():
 				if weapons.can_fuse(f): weapons.fuse(f)
 	var sl := int(mods.get("start_level", 0.0))
 	if carried: sl = 0
-	elif zone > 1: sl += 12 * (zone - 1)     # starting directly in a later zone: catch-up levels
+	elif zone > 1: sl += 12 * ((zone - 1) % 3) + 6 * Levels.act(zone)     # starting directly in a later zone: catch-up levels
 	if sl > 0:
 		level += sl
 		pending_levels += sl
@@ -776,16 +779,14 @@ func _update_camera(d: float):
 	var head: Vector3 = player.global_position + Vector3(0, 1.6, 0)
 	var off := cam_offset()
 	var want: Vector3 = cam_rig.global_transform * off
-	var q := PhysicsRayQueryParameters3D.create(head, want, 2)
-	var hit := get_world_3d().direct_space_state.intersect_ray(q)
+	# the camera keeps its distance: buildings in the way turn see-through instead (world.update_ghosts)
 	var k := 1.0
-	if not hit.is_empty():
-		k = clampf((head.distance_to(hit["position"]) - 0.8) / head.distance_to(want), 0.15, 1.0)
 	cam_k = minf(k, cam_k + d * 2.0) if k > cam_k else k
 	var pivot := Vector3(0, 1.6, 0)
 	var local := pivot + (off - pivot) * cam_k
 	cam.position = local + Vector3(randf_range(-1, 1), randf_range(-1, 1), 0) * shake_amt
 	cam.basis = Basis.looking_at(cam_look().lerp(Vector3(0, 1.0, -3.0), 1.0 - cam_k) - local, Vector3.UP)
+	world.update_ghosts(cam.global_position, player.global_position, d)
 
 func shake(a: float):
 	shake_amt = minf(0.5, shake_amt + a * Meta.opt("shake") / 100.0)
@@ -826,7 +827,9 @@ func spawn_point(min_d: float, max_d: float) -> Vector3:
 
 # difficulty clock: zone time plus an offset per zone already crossed
 func dtime() -> float:
-	return time + (zone - 1) * ZONE_OFFSET
+	if endless: return time + (zone - 1) * ZONE_OFFSET
+	# inside an act each zone is a step harder; later acts start harder too
+	return time + ((zone - 1) % 3) * ZONE_OFFSET + Levels.act(zone) * ACT_OFFSET
 
 func mults() -> Array:
 	var tm := dtime() / 60.0
@@ -893,9 +896,9 @@ func _director(d: float):
 		boss_spawned = true
 		var bk: String = tpl["boss"]
 		Snd.music("boss", 2.0); Snd.play("explosion", 0.0, 0.0, 1.0, 0.6)
-		var zl := 1.0 + 1.2 * floorf((zone - 1) / 3.0)     # endless: bosses get tougher every loop
+		var zl := (1.0 + 1.2 * floorf((zone - 1) / 3.0)) if endless else (1.0 + 0.45 * Levels.act(zone))     # later acts / endless loops: tougher bosses
 		boss = enemies.spawn(bk, spawn_point(20.0, 24.0), (1.0 + 0.2 * bets) * zl * float(Meta.TIERS[tier - 1]["hp"]), float(Meta.TIERS[tier - 1]["dmg"]))
-		hud.toast("%s ARRIVE" % Data.ENEMIES[bk]["name"].to_upper(), 3.0)
+		hud.toast("%s ARRIVE" % Levels.edef(bk)["name"].to_upper(), 3.0)
 		if test_killboss: get_tree().create_timer(3.0, false).timeout.connect(func(): if boss.alive: enemies.kill(boss))
 		shake(0.4)
 	if not krach and time >= (420.0 if dirl("surveillance") > 0 else ZONE_TIME):
@@ -1624,7 +1627,7 @@ func _try_ultimate():
 # ---------------------------------------------------------------- zones
 func _boss_down(e):
 	bosses_killed.append(zone)
-	if zone >= 3 and not endless:
+	if Levels.act_end(zone) and not endless:
 		_win()
 		return
 	# the way to the next zone opens near where the boss fell
@@ -1633,7 +1636,7 @@ func _boss_down(e):
 	_open_door(p)
 	player.oneshot("cheer", 1.6, 1.0)
 	var nxt: Dictionary = Levels.zone(zone + 1)
-	hud.toast("%s EST BONKÉ ! LA PORTE VERS %s EST OUVERTE" % [Data.ENEMIES[e.kind]["name"].to_upper(), nxt["name"].to_upper()], 4.0)
+	hud.toast("%s EST BONKÉ ! LA PORTE VERS %s EST OUVERTE" % [Levels.edef(e.kind)["name"].to_upper(), nxt["name"].to_upper()], 4.0)
 	player.heal(player.max_hp * 0.3)
 
 func _open_door(p: Vector3):

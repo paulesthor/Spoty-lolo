@@ -4,6 +4,7 @@ extends CharacterBody3D
 signal landed(fall_speed: float)
 
 const GRAVITY := 26.0
+var grav_mult := 1.0        # the launch base has a lighter gravity (long jumps)
 const JUMP_V := 10.5
 const DOUBLE_JUMP_V := 9.0
 
@@ -181,7 +182,7 @@ func _physics_process(d: float):
 	if is_on_floor():
 		jumps_left = 1
 	var low_g := char_id == "youri"
-	velocity.y -= GRAVITY * d * (0.72 if low_g and velocity.y < 0.0 else 1.0)
+	velocity.y -= GRAVITY * grav_mult * d * (0.72 if low_g and velocity.y < 0.0 else 1.0)
 	if want_jump:
 		if is_on_floor():
 			velocity.y = JUMP_V * (1.15 if char_id == "youri" else 1.0)

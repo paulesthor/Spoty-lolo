@@ -19,21 +19,32 @@ var t := 0.0
 var scr_t := 0.0
 var smoke_t := 0.0
 var player: Node3D = null
+var snow: CPUParticles3D
+var fw_t := 2.0
+var drones: Array = []
 
 func build(world):
 	w = world
 	rng = world.rng
 	var id: String = w.template.get("id", "hypermarche")
-	smokes.append_array(w.far_smokes)
+	var fs: Array = w.far_smokes.duplicate()
+	fs.shuffle()
+	smokes.append_array(fs.slice(0, 10))       # a dozen plumes is plenty (each one is a stream of sprites)
 	_street_furniture()
-	_flags(10)
-	_pigeon_flocks(5)
+	_flags(int(10 * w.area_k * (2.5 if id == "grandsoir" else 1.0)))
+	_pigeon_flocks(int(5 * w.area_k))
 	_blimp(id)
 	_hoardings(id)
 	match id:
 		"hypermarche": _hypermarche()
 		"quartier": _quartier()
 		"bourse": _bourse()
+		"paradis": _paradis()
+		"startup": _startup()
+		"datacenter": _datacenter()
+		"ski": _ski()
+		"fusee": _fusee()
+		"grandsoir": _grandsoir()
 
 # ---------------------------------------------------------------- shared
 # a free spot, or INF when the map has no room left (the prop is then skipped, never stacked)
@@ -141,7 +152,7 @@ func _flags(n: int):
 		flags.append({"n": fl, "ph": rng.randf() * TAU, "base": fl.rotation.y})
 
 func _pigeon_flocks(n: int):
-	var grey := U.solid(Color(0.55, 0.56, 0.6), 0.0, 0.9)
+	var grey := U.solid(Color(0.55, 0.56, 0.6) if w.template.get("id", "") != "paradis" else Color(0.95, 0.95, 0.95), 0.0, 0.9)
 	var beak := U.solid(Color(0.9, 0.6, 0.2))
 	for f in n:
 		var c := _spot(1.0, 12.0)
@@ -166,7 +177,7 @@ func _blimp(id: String):
 		var fin := U.box(blimp, Vector3(0.15, 2.2, 1.8), Vector3(0, 0, -8.5), U.solid(Color(0.75, 0.08, 0.1)))
 		fin.rotation.z = k * PI / 2
 	U.box(blimp, Vector3(1.2, 0.8, 2.4), Vector3(0, -3.3, 0), U.solid(Color(0.3, 0.3, 0.32)))
-	var txt: String = {"hypermarche": "ACHETEZ PLUS", "quartier": "CROISSANCE INFINIE", "bourse": "LE MARCHÉ VOUS AIME"}.get(id, "ACHETEZ")
+	var txt: String = w.template.get("blimp", "ACHETEZ")
 	for sd in [-1.0, 1.0]:
 		var l := Label3D.new(); l.text = txt; l.font = U.font_main; l.font_size = 200; l.pixel_size = 0.02
 		l.modulate = Color(0.15, 0.3, 0.6); l.outline_size = 0; l.position = Vector3(sd * 3.05, 0, 0); l.rotation.y = sd * PI / 2
@@ -365,6 +376,10 @@ func _process(d: float):
 		var n: Node3D = s["n"]
 		if s.get("sway", false): n.rotation.z = sin(t * 1.1) * 0.08; n.rotation.x = sin(t * 0.7) * 0.05
 		else: n.rotation.y += s["sp"] * d
+	for dr in drones:
+		var dn: Node3D = dr["n"]
+		dn.position.y = dr["y"] + sin(t * 2.0 + dr["ph"]) * 0.35
+		dn.rotation.y += d * 0.6
 	for b in blinkers:
 		(b["n"] as Node3D).visible = sin(t * 4.0 + b["ph"]) > -0.2
 	for tk in tickers:
@@ -399,6 +414,13 @@ func _process(d: float):
 			tw.tween_property(sp, "scale", Vector3.ONE * 3.0, 6.0)
 			tw.chain().tween_callback(sp.queue_free)
 	_update_pigeons(d)
+	if snow and player:
+		snow.global_position = player.global_position + Vector3(0, 14.0, -4.0)
+	if w.template.get("fireworks", false):
+		fw_t -= d
+		if fw_t <= 0.0:
+			fw_t = rng.randf_range(1.2, 3.0)
+			_firework()
 
 func _update_pigeons(d: float):
 	var pp: Vector3 = player.global_position if player else Vector3(1e6, 0, 0)
@@ -496,3 +518,182 @@ func _hoardings(id: String):
 				_claim(p + along * k, 1.2)
 			n += 1
 			break
+
+# ---------------------------------------------------------------- act II and III zones
+func _scatter(n: int, pad: float, f: Callable):
+	for i in int(n * w.area_k):
+		var p := _spot(pad)
+		if p == Vector3.INF: continue
+		_claim(p, pad)
+		f.call(p, i)
+
+func _paradis():
+	# beach balls, jet-skis parked on the sand, coconuts, sun loungers
+	var cols := [Color(1, 0.3, 0.3), Color(0.2, 0.6, 1.0), Color(1.0, 0.85, 0.2)]
+	_scatter(8, 1.0, func(p: Vector3, i: int): U.sphere(self, 0.35, p + Vector3(0, 0.35, 0), U.solid(cols[i % 3], 0.0, 0.5)))
+	_scatter(6, 3.0, func(p: Vector3, i: int):
+		var j := Node3D.new(); add_child(j); j.position = p; j.rotation.y = rng.randf() * TAU
+		U.box(j, Vector3(0.9, 0.5, 2.4), Vector3(0, 0.35, 0), U.solid([Color(1, 0.85, 0.2), Color(0.9, 0.2, 0.3), Color(0.2, 0.8, 0.9)][i % 3], 0.0, 0.4))
+		U.box(j, Vector3(0.6, 0.35, 0.9), Vector3(0, 0.75, -0.2), U.solid(Color(0.1, 0.1, 0.12)))
+		U.box(j, Vector3(0.8, 0.08, 0.08), Vector3(0, 1.05, 0.45), U.solid(Color(0.2, 0.2, 0.22)))
+		w.small_obstacle(p, 1.0))
+	_scatter(10, 0.6, func(p: Vector3, i: int):
+		for k in 3: U.sphere(self, 0.16, p + Vector3(k * 0.3, 0.15, (k % 2) * 0.2), U.solid(Color(0.45, 0.3, 0.15), 0.0, 0.9)))
+	# a moored golden yacht with a slogan on the hull, as a landmark
+	_cocktail_bars()
+
+func _cocktail_bars():
+	for i in int(3 * w.area_k):
+		var p := _spot(3.5)
+		if p == Vector3.INF: continue
+		_claim(p, 3.5)
+		var b := Node3D.new(); add_child(b); b.position = p; b.rotation.y = rng.randf() * TAU
+		var wood := U.solid(Color(0.55, 0.38, 0.2), 0.0, 0.9)
+		U.box(b, Vector3(3.0, 1.1, 1.0), Vector3(0, 0.55, 0), wood)
+		for k in 4: U.box(b, Vector3(0.12, 2.6, 0.12), Vector3(-1.4 + (k % 2) * 2.8, 1.3, -0.4 + (k / 2) * 1.6), wood)
+		U.box(b, Vector3(3.6, 0.25, 2.4), Vector3(0, 2.7, 0.4), U.solid(Color(0.85, 0.75, 0.45), 0.0, 1.0))
+		U.label(b, "BAR DES ÉVADÉS", Vector3(0, 1.4, 0.52), 50, Color(1, 0.9, 0.5), Color(0, 0, 0, 1), false)
+		w.small_obstacle(p, 1.8)
+
+func _startup():
+	# e-scooters dumped everywhere, food trucks, neon "pivot" signs
+	_scatter(18, 0.8, func(p: Vector3, i: int):
+		var s := Node3D.new(); add_child(s); s.position = p; s.rotation = Vector3(0, rng.randf() * TAU, PI / 2 * 0.9 if i % 3 == 0 else 0.0)
+		if i % 3 == 0: s.position.y = 0.1
+		U.box(s, Vector3(0.18, 0.06, 1.0), Vector3(0, 0.12, 0), U.solid(Color(0.15, 0.15, 0.17)))
+		U.box(s, Vector3(0.05, 1.0, 0.05), Vector3(0, 0.6, 0.45), U.solid(Color(0.3, 0.85, 0.5), 0.0, 0.5))
+		U.box(s, Vector3(0.45, 0.04, 0.04), Vector3(0, 1.1, 0.45), U.solid(Color(0.15, 0.15, 0.17))))
+	_scatter(4, 4.0, func(p: Vector3, i: int):
+		var tr := U.place(self, U.CAR + ["delivery", "van", "delivery-flat"][i % 3] + ".glb", p, 2.6, rng.randf() * TAU)
+		w.add_obstacle(tr)
+		var a := U.world_aabb(tr)
+		var l := U.label(self, ["QUINOA BOWL", "KOMBUCHA", "AVOCADO TOAST", "POKÉ"][i % 4], Vector3(p.x, a.end.y + 0.6, p.z), 70, Color(1, 0.6, 0.85), Color(0.1, 0, 0.1, 1), true))
+	var neon := [Color(1, 0.3, 0.8), Color(0.3, 0.9, 1.0), Color(0.7, 0.4, 1.0)]
+	_scatter(10, 1.0, func(p: Vector3, i: int):
+		U.cyl(self, 0.06, 3.6, p + Vector3(0, 1.8, 0), U.solid(Color(0.2, 0.2, 0.22)))
+		var bl := U.box(self, Vector3(1.6, 0.5, 0.08), p + Vector3(0, 3.7, 0), U.solid(neon[i % 3], 4.0), Vector3(0, rng.randf() * TAU, 0))
+		if i % 3 == 0: blinkers.append({"n": bl, "ph": rng.randf() * TAU})
+		w.small_obstacle(p, 0.4))
+	_billboard("PIVOT · DISRUPT · SCALE · BURN · LEVER · PIVOT · LICENCIER · RECOMMENCER · ", Color(1.0, 0.45, 0.85))
+
+func _datacenter():
+	# hovering surveillance drones, blinking beacons, cable trays
+	_scatter(10, 1.0, func(p: Vector3, i: int):
+		var d := Node3D.new(); add_child(d); d.position = p + Vector3(0, rng.randf_range(4.0, 6.0), 0)
+		d.set_meta("airborne", true)
+		U.box(d, Vector3(0.6, 0.15, 0.6), Vector3.ZERO, U.solid(Color(0.15, 0.15, 0.18), 0.2, 0.4, 0.6))
+		for k in 4:
+			U.cyl(d, 0.22, 0.02, Vector3(cos(k * PI / 2 + PI / 4) * 0.45, 0.08, sin(k * PI / 2 + PI / 4) * 0.45), U.solid(Color(0.6, 0.6, 0.62)))
+		var eye := U.sphere(d, 0.09, Vector3(0, -0.1, 0.25), U.solid(Color(1, 0.15, 0.15), 5.0))
+		blinkers.append({"n": eye, "ph": rng.randf() * TAU})
+		drones.append({"n": d, "y": d.position.y, "ph": rng.randf() * TAU}))
+	_scatter(14, 0.8, func(p: Vector3, i: int):
+		U.cyl(self, 0.08, 2.6, p + Vector3(0, 1.3, 0), U.solid(Color(0.2, 0.2, 0.22)))
+		var bl := U.sphere(self, 0.18, p + Vector3(0, 2.7, 0), U.solid([Color(0.2, 0.7, 1.0), Color(0.3, 1.0, 0.5)][i % 2], 5.0))
+		if i % 2 == 0: blinkers.append({"n": bl, "ph": rng.randf() * TAU})
+		w.small_obstacle(p, 0.3))
+	var lights := 0
+	for i in 6:
+		var p := _spot(1.0, 8.0)
+		if p == Vector3.INF: continue
+		var ol := OmniLight3D.new(); ol.light_color = Color(0.3, 0.7, 1.0); ol.omni_range = 12.0; ol.light_energy = 1.4
+		ol.position = p + Vector3(0, 4.0, 0); add_child(ol)
+	_billboard("TÉLÉCHARGEMENT DE VOTRE ÂME : 87 % · NE QUITTEZ PAS · VOS DONNÉES NOUS APPARTIENNENT · ", Color(0.4, 0.85, 1.0))
+
+func _ski():
+	# snowmen, ski racks, falling snow
+	_scatter(8, 1.2, func(p: Vector3, i: int):
+		var white := U.pbr("Snow010A", 0.2, Color(1.05, 1.05, 1.1), 0.5)
+		U.sphere(self, 0.6, p + Vector3(0, 0.55, 0), white)
+		U.sphere(self, 0.42, p + Vector3(0, 1.4, 0), white)
+		U.sphere(self, 0.3, p + Vector3(0, 2.0, 0), white)
+		U.cyl(self, 0.22, 0.4, p + Vector3(0, 2.45, 0), U.solid(Color(0.1, 0.1, 0.1)))          # top hat: even the snowmen are rich here
+		var nose := U.cyl(self, 0.04, 0.3, p + Vector3(0, 2.0, 0.38), U.solid(Color(1, 0.5, 0.1)))
+		nose.rotation.x = PI / 2
+		w.small_obstacle(p, 0.6))
+	_scatter(8, 1.5, func(p: Vector3, i: int):
+		var r := Node3D.new(); add_child(r); r.position = p; r.rotation.y = rng.randf() * TAU
+		var wood := U.solid(Color(0.5, 0.34, 0.2), 0.0, 0.9)
+		U.box(r, Vector3(2.4, 0.1, 0.1), Vector3(0, 1.2, 0), wood)
+		for k in 2: U.box(r, Vector3(0.1, 1.2, 0.1), Vector3(-1.1 + k * 2.2, 0.6, 0), wood)
+		for k in 5:
+			var sk := U.box(r, Vector3(0.1, 1.7, 0.03), Vector3(-0.9 + k * 0.45, 0.85, 0.1), U.solid([Color(1, 0.8, 0.2), Color(0.1, 0.1, 0.1), Color(0.9, 0.15, 0.15)][k % 3]))
+			sk.rotation.x = -0.12
+		w.small_obstacle(p, 1.2))
+	snow = CPUParticles3D.new()
+	var q := QuadMesh.new(); q.size = Vector2(0.09, 0.09)
+	var m := StandardMaterial3D.new(); m.albedo_color = Color(1, 1, 1, 0.9); m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED; m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	q.material = m
+	snow.mesh = q; snow.amount = 500; snow.lifetime = 7.0; snow.preprocess = 7.0
+	snow.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX; snow.emission_box_extents = Vector3(30, 0.5, 30)
+	snow.direction = Vector3(0.2, -1, 0); snow.spread = 15.0; snow.gravity = Vector3(0.3, -1.2, 0)
+	snow.initial_velocity_min = 0.8; snow.initial_velocity_max = 1.6
+	snow.local_coords = false
+	snow.set_meta("airborne", true)
+	add_child(snow)
+
+func _fusee():
+	# crates, small test rockets, rovers, warning beacons
+	_scatter(10, 1.5, func(p: Vector3, i: int):
+		var c := U.place(self, U.CAR + "box.glb", p, 1.2, rng.randf() * TAU)
+		w.add_obstacle(c, false, 0.2))
+	_scatter(5, 2.0, func(p: Vector3, i: int):
+		var white := U.solid(Color(0.95, 0.95, 0.95), 0.1, 0.3, 0.6)
+		U.cyl(self, 0.35, 3.0, p + Vector3(0, 1.9, 0), white)
+		var nose := MeshInstance3D.new(); var cm := CylinderMesh.new(); cm.top_radius = 0.0; cm.bottom_radius = 0.35; cm.height = 0.9
+		nose.mesh = cm; nose.material_override = U.solid(Color(0.85, 0.15, 0.1)); nose.position = p + Vector3(0, 3.85, 0); add_child(nose)
+		for k in 3: U.box(self, Vector3(0.05, 0.9, 0.5), p + Vector3(cos(k * TAU / 3) * 0.4, 0.6, sin(k * TAU / 3) * 0.4), U.solid(Color(0.85, 0.15, 0.1)), Vector3(0, -k * TAU / 3, 0))
+		w.small_obstacle(p, 0.6))
+	_scatter(4, 3.0, func(p: Vector3, i: int):
+		var rv := Node3D.new(); add_child(rv); rv.position = p; rv.rotation.y = rng.randf() * TAU
+		U.box(rv, Vector3(1.6, 0.5, 2.2), Vector3(0, 0.8, 0), U.solid(Color(0.85, 0.85, 0.82), 0.2, 0.4, 0.6))
+		for k in 6:
+			var wh := U.cyl(rv, 0.3, 0.2, Vector3(-0.85 + (k % 2) * 1.7, 0.3, -0.8 + (k / 2) * 0.8), U.solid(Color(0.15, 0.15, 0.15)))
+			wh.rotation.z = PI / 2
+		U.box(rv, Vector3(1.2, 0.05, 0.8), Vector3(0, 1.3, -0.3), U.solid(Color(0.15, 0.25, 0.55), 0.4, 0.2, 0.6), Vector3(-0.3, 0, 0))
+		w.small_obstacle(p, 1.3))
+	_scatter(12, 0.6, func(p: Vector3, i: int):
+		U.cyl(self, 0.05, 1.4, p + Vector3(0, 0.7, 0), U.solid(Color(0.2, 0.2, 0.22)))
+		var bl := U.sphere(self, 0.14, p + Vector3(0, 1.5, 0), U.solid(Color(1, 0.55, 0.1), 5.0))
+		blinkers.append({"n": bl, "ph": rng.randf() * TAU}))
+	_billboard("T-MOINS 10 · 9 · 8 · LE PEUPLE RESTE AU SOL · 7 · 6 · LA PLANÈTE AUSSI · ", Color(1.0, 0.6, 0.2))
+
+func _grandsoir():
+	# lanterns over the squares, barricades of crates, red carpet of leaflets
+	var red := U.solid(Color(0.85, 0.08, 0.1), 2.0)
+	_scatter(10, 3.0, func(p: Vector3, i: int):
+		for k in 6:
+			var lp := p + Vector3(-3.0 + k * 1.2, 4.2 + sin(k * 0.9) * 0.2, 0)
+			var lan := U.sphere(self, 0.22, lp, red, 0.36)
+			lan.set_meta("airborne", true)
+		U.box(self, Vector3(7.0, 0.03, 0.03), p + Vector3(0, 4.45, 0), U.solid(Color(0.1, 0.1, 0.1))).set_meta("airborne", true)
+		for sd in [-3.6, 3.6]: U.cyl(self, 0.06, 4.5, p + Vector3(sd, 2.25, 0), U.solid(Color(0.25, 0.25, 0.27))))
+	_scatter(6, 2.5, func(p: Vector3, i: int):
+		for k in 5:
+			var c := U.place(self, U.CAR + "box.glb", p + Vector3((k % 3) * 1.1 - 1.1, (k / 3) * 1.0, 0), 1.0, rng.randf_range(-0.2, 0.2))
+		var fl := U.box(self, Vector3(0.05, 0.9, 1.4), p + Vector3(0, 3.0, 0.7), U.solid(Color(0.78, 0.06, 0.08), 0.0, 0.9))
+		U.cyl(self, 0.04, 3.4, p + Vector3(0, 1.7, 0), U.solid(Color(0.3, 0.3, 0.3)))
+		w.small_obstacle(p, 1.8))
+	_billboard("C'EST LA LUTTE FINALE · GROUPONS-NOUS ET DEMAIN · LE MARCHÉ FERME CE SOIR · ", Color(1.0, 0.3, 0.25))
+
+func _firework():
+	var pp: Vector3 = player.global_position if player else Vector3(w.bounds.get_center().x, 0, w.bounds.get_center().y)
+	var p := pp + Vector3(rng.randf_range(-40, 40), rng.randf_range(26, 42), rng.randf_range(-45, -10))
+	var col: Color = [Color(1, 0.3, 0.25), Color(1, 0.85, 0.3), Color(1, 1, 1), Color(0.95, 0.2, 0.2)][rng.randi() % 4]
+	var fx := CPUParticles3D.new()
+	var q := QuadMesh.new(); q.size = Vector2(0.5, 0.5)
+	var m := StandardMaterial3D.new(); m.albedo_color = col; m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED; m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	m.albedo_texture = load("res://fx/circle_05.png"); m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	q.material = m
+	fx.mesh = q; fx.amount = 70; fx.lifetime = 1.8; fx.one_shot = true; fx.explosiveness = 1.0
+	fx.direction = Vector3.UP; fx.spread = 180.0; fx.initial_velocity_min = 9.0; fx.initial_velocity_max = 13.0
+	fx.gravity = Vector3(0, -4, 0); fx.damping_min = 3.0; fx.damping_max = 4.0
+	fx.scale_amount_min = 0.6; fx.scale_amount_max = 1.0
+	fx.position = p
+	fx.set_meta("airborne", true)
+	add_child(fx)
+	fx.emitting = true
+	get_tree().create_timer(2.5).timeout.connect(fx.queue_free)
+	if rng.randf() < 0.5: Snd.play("explosion", -22.0, 0.2, 0.3, 1.6)

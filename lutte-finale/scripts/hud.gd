@@ -219,7 +219,7 @@ func _process(d: float):
 	var t: float = game.time
 	timer_label.text = "%02d:%02d" % [int(t) / 60, int(t) % 60]
 	timer_label.add_theme_color_override("font_color", Color(1, 0.35, 0.3) if game.krach else Color.WHITE)
-	var zt: String = ("ZONE %d · SANS FIN" % game.zone) if game.endless else ("ZONE %d/3" % game.zone)
+	var zt: String = ("ZONE %d · SANS FIN" % game.zone) if game.endless else ("ACTE %s · ZONE %d/3" % [["I", "II", "III"][Levels.act(game.zone)], (game.zone - 1) % 3 + 1])
 	if game.door != null: zt = "LA PORTE EST OUVERTE · SUIS LE FAISCEAU ROUGE"
 	elif game.krach: zt = "LE KRACH  ·  FUIS OU MEURS"
 	else: zt += "  ·  " + (game.tpl["name"] as String).to_upper()
@@ -261,7 +261,7 @@ func _process(d: float):
 	var boss = game.boss
 	boss_box.visible = boss != null and boss.alive
 	if boss_box.visible:
-		boss_name.text = Data.ENEMIES[boss.kind]["name"].to_upper()
+		boss_name.text = Levels.edef(boss.kind)["name"].to_upper()
 		boss_fill.size = Vector2(836.0 * clampf(boss.hp / boss.max_hp, 0.0, 1.0), 16)
 	toast_t -= d
 	toast_label.modulate.a = clampf(toast_t * 2.0, 0.0, 1.0)

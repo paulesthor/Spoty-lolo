@@ -90,15 +90,15 @@ func _refresh_settings():
 	set_btns["zone"].text = "ZONE : %d · %s" % [z, (Levels.zone(z)["name"] as String).to_upper()]
 	var tr: int = settings["tier"]
 	set_btns["tier"].text = "DIFFICULTÉ : %s" % (Meta.TIERS[tr - 1]["name"] as String).to_upper()
-	set_btns["endless"].text = "MODE : SANS FIN" if settings["endless"] else "MODE : 3 ZONES"
+	set_btns["endless"].text = "MODE : SANS FIN" if settings["endless"] else "MODE : UN ACTE"
 	set_btns["endless"].disabled = not Meta.endless_unlocked()
 	medals_lbl.text = "%d médailles  ·  grade %d : %s" % [int(Meta.data["medals"]), Meta.grade(), Meta.GRADE_NAMES[Meta.grade() - 1]]
 
 func _cycle(k: String):
 	match k:
 		"zone":
-			var z: int = settings["zone"] % 3 + 1
-			while not Meta.zone_unlocked(z): z = z % 3 + 1
+			var z: int = settings["zone"] % Levels.count() + 1
+			while not Meta.zone_unlocked(z): z = z % Levels.count() + 1
 			settings["zone"] = z
 		"tier":
 			var tr: int = settings["tier"] % 3 + 1

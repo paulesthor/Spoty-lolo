@@ -72,6 +72,14 @@ Ce fichier garde en mémoire les décisions prises avec le créateur du jeu, pou
 - [x] Le marteau générique est remplacé par un objet propre à chaque camarade (KayKit CC0, `assets/kaykit_props`) : marteau, carte roulée, fusil, poêle, pistolet, clé à molette, fourche, chope, clé plate, maillet, Petit Livre, truelle, torche enflammée, cuillère, bâton à étoile.
 - [x] Chapeaux enfoncés dans les cheveux (le haut du modèle est une mèche, pas le crâne) ; correction de hauteur pour le corps « Knight » ; lunettes de soleil au niveau des yeux ; casque de tankiste refait (bourrelets bas, lunettes sur le front) ; barbe recollée au menton.
 
+## Lot 8 — 9 zones en 3 actes, cartes géantes (22/11/2026)
+- [x] Cartes ~1,7× plus grandes (≈ 250-300 m de côté) : coffres, autels et objets cassables proportionnels à la surface.
+- [x] Blocs d'immeubles hauts à l'intérieur de l'arène (22-30 % des lots) : on ne voit plus toute la carte en tournant la caméra. Ils deviennent transparents quand ils cachent le joueur (la caméra ne se rapproche plus), et servent d'occulteurs (ce qui est derrière n'est pas dessiné).
+- [x] Acte I : Hypermarché, Quartier d'Affaires, Bourse (modifiés : plus grands, blocs hauts).
+- [x] Acte II : Paradis Fiscal (plage, marina, boîtes aux lettres, hôtels, mer à l'horizon ; boss : le Domicilié), Start-up Nation (espace bien-être, livreurs, food trucks ; boss : la Licorne), Centre de Données (salles de serveurs, refroidissement, drones ; boss : l'Algorithme).
+- [x] Acte III : Station du 1 % (neige, chalets, sapins, télésiège, pistes, falaises ; boss : le Rentier), Fusée du Milliardaire (pas de tir, tours de lancement, gravité réduite ; boss : l'Exilé Spatial), Le Grand Soir (défilé, tribunes, lampions, feux d'artifice ; boss : le Marché Lui-Même).
+- [x] Ennemis rhabillés et renommés selon la zone ; une run = un acte (victoire au boss des zones 3, 6, 9) ; zone de départ choisie parmi les 9.
+
 ## Réponses du créateur (questionnaire du 21/11/2026)
 **À faire maintenant :**
 - Personnages : taille des capitalistes inchangée ; ennemis tués = **disparition immédiate** (pas de cadavre) ; pas d'animation de frappe du héros ; je propose les 5e/6e camarades ; **skins débloquables** oui.

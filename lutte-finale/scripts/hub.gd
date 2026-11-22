@@ -281,8 +281,8 @@ func _tab_lancer():
 	var zc := _card(srow, C_PANEL)
 	zc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	zc.add_child(_lbl("ZONE DE DÉPART", 20, C_GOLD))
-	var zr := HBoxContainer.new(); zc.add_child(zr)
-	for z in [1, 2, 3]:
+	var zr := GridContainer.new(); zr.columns = 3; zc.add_child(zr)
+	for z in range(1, Levels.count() + 1):
 		var ok := Meta.zone_unlocked(z)
 		var b := _btn(("%d · %s" % [z, Levels.zone(z)["name"]]) if ok else "%d · verrouillée" % z, 16, ok)
 		if int(ls["zone"]) == z: b.add_theme_stylebox_override("normal", _sb(C_RED, C_GOLD, 2))

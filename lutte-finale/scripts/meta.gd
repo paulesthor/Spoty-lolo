@@ -612,7 +612,7 @@ func end_run(r: Dictionary) -> Dictionary:
 	for z in bosses:
 		var first := int(data["bosses"].get(str(z), 0)) == 0
 		data["bosses"][str(z)] = int(data["bosses"].get(str(z), 0)) + 1
-		if first and z < 3: out["lines"].append("NOUVELLE ZONE DÉBLOQUÉE : %s (départ possible depuis le Kolkhoze)" % Levels.zone(z + 1)["name"])
+		if first and z < Levels.count(): out["lines"].append("NOUVELLE ZONE DÉBLOQUÉE : %s (départ possible depuis le Kolkhoze)" % Levels.zone(z + 1)["name"])
 	if r["win"] and tier < 3 and tier >= int(data.get("tier_max", 1)):
 		data["tier_max"] = tier + 1
 		out["lines"].append("NOUVELLE DIFFICULTÉ : %s" % TIERS[tier]["name"])

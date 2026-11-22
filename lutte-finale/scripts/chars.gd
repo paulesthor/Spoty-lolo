@@ -115,11 +115,14 @@ const ENEMY_ANIMS := {"walk": "Walk", "run": "Run", "death": "Death", "hit": "Hi
 static var _color_mats := {}
 
 static func build_enemy(parent: Node, kind: String, pos: Vector3, h: float) -> Node3D:
-	var looks: Array = ENEMY_LOOKS.get(kind, ENEMY_LOOKS["cadre"])
+	var sk: Dictionary = Levels.skin(kind)
+	var looks: Array = sk.get("looks", ENEMY_LOOKS.get(kind, ENEMY_LOOKS["cadre"]))
 	var look: Array = looks[randi() % looks.size()]
 	var path: String = (QM if look[1] == "M" else QF) + look[0] + ".glb"
 	var n := U.place(parent, path, pos, h, 0.0)
-	recolor(n, ENEMY_COLORS.get(kind, {}))
+	var cols: Dictionary = ENEMY_COLORS.get(kind, {}).duplicate()
+	cols.merge(sk.get("colors", {}), true)
+	recolor(n, cols)
 	rim(n, Color(1.0, 0.85, 0.7), 0.45)
 	# the horde casts no real-time shadow (big saving); a soft blob grounds each capitalist instead
 	if not kind in ["golden", "boss", "boss2", "boss3"]:

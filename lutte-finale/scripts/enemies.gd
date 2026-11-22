@@ -73,7 +73,7 @@ func _tint(n: Node3D, col: Color):
 	if body: (body as MeshInstance3D).material_override = _tint_mats[key]
 
 func spawn(kind: String, pos: Vector3, hp_mult := 1.0, dmg_mult := 1.0) -> Enemy:
-	var def: Dictionary = Data.ENEMIES[kind]
+	var def: Dictionary = Levels.edef(kind)
 	var e: Enemy
 	if pools.has(kind) and not pools[kind].is_empty():
 		e = pools[kind].pop_back()
