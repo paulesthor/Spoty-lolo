@@ -52,6 +52,13 @@ Ce fichier garde en mémoire les décisions prises avec le créateur du jeu, pou
 - [x] Sensation de puissance : la chair à canon (stagiaires, cadres) se renforce moins vite, tireurs et lanceurs plafonnés en nombre, +1,5 % de dégâts par niveau.
 - [x] Fin de partie : cartes « Surplus du Plan » sans limite (dégâts, cadence, PV, régénération, critique, aimant, vitesse) et « Surcharge » des armes au maximum ; conservées d'une zone à l'autre.
 
+## Lot 5 — vrais menus (22/11/2026)
+- [x] Écran titre 3D : camarade sur une tribune (acclamation régulière), mur d'affiches, rideaux, drapeaux, projecteur, tracts qui tombent, capitalistes recroquevillés au premier plan, slogans d'humour noir qui défilent, crédits.
+- [x] Sélection des camarades 3D : 6 estrades sous projecteurs, le choisi s'avance et salue, silhouettes « ??? » pour les camarades à réhabiliter (achat direct), tenues, zone, difficulté et mode, lancement.
+- [x] Kit d'interface constructiviste partagé (boutons inclinés, liseré rouge, Russo One), Kolkhoze restylé (filigrane d'affiche), écrans de mort, victoire et pause avec affiche, cartes de récompense en forme d'affiches.
+- Parcours : Titre → Sélection → Partie → Kolkhoze → Titre/Sélection.
+- À poursuivre : musique et sons, icônes d'armes dessinées, animation d'introduction.
+
 ## Réponses du créateur (questionnaire du 21/11/2026)
 **À faire maintenant :**
 - Personnages : taille des capitalistes inchangée ; ennemis tués = **disparition immédiate** (pas de cadavre) ; pas d'animation de frappe du héros ; je propose les 5e/6e camarades ; **skins débloquables** oui.
