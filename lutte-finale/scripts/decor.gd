@@ -292,6 +292,7 @@ func _quartier():
 	_billboard("SYNERGIE · DISRUPTION · AGILITÉ · BURN-OUT · TEAM BUILDING · SÉMINAIRE · KPI · ", Color(0.4, 0.8, 1.0))
 	# construction lights blink on the building sites
 	for pl in w.plateaus:
+		if pl["kind"] == "container": continue
 		var r: Rect2 = pl["rect"]
 		for k in 2:
 			var lp := Vector3(r.position.x + 0.4 + k * (r.size.x - 0.8), pl["h"] + 0.3, r.position.y + 0.4)

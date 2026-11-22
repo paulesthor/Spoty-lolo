@@ -34,6 +34,10 @@ class Enemy:
 	var gpos := Vector3.ZERO  # ghost (connected comrade's PC): position sent by the host
 	var grot := 0.0
 	var seen := 0
+	var hop_t := 0.0          # jumping up onto / down from a platform
+	var hop_from := Vector3.ZERO
+	var hop_to := Vector3.ZERO
+	var hop_lvl := -1
 	var affix := ""
 	var affix_fx: Node3D
 	var tp_t := 0.0
@@ -179,6 +183,7 @@ func spawn(kind: String, pos: Vector3, hp_mult := 1.0, dmg_mult := 1.0) -> Enemy
 	e.stun_t = 0.0
 	e.stun_imm = 0.0
 	e.slow_t = 0.0
+	e.hop_t = 0.0
 	e.hit_from.clear()
 	if e.ap:
 		e.act_t = 0.0
@@ -198,6 +203,14 @@ const AFFIX_INFO := {
 	"vampire": ["VAMPIRE", Color(1.0, 0.2, 0.25)],
 	"teleporteur": ["TÉLÉPORTEUR", Color(0.4, 1.0, 0.5)],
 }
+
+const HOP_TIME := 0.45
+func _hop(e: Enemy, to: Vector3, lvl: int):
+	e.hop_t = HOP_TIME
+	e.hop_from = e.node.position
+	e.hop_to = to
+	e.hop_lvl = lvl
+	_act(e, "Jump", HOP_TIME, 1.4)
 
 func _give_affix(e: Enemy, a: String):
 	e.affix = a
@@ -299,26 +312,40 @@ func _process(d: float):
 				if o != e and o.hp < o.max_hp and not o.boss:
 					o.hp = minf(o.max_hp, o.hp + o.max_hp * 0.06)
 					_heal_fx(o.node.position)
-		# climbing: ground enemies head for a ramp when the player is up on a plateau,
-		# and walk back down when the player leaves it
+		# climbing: capitalists jump up onto a platform from any side to reach the comrade,
+		# and jump back down from the nearest edge when the comrade leaves it (ramps still work too)
 		var on_ramp: Array = w.ramp_at(p)
-		if e.phase != "dash" and not e.invincible and e.stun_t <= 0.0 and (pl_player != e.level or not on_ramp.is_empty()):
-			var target_pl: int = pl_player if pl_player >= 0 else e.level
-			if target_pl >= 0 and target_pl < w.plateaus.size():
-				var best_v := Vector3.ZERO
-				var best_d := 1e9
-				for rp in w.plateaus[target_pl]["ramps"]:
-					var rc: Rect2 = rp["rect"]
-					var c3 := Vector3(rc.get_center().x, 0, rc.get_center().y)
-					var half: float = (rc.size.y if absf(rp["dir"].z) > 0.5 else rc.size.x) / 2.0
-					var goal: Vector3 = c3 - rp["dir"] * (half + 0.5) if pl_player >= 0 else c3 + rp["dir"] * (half + 0.8)
-					if (rc as Rect2).has_point(Vector2(p.x, p.z)):
-						goal = c3 + rp["dir"] * (half + 1.5) if pl_player >= 0 else c3 - rp["dir"] * (half + 1.5)
-					var dd := goal.distance_to(Vector3(p.x, 0, p.z))
-					if dd < best_d: best_d = dd; best_v = goal
-				if best_d < 1e8:
-					var tv := best_v - Vector3(p.x, 0, p.z)
-					if tv.length() > 0.3: move = tv.normalized()
+		if e.hop_t > 0.0:
+			e.hop_t -= d
+			var hk := clampf(1.0 - e.hop_t / HOP_TIME, 0.0, 1.0)
+			var hp3: Vector3 = e.hop_from.lerp(e.hop_to, hk)
+			hp3.y = lerpf(e.hop_from.y, e.hop_to.y, hk) + sin(hk * PI) * 1.6
+			e.node.position = hp3
+			if e.hop_t <= 0.0: e.level = e.hop_lvl
+			if dist > 0.1: e.node.rotation.y = lerp_angle(e.node.rotation.y, atan2(dir.x, dir.z), 10.0 * d)
+			if e.ap:
+				e.anim_acc += d
+				e.ap.advance(e.anim_acc); e.anim_acc = 0.0
+			continue
+		if e.phase != "dash" and not e.invincible and e.stun_t <= 0.0 and on_ramp.is_empty() and pl_player != e.level:
+			if e.level >= 0 and e.level < w.plateaus.size():
+				var pr0: Rect2 = w.plateaus[e.level]["rect"]
+				if not pr0.grow(-(e.r + 0.3)).has_point(Vector2(p.x, p.z)):
+					var out := Vector3(p.x, 0, p.z) + dir * 1.6
+					if pl_player >= 0 and pl_player < w.plateaus.size():
+						var pr1: Rect2 = w.plateaus[pl_player]["rect"]
+						if pr1.grow(e.r + 1.8).has_point(Vector2(p.x, p.z)):
+							_hop(e, Vector3(clampf(out.x, pr1.position.x + e.r + 0.3, pr1.end.x - e.r - 0.3), w.plateaus[pl_player]["h"], clampf(out.z, pr1.position.y + e.r + 0.3, pr1.end.y - e.r - 0.3)), pl_player)
+							continue
+					if not pr0.has_point(Vector2(out.x, out.z)):
+						_hop(e, w.resolve(out, e.r), -1)
+						continue
+			elif e.level < 0 and pl_player >= 0 and pl_player < w.plateaus.size():
+				var pr2: Rect2 = w.plateaus[pl_player]["rect"]
+				if pr2.grow(e.r + 0.6).has_point(Vector2(p.x, p.z)):
+					var inside := Vector3(clampf(p.x + dir.x, pr2.position.x + e.r + 0.3, pr2.end.x - e.r - 0.3), w.plateaus[pl_player]["h"], clampf(p.z + dir.z, pr2.position.y + e.r + 0.3, pr2.end.y - e.r - 0.3))
+					_hop(e, inside, pl_player)
+					continue
 		p += move * spd * d + e.knock * d
 		e.knock = e.knock.move_toward(Vector3.ZERO, 30.0 * d)
 		on_ramp = w.ramp_at(p)

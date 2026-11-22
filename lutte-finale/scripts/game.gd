@@ -228,6 +228,7 @@ func _ready():
 		await _net_wait()
 		start()
 		if warp > 0.0: _do_warp()
+		if "climbtest" in OS.get_cmdline_user_args(): _climb_test()
 		if test_pos != Vector3.INF:
 			player.global_position = test_pos
 			player.cam_yaw = test_yaw
@@ -792,7 +793,7 @@ func _show_menu():
 
 func start():
 	state = "play"
-	Snd.music("boss" if Levels.act_end(zone) else "battle")
+	Snd.music(tpl.get("music", "battle"))
 	hud.hide_screen()
 	hud.set_hud_visible(true)
 	if not bot: Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
@@ -1690,6 +1691,7 @@ func _pump_choices():
 			p.cur_choice = e
 			p.bot_wait = 0.4
 			if is_local(p):
+				choice_source = e["source"]
 				hud.show_choices(e["title"], e["opts"], e["leave"])
 				_choice_shot()
 			elif p.remote and Net.active:
@@ -1787,7 +1789,9 @@ func _choice_action(p, what: String, sel := 0):
 			player_toast(p, "CARTES PASSÉES · +8 ROUBLES", 1.2)
 			_resolve_choice(p, -2)
 			return
-	if is_local(p): hud.show_choices(e["title"], e["opts"], e["leave"])
+	if is_local(p):
+		choice_source = src
+		hud.show_choices(e["title"], e["opts"], e["leave"])
 	elif p.remote and Net.active: Net.to_player(p.idx, "choice", [e["title"], e["opts"], e["leave"], src])
 
 # ---------------------------------------------------------------- ultimate
@@ -2326,6 +2330,7 @@ func net_event(ev: String, args: Array):
 			choice_wait = 0.4
 			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 			hud.waiting(false)
+			choice_source = args[3]
 			hud.show_choices(args[0], args[1], args[2])
 		"choice_end":
 			hud.hide_choices()
@@ -2426,3 +2431,29 @@ func _client_end(win: bool, abandon: bool):
 		"Temps : %s   ·   Niveau %d   ·   %d capitalistes bonkés\n\nLes médailles et les défis sont comptés chez l'hôte." % [_fmt(run_time + time), level, kills],
 		"ENTRÉE ou A : retour au menu en ligne", Color(0.95, 0.75, 0.25) if win else Color(0.85, 0.15, 0.15))
 	hud.screen_buttons([["RETOUR AU MENU EN LIGNE", _back_to_hub]])
+
+# test hook: stand on a container (or a platform) and check that capitalists come up
+func _climb_test():
+	var best := -1
+	var want: String = "container" if not "platform" in OS.get_cmdline_user_args() else "quai"
+	for i in world.plateaus.size():
+		if world.plateaus[i]["kind"] == want: best = i; break
+	if best < 0:
+		for i in world.plateaus.size():
+			if world.plateaus[i]["kind"] != "container": best = i; break
+	if best < 0: print("[climb] no platform"); return
+	var pl: Dictionary = world.plateaus[best]
+	var r: Rect2 = pl["rect"]
+	player.bot = false
+	player.global_position = Vector3(r.get_center().x, pl["h"] + 0.3, r.get_center().y)
+	print("[climb] %s h=%.1f rect=%s" % [pl["kind"], pl["h"], r])
+	var m := mults()
+	for k in 12:
+		var a := TAU * k / 12.0
+		enemies.spawn("stagiaire", world.resolve(player.global_position * Vector3(1, 0, 1) + Vector3(cos(a), 0, sin(a)) * 9.0, 0.5), m[0] * 50.0, 0.0)
+	for t in 5:
+		await get_tree().create_timer(2.0).timeout
+		var up := 0
+		for e in enemies.alive_list():
+			if e.level == best: up += 1
+		print("[climb] t=%ds enemies on top=%d / %d" % [(t + 1) * 2, up, enemies.count()])

@@ -247,7 +247,7 @@ func _label(parent: Control, t: String, size: int, col: Color) -> Label:
 func _process(d: float):
 	if game == null: return
 	var p = game.player
-	if game.players.size() > 1: _update_allies()
+	_update_allies()
 	var need: int = game.xp_need(game.level)
 	var xw: float = (root.size.x - 4.0) * clampf(float(game.xp) / need, 0.0, 1.0)
 	xp_fill.size = Vector2(maxf(xw, 0.0), 18)
@@ -262,7 +262,7 @@ func _process(d: float):
 	if game.tier > 1 and game.door == null and not game.krach: zt += "  ·  " + (Meta.TIERS[game.tier - 1]["name"] as String).to_upper()
 	zone_label.text = zt
 	hp_fill.size = Vector2(244.0 * clampf(p.hp / p.max_hp, 0.0, 1.0), 24)
-	hp_label.text = "%d / %d" % [ceili(p.hp), int(p.max_hp)]
+	hp_label.text = "%d / %d" % [mini(ceili(p.hp), ceili(p.max_hp)), ceili(p.max_hp)]
 	rub_label.text = "%d RBL" % game.rubles
 	kill_label.text = "%d KO" % game.kills
 	var wids: Array = game.player.weapons.slot_ids()
@@ -422,6 +422,20 @@ func _build_choices():
 
 var hint_label: Label
 var leave_label := ""
+
+# largest font size (max..min) at which `text` fits in w x h with the label's font and wrapping
+func _fit(l: Label, text: String, max_size: int, min_size: int, w: float, h: float):
+	l.text = text
+	l.size = Vector2(w, h)
+	var f: Font = l.get_theme_font("font")
+	var wrap := l.autowrap_mode != TextServer.AUTOWRAP_OFF
+	var fs := max_size
+	while fs > min_size:
+		var sz: Vector2 = f.get_multiline_string_size(text, l.horizontal_alignment, w, fs) if wrap else f.get_string_size(text, l.horizontal_alignment, -1, fs)
+		if sz.x <= w + 0.5 and sz.y <= h: break
+		fs -= 1
+	l.add_theme_font_size_override("font_size", fs)
+	l.clip_text = true
 func show_choices(title: String, opts: Array, leave := ""):
 	options = opts
 	leave_label = leave
@@ -438,10 +452,11 @@ func show_choices(title: String, opts: Array, leave := ""):
 		c["card"].visible = i < opts.size()
 		if i < opts.size():
 			var o: Dictionary = opts[i]
-			c["tag"].text = o["tag"]
-			c["title"].text = o["title"]
-			c["lv"].text = o["lv"]
-			c["desc"].text = o["desc"]
+			# every text is shrunk until it fits its box: long names and descriptions never spill over
+			_fit(c["tag"], o["tag"], 17, 11, 270.0, 26.0)
+			_fit(c["title"], o["title"], 32, 16, 320.0, 44.0)
+			_fit(c["lv"], o["lv"], 20, 13, 320.0, 28.0)
+			_fit(c["desc"], o["desc"], 20, 12, 304.0, 150.0)
 			c["price"].text = ("%d RBL" % o["cost"]) if o.has("cost") else ""
 			c["rcol"] = Data.RARITY_COLORS[o["rarity"]]
 			var rc: Color = c["rcol"]
@@ -550,10 +565,11 @@ func screen_buttons(list: Array):
 func show_screen(title: String, body: String, hint: String, title_col := Color.WHITE):
 	screen_buttons([])
 	screen_poster.texture = load("res://assets/posters/" + U.propaganda_tex(randi()))
-	screen_title.text = title
+	_fit(screen_title, title, 96, 40, 1000.0, 130.0)
 	screen_title.add_theme_color_override("font_color", title_col)
-	screen_body.text = body
-	screen_hint.text = hint
+	screen_title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_fit(screen_body, body, 26, 13, 960.0, 370.0)
+	_fit(screen_hint, hint, 30, 16, 1000.0, 40.0)
 	screen_root.visible = true
 
 func hide_screen():
@@ -561,5 +577,12 @@ func hide_screen():
 
 func set_hud_visible(v: bool):
 	for c in root.get_children():
-		if c == screen_root or c == choice_root: continue
+		if c == screen_root or c == choice_root or c == wait_label: continue
+		var ally := false
+		for row in ally_rows:
+			if row[0] == c: ally = true
+		if ally: continue      # the comrades' bars only show in coop (see _update_allies)
 		(c as CanvasItem).visible = v
+	if not v:
+		for row in ally_rows: (row[0] as Control).visible = false
+		if wait_label: wait_label.visible = false

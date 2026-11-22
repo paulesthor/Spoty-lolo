@@ -63,7 +63,7 @@ func _batch():
 		for sp in decor.spinners: keep.append(sp["n"])
 	var n1 := U.batch_static(self, keep)
 	var n2 := U.batch_static(decor, keep) if decor else 0
-	print("[world] batched %d static meshes" % (n1 + n2))
+	print("[world] batched %d static meshes · bounds %s" % [n1 + n2, bounds])
 	# small props are not drawn beyond what the gameplay camera can make out
 	var culled := 0
 	for g in find_children("*", "GeometryInstance3D", true, false):
@@ -363,6 +363,8 @@ func _bld(path: String, pos: Vector3, rot: float) -> Node3D:
 	add_child(body)
 	return n
 
+const BORDER_OUT := 9.0      # the ring of buildings stands just behind the boundary wall
+
 const BNAMES := ["building-a", "building-b", "building-c", "building-d", "building-e", "building-f", "building-g", "building-h", "building-i", "building-j", "building-k", "building-l", "building-m", "building-n"]
 const SKY := ["building-skyscraper-a", "building-skyscraper-b", "building-skyscraper-c", "building-skyscraper-d", "building-skyscraper-e"]
 
@@ -375,20 +377,20 @@ func _buildings():
 	var style: String = template.get("border", "city")
 	var z := b.end.y + 4.0
 	while z > b.position.y - 6.0:
-		_tall_piece(style, Vector3(b.position.x - 16, 0, z), Vector3(1, 0, 0))
-		_tall_piece(style, Vector3(b.end.x + 16, 0, z), Vector3(-1, 0, 0))
+		_tall_piece(style, Vector3(b.position.x - BORDER_OUT, 0, z), Vector3(1, 0, 0))
+		_tall_piece(style, Vector3(b.end.x + BORDER_OUT, 0, z), Vector3(-1, 0, 0))
 		z -= 11.0
 	var x := b.position.x - 6.0
 	while x < b.end.x + 8.0:
-		_tall_piece(style, Vector3(x, 0, b.position.y - 16), Vector3(0, 0, 1), true)
-		_tall_piece(style, Vector3(x, 0, b.end.y + 16), Vector3(0, 0, -1), true)
+		_tall_piece(style, Vector3(x, 0, b.position.y - BORDER_OUT), Vector3(0, 0, 1), true)
+		_tall_piece(style, Vector3(x, 0, b.end.y + BORDER_OUT), Vector3(0, 0, -1), true)
 		x += 11.0
 	# cut areas (arena shape) and inner blocks: tall buildings facing the avenues
 	for c in cuts:
 		_fill_block(c, template.get("block", "city") if blocks.has(c) else style)
 	_skyline()
 	# hypermarket facade on the back wall
-	var fz := b.position.y - 10.0
+	var fz := b.position.y - 2.4
 	var fac: Array = template["facade"]
 	var steel := U.solid(Color(0.3, 0.3, 0.32), 0.0, 0.4, 0.8)
 	# the big signs stand on steel pylons (they used to hover in front of the buildings)
@@ -403,12 +405,7 @@ func _buildings():
 	var bt := U.label(self, fac[2], Vector3(-30, 15.1, fz + 0.2), 120, Color(0.1, 0.1, 0.12), Color(0, 0, 0, 0), false, U.font_main)
 	bt.width = 11.0 / bt.pixel_size; bt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	bt.outline_size = 0; bt.shaded = true
-	var slogans: Array = template["slogans"].duplicate()
-	slogans.append_array(["", ""])
-	slogans.shuffle()
-	for k in 6:
-		var zz := b.end.y - 20.0 - k * (b.size.y - 30.0) / 6.0
-		_banner(Vector3(b.position.x - 10.5 if k % 2 == 0 else b.end.x + 10.5, 9.5, zz), PI / 2 if k % 2 == 0 else -PI / 2, Vector2(5.0, 6.5), slogans[k])
+	_perimeter_wall()
 
 func _banner(pos: Vector3, rot_y: float, size: Vector2, text: String):
 	# propaganda boards on two posts (free-standing, so they never hover)
@@ -457,7 +454,8 @@ func _fill_lots():
 			"ecrans": _lot_ecrans(r)
 			"coffre": _lot_coffre(r)
 			_: lots2.build(l[1], r)
-	for i in plateaus.size(): _build_plateau(i)
+	for i in plateaus.size():
+		if plateaus[i]["kind"] != "container": _build_plateau(i)
 
 func _v(x: float, z: float) -> Vector3:
 	return Vector3(x, 0, z)
@@ -497,10 +495,12 @@ func _lot_containers(r: Rect2):
 				var rot := 0.0 if rng.randf() < 0.6 else PI / 2
 				var c := U.place(self, U.IND + kinds[rng.randi() % 3] + ".glb", _v(cx, cz), 2.3, rot)
 				U.detailize(c, "CorrugatedSteel009", 0.6)
-				add_obstacle(c)
+				var ca := add_obstacle(c)
 				if rng.randf() < 0.25:
 					var top := U.place(self, U.IND + kinds[rng.randi() % 3] + ".glb", Vector3(cx, 2.3, cz), 2.3, rot)
-					add_obstacle(top)
+					ca = add_obstacle(top)
+				# the roof is a platform: capitalists jump up there after a comrade (see enemies._hop)
+				plateaus.append({"rect": Rect2(ca.position.x + 0.1, ca.position.z + 0.1, ca.size.x - 0.2, ca.size.z - 0.2), "h": ca.end.y, "ramps": [], "kind": "container"})
 			cz += 7.0
 		cx += 8.5
 
@@ -736,6 +736,7 @@ func _pick_spots():
 		if ok: chest_spots.append(p)
 	# a couple of chests on top of plateaus (reward for climbing)
 	for pl in plateaus:
+		if pl["kind"] == "container": continue
 		var r: Rect2 = pl["rect"]
 		chest_spots.append(Vector3(r.get_center().x + 1.5, pl["h"], r.get_center().y))
 	for i in int(100 * area_k * 0.8):
@@ -1288,3 +1289,47 @@ func _sky_far(kind: String):
 		m.rotation.y = rng.randf() * TAU
 		m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(m)
+
+# ---------------------------------------------------------------- the boundary: a real wall where the map ends
+func _perimeter_wall():
+	var b := bounds
+	var id: String = template.get("id", "")
+	var mat: Material
+	var cap_col := Color(0.62, 0.1, 0.1)
+	match id:
+		"datacenter": mat = U.pbr("Metal049A", 0.3, Color(0.45, 0.48, 0.55), 0.8); cap_col = Color(0.2, 0.55, 0.9)
+		"ski": mat = U.pbr("Bricks105", 0.3, Color(0.85, 0.82, 0.8), 0.8); cap_col = Color(0.95, 0.97, 1.0)
+		"paradis": mat = U.pbr("Plaster001", 0.3, Color(1.05, 1.0, 0.92), 0.6); cap_col = Color(0.1, 0.55, 0.6)
+		"fusee": mat = U.pbr("Concrete034", 0.3, Color(0.95, 0.85, 0.75), 0.8); cap_col = Color(0.95, 0.75, 0.1)
+		"bourse", "quartier", "startup": mat = U.pbr("Concrete034", 0.3, Color(0.9, 0.9, 0.92), 0.8)
+		_: mat = U.pbr("Bricks105", 0.3, Color(1.0, 0.92, 0.88), 0.9)
+	var cap := U.solid(cap_col, 0.0, 0.6)
+	var pil := U.pbr("Concrete034", 0.4, Color(0.8, 0.78, 0.75), 0.8)
+	var h := 4.4
+	var sides := [[Vector3(b.get_center().x, 0, b.position.y - 0.5), b.size.x + 2.0, 0.0, Vector3(0, 0, 1)],
+		[Vector3(b.get_center().x, 0, b.end.y + 0.5), b.size.x + 2.0, 0.0, Vector3(0, 0, -1)],
+		[Vector3(b.position.x - 0.5, 0, b.get_center().y), b.size.y + 2.0, PI / 2, Vector3(1, 0, 0)],
+		[Vector3(b.end.x + 0.5, 0, b.get_center().y), b.size.y + 2.0, PI / 2, Vector3(-1, 0, 0)]]
+	var slogans: Array = template["slogans"].duplicate()
+	var k := 0
+	for sd in sides:
+		var c: Vector3 = sd[0]
+		var length: float = sd[1]
+		var rot := Vector3(0, sd[2], 0)
+		var inward: Vector3 = sd[3]
+		var along := Vector3(cos(sd[2]), 0, -sin(sd[2]))
+		U.box(self, Vector3(length, h, 1.0), c + Vector3(0, h / 2.0, 0), mat, rot)
+		U.box(self, Vector3(length + 0.4, 0.35, 1.3), c + Vector3(0, h + 0.17, 0), cap, rot)
+		# pilasters every 9 m and a poster or a painted slogan in between
+		var n := int(length / 9.0)
+		for i in n + 1:
+			var off := -length / 2.0 + i * length / maxf(n, 1)
+			U.box(self, Vector3(0.7, h + 0.5, 1.4), c + along * off + Vector3(0, (h + 0.5) / 2.0, 0), pil, rot)
+			if i < n and i % 3 == 1:
+				var pp: Vector3 = c + along * (off + length / maxf(n, 1) * 0.5) + inward * 0.52 + Vector3(0, 2.4, 0)
+				U.poster(self, U.propaganda_tex(rng.randi()) if rng.randf() < 0.7 else U.ad_tex(rng.randi()), pp, Vector2(2.4, 3.4), atan2(inward.x, inward.z))
+			elif i < n and i % 6 == 4 and not slogans.is_empty():
+				var lp: Vector3 = c + along * (off + length / maxf(n, 1) * 0.5) + inward * 0.53 + Vector3(0, 2.6, 0)
+				var l := U.label(self, slogans[k % slogans.size()], lp, 46, Color(0.95, 0.9, 0.79), Color(0, 0, 0, 0), false, U.font_main)
+				l.rotation.y = atan2(inward.x, inward.z); l.outline_size = 0; l.width = 8.0 / l.pixel_size; l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+				k += 1

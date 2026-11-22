@@ -2,7 +2,8 @@ extends Node
 # Audio manager (autoload "Snd"): music with cross-fades, pooled sound effects with
 # per-sound rate limiting (a horde must not turn into noise), pitch variation, volume options.
 
-const MUSIC := {"march": true, "battle": true, "boss": true, "victory": false, "defeat": false}
+const MUSIC := {"march": true, "battle": true, "boss": true, "victory": false, "defeat": false, "folk": true, "techno_bourse": true,
+	"lounge": true, "pop": true, "techno_data": true, "valse": true, "cosmos": true, "hymne": true}
 var players: Array = []
 var next_p := 0
 var last := {}

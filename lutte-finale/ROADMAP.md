@@ -92,6 +92,15 @@ Ce fichier garde en mémoire les décisions prises avec le créateur du jeu, pou
 - [x] Testé à 2 et 3 instances sur la même machine (pas encore entre deux vraies connexions internet).
 - Ensuite : identité propre à chaque niveau (ennemis et boss spécifiques).
 
+## Lot 11 — retours de test (22/11/2026)
+- [x] Solo : plus de barres de camarades ni de message « les camarades choisissent » (l'affichage du HUD les révélait).
+- [x] Vrai mur d'enceinte (briques/béton/métal selon la zone, piliers, affiches, slogans) exactement là où le joueur est bloqué ; immeubles du pourtour collés derrière.
+- [x] Les ennemis sautent sur les plates-formes depuis n'importe quel bord (et en redescendent), et montent sur les conteneurs.
+- [x] Textes des cartes de récompense et de l'écran de fin réduits automatiquement pour tenir dans leur cadre.
+- [x] Manette dans les menus (autoload `Pad` : focus automatique, stick gauche, A/B ; gâchettes pour changer de camarade).
+- [x] 8 nouvelles musiques originales, une par zone (+ salon en ligne).
+- [x] Affichage des PV : plus de 159/158 (arrondi).
+
 ## Réponses du créateur (questionnaire du 21/11/2026)
 **À faire maintenant :**
 - Personnages : taille des capitalistes inchangée ; ennemis tués = **disparition immédiate** (pas de cadavre) ; pas d'animation de frappe du héros ; je propose les 5e/6e camarades ; **skins débloquables** oui.

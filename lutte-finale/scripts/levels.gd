@@ -14,6 +14,7 @@ class_name Levels
 
 const HYPERMARCHE := {
 	"id": "hypermarche",
+	"music": "battle",
 	"name": "L'Hypermarché",
 	"boss": "boss",
 	"width": [250.0, 295.0],
@@ -38,6 +39,7 @@ const HYPERMARCHE := {
 
 const QUARTIER := {
 	"id": "quartier",
+	"music": "folk",
 	"name": "Le Quartier d'Affaires",
 	"boss": "boss2",
 	"width": [240.0, 285.0],
@@ -62,6 +64,7 @@ const QUARTIER := {
 
 const BOURSE := {
 	"id": "bourse",
+	"music": "techno_bourse",
 	"name": "La Bourse",
 	"boss": "boss3",
 	"width": [235.0, 275.0],
@@ -89,6 +92,7 @@ const BOURSE := {
 # ---------------------------------------------------------------- act II
 const PARADIS := {
 	"id": "paradis",
+	"music": "lounge",
 	"name": "Le Paradis Fiscal",
 	"boss": "boss2",
 	"width": [250.0, 290.0],
@@ -127,6 +131,7 @@ const PARADIS := {
 
 const STARTUP := {
 	"id": "startup",
+	"music": "pop",
 	"name": "La Start-up Nation",
 	"boss": "boss",
 	"width": [245.0, 285.0],
@@ -162,6 +167,7 @@ const STARTUP := {
 
 const DATACENTER := {
 	"id": "datacenter",
+	"music": "techno_data",
 	"name": "Le Centre de Données",
 	"boss": "boss3",
 	"width": [240.0, 280.0],
@@ -201,6 +207,7 @@ const DATACENTER := {
 # ---------------------------------------------------------------- act III
 const SKI := {
 	"id": "ski",
+	"music": "valse",
 	"name": "La Station du 1 %",
 	"boss": "boss",
 	"width": [250.0, 295.0],
@@ -239,6 +246,7 @@ const SKI := {
 
 const FUSEE := {
 	"id": "fusee",
+	"music": "cosmos",
 	"name": "La Fusée du Milliardaire",
 	"boss": "boss2",
 	"width": [255.0, 300.0],
@@ -275,6 +283,7 @@ const FUSEE := {
 
 const GRAND_SOIR := {
 	"id": "grandsoir",
+	"music": "hymne",
 	"name": "Le Grand Soir",
 	"boss": "boss3",
 	"width": [260.0, 300.0],

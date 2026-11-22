@@ -13,6 +13,7 @@ config/windows_native_icon="res://icon.ico"
 Meta="*res://scripts/meta.gd"
 Snd="*res://scripts/snd.gd"
 Net="*res://scripts/net.gd"
+Pad="*res://scripts/pad.gd"
 
 [display]
 window/size/viewport_width=1920

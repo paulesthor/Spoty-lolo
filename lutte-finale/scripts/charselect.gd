@@ -83,6 +83,7 @@ func _ui():
 	go_btn.add_theme_stylebox_override("normal", UIK.sb(UIK.RED, UIK.GOLD))
 	go_btn.add_theme_stylebox_override("hover", UIK.sb(Color(0.95, 0.15, 0.15), UIK.PAPER))
 	go_btn.pressed.connect(_launch)
+	go_btn.call_deferred("grab_focus")
 	_refresh_settings()
 
 func _refresh_settings():
@@ -207,6 +208,11 @@ func _go(scene: String):
 	Meta.save()
 	UIK.fade_out(self, func(): get_tree().change_scene_to_file(scene))
 
+func _input(ev: InputEvent):
+	if ev is InputEventJoypadButton and ev.pressed:
+		if ev.button_index == JOY_BUTTON_LEFT_SHOULDER: _select(posmod(sel - 1, ids.size()))
+		elif ev.button_index == JOY_BUTTON_RIGHT_SHOULDER: _select(posmod(sel + 1, ids.size()))
+
 func _process(d: float):
 	t += d
 	# the whole line-up stays in view on the left; the camera leans gently toward the chosen one
@@ -214,8 +220,12 @@ func _process(d: float):
 	cam_x = lerpf(cam_x, stage.podiums[sel].x, 1.0 - exp(-4.0 * d))
 	stage.cam.position = Vector3(cam_x + 3.4, 4.0 + sin(t * 0.3) * 0.08, 12.5)
 	stage.cam.look_at(Vector3(cam_x + 2.8, 1.9, 0.0))
-	if Input.is_action_just_pressed("ui_left"): _select(posmod(sel - 1, ids.size()))
-	if Input.is_action_just_pressed("ui_right"): _select(posmod(sel + 1, ids.size()))
+	# left/right pick a comrade while the launch button has the focus (up/down reach the other buttons);
+	# the shoulder buttons always do
+	var f := get_viewport().gui_get_focus_owner()
+	if f == null or f == go_btn:
+		if Input.is_action_just_pressed("ui_left"): _select(posmod(sel - 1, ids.size()))
+		if Input.is_action_just_pressed("ui_right"): _select(posmod(sel + 1, ids.size()))
 	if Input.is_action_just_pressed("ui_cancel"): _go("res://scenes/title.tscn")
 
 func _shot():
