@@ -290,6 +290,10 @@ func _tab_lancer():
 		if int(ls["zone"]) == z: b.add_theme_stylebox_override("normal", _sb(C_RED, C_GOLD, 2))
 		b.pressed.connect(func(): ls["zone"] = z; _refresh())
 		zr.add_child(b)
+	var sb := _btn("★  NIVEAU SPÉCIAL · BERLIN 1945 · LE BUNKER DU PETIT MOUSTACHU", 17)
+	if int(ls["zone"]) == Levels.SPECIAL: sb.add_theme_stylebox_override("normal", _sb(C_RED, C_GOLD, 2))
+	sb.pressed.connect(func(): ls["zone"] = Levels.SPECIAL; _refresh())
+	zc.add_child(sb)
 	zc.add_child(_lbl("Partir d'une zone plus loin donne des niveaux de rattrapage." if Meta.zone_unlocked(2) else "Bats le boss d'une zone pour pouvoir partir de la suivante.", 15, C_DIM))
 	var tc := _card(srow, C_PANEL)
 	tc.size_flags_horizontal = Control.SIZE_EXPAND_FILL

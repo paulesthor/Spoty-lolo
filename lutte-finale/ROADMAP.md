@@ -111,7 +111,14 @@ Ce fichier garde en mémoire les décisions prises avec le créateur du jeu, pou
 - [x] Perfs : chaque ennemi fusionné en un seul maillage (1 appel de rendu au lieu de 10 à 14) ; option « Qualité graphique »
 - [x] Écran de fin : chrono de toute la run + grille de stats (zone, niveau, bonkés, mini-boss, boss, armes, décrets) + armes / décrets obtenus
 - [x] Écran titre : « COMMUNISTE » ne dépasse plus de la bande inclinée
-- [ ] Identité des niveaux : ennemis et boss propres à chaque zone
+- [x] Identité des niveaux : un ennemi signature et une attaque de boss propre à chaque zone
+
+## Lot 13 — armes en vrais modèles, niveau spécial Berlin (22/11/2026)
+- [x] Modèles CC0 pour les armes (ours KayKit animé, faux, bouteilles, roquettes, étoile, cage, grille en fer, tracteur)
+- [x] Niveau spécial « Berlin 1945 » : ruines, décombres, parlement en ruine et drapeau rouge, ennemis reskinnés
+- [x] Boss caricatural « Le Führer de Pacotille » en 3 phases (discours, « armes miracles », crise de nerfs)
+- [x] La carte suit le combat : un peu en ruine → bombardement → duel final dans le bunker
+- [x] Plafond d'ennemis compté en direct (fin des foules incontrôlées sur les images lentes)
 
 ## Réponses du créateur (questionnaire du 21/11/2026)
 **À faire maintenant :**

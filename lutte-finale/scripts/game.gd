@@ -108,7 +108,8 @@ var test_pos := Vector3.INF
 var test_yaw := 0.0
 var test_dur := 0.0
 var shot_every := 0.0
-var test_endshot := false   # test: at the end of dur, die on purpose to capture the end report
+var test_endshot := false
+var test_bph := 0           # test: jump the Berlin map straight to this phase   # test: at the end of dur, die on purpose to capture the end report
 var shot_t := 0.0
 var shot_dir := "res://proto_shots"
 var shot_n := 0
@@ -139,6 +140,7 @@ func _ready():
 		elif a == "endless": Meta.run_endless = true
 		elif a == "killboss": test_killboss = true
 		elif a == "endshot": test_endshot = true
+		elif a.begins_with("bph="): test_bph = int(a.substr(4))
 		elif a == "god": test_god = true
 		elif a.begins_with("give="): test_give = a.substr(5)
 		elif a.begins_with("coop="): coop_test = int(a.substr(5))
@@ -148,7 +150,7 @@ func _ready():
 		seed_v = Net.run_seed
 	zone = Meta.run_zone
 	tier = Meta.run_tier
-	endless = Meta.run_endless
+	endless = Meta.run_endless and not Levels.special(Meta.run_zone)
 	tpl = Levels.zone(zone)
 	Levels.set_zone(tpl)
 	seed_v += zone * 101
@@ -826,7 +828,7 @@ func start():
 					if pw.can_fuse(f): pw.fuse(f)
 	var sl := int(mods.get("start_level", 0.0))
 	if carried: sl = 0
-	elif zone > 1: sl += 12 * ((zone - 1) % 3) + 6 * Levels.act(zone)     # starting directly in a later zone: catch-up levels
+	elif zone > 1: sl += 12 * Levels.slot(zone) + 6 * Levels.act(zone)     # starting directly in a later zone: catch-up levels
 	if sl > 0:
 		level += sl
 		_queue_levels(sl)
@@ -973,7 +975,7 @@ func spawn_point(min_d: float, max_d: float) -> Vector3:
 func dtime() -> float:
 	if endless: return time + (zone - 1) * ZONE_OFFSET
 	# inside an act each zone is a step harder; later acts start harder too
-	return time + ((zone - 1) % 3) * ZONE_OFFSET + Levels.act(zone) * ACT_OFFSET
+	return time + Levels.slot(zone) * ZONE_OFFSET + Levels.act(zone) * ACT_OFFSET
 
 func mults() -> Array:
 	var tm := dtime() / 60.0
@@ -1017,6 +1019,7 @@ func enemy_cap() -> int:
 	return (260 if not krach else 320) + 70 * (players.size() - 1)
 
 func _director(d: float):
+	if bunker_mode: return      # Berlin, phase 3: a duel in the bunker, nobody else comes in
 	var tm := dtime() / 60.0
 	var m := mults()
 	var cap := enemy_cap()
@@ -1040,7 +1043,7 @@ func _director(d: float):
 		elite_times.pop_front()
 		enemies.spawn("golden", spawn_point(18.0, 22.0), m[0] * (1.05 if dirl("opa") > 0 else 0.7), m[1])
 		_toast_all("UN GOLDEN BOY APPROCHE · IL TRANSPORTE UN COFFRE", 2.5)
-	if not boss_spawned and time >= BOSS_TIME:
+	if not boss_spawned and time >= float(tpl.get("boss_time", BOSS_TIME)):
 		boss_spawned = true
 		var bk: String = tpl["boss"]
 		Snd.music("boss", 2.0); Snd.play("explosion", 0.0, 0.0, 1.0, 0.6)
@@ -1056,6 +1059,7 @@ func _director(d: float):
 
 # ---------------------------------------------------------------- random events
 func _events(d: float):
+	if bunker_mode: return
 	if event_t > 0.0:
 		event_t -= d
 		if event_t <= 0.0:
@@ -1935,6 +1939,38 @@ func _try_ultimate(p = null):
 			tw.tween_callback(cap.queue_free)
 	shake(0.3)
 
+# ---------------------------------------------------------------- Berlin 1945: the map follows the fight
+var bunker_mode := false
+func berlin_phase(n: int):
+	if net_host: Net.event_all("bph", [n])
+	world.berlin_phase(n)
+	print("[game] BERLIN PHASE %d t=%s" % [n, _fmt(time)])
+	if n == 2:
+		shake(0.6)
+		Snd.play("explosion", 0.0, 0.1, 1.0, 0.7)
+		hud.toast("BOMBARDEMENT ! BERLIN S'EFFONDRE AUTOUR DE VOUS", 3.0)
+		for q in players:
+			for k in 4:
+				var a := randf() * TAU
+				VFX.explosion(self, q.global_position + Vector3(cos(a), 0, sin(a)) * randf_range(8.0, 16.0) + Vector3(0, 0.5, 0), 3.0)
+	elif n == 3 and not world.bunker.is_empty():
+		bunker_mode = true
+		var c: Vector3 = world.bunker["center"]
+		var inner: float = world.bunker["inner"]
+		shake(0.4)
+		hud.toast("DANS LE BUNKER · PLUS DE SORTIE · FINIS-EN", 3.5)
+		if not net_client:
+			enemies.clear_all(true)
+			if boss and boss.alive:
+				boss.node.position = c + Vector3(0, 0, -inner * 0.3)
+				boss.level = -1; boss.hop_t = 0.0
+		for i in players.size():
+			var q = players[i]
+			if not is_local(q): continue
+			q.global_position = c + Vector3((i - (players.size() - 1) * 0.5) * 2.0, 0.2, inner * 0.3)
+			q.velocity = Vector3.ZERO
+			VFX.puff(self, q.global_position + Vector3(0, 0.8, 0), 1.5, true)
+
 # ---------------------------------------------------------------- zones
 func _boss_down(e):
 	bosses_killed.append(zone)
@@ -2061,8 +2097,9 @@ func _win():
 	get_tree().paused = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	var rep := _report(true)
-	hud.show_screen("LE CAPITALISME EST TOMBÉ",
-		"La Main Invisible a été bonkée. Le Parti te remercie et t'oubliera dès demain.\n" + _loadout_text() + ("\n\n" + "\n".join(rep["lines"]) if not rep["lines"].is_empty() else ""),
+	var berlin: bool = Levels.special(zone)
+	hud.show_screen("BERLIN EST LIBÉRÉE" if berlin else "LE CAPITALISME EST TOMBÉ",
+		("Le Führer de Pacotille a été bonké dans son propre bunker. Le drapeau rouge flotte sur les ruines.\nL'Histoire retiendra qu'il a perdu contre un camarade armé d'un ours.\n" if berlin else "La Main Invisible a été bonkée. Le Parti te remercie et t'oubliera dès demain.\n") + _loadout_text() + ("\n\n" + "\n".join(rep["lines"]) if not rep["lines"].is_empty() else ""),
 		"ENTRÉE ou A : retour au Kolkhoze", Color(0.95, 0.75, 0.25), _end_stats())
 	hud.screen_buttons([["RETOUR AU KOLKHOZE", _back_to_hub], ["REJOUER", _replay]])
 	print("[game] WIN t=%s level=%d kills=%d" % [_fmt(time), level, kills])
@@ -2074,7 +2111,7 @@ func _end_stats(client := false) -> Array:
 		if weapons.owned[id]["evo"]: evo += 1
 	var nd := 0
 	for id in decrets: nd += int(decrets[id]["n"])
-	var out := [["TEMPS TOTAL", _fmt(run_time + time)], ["ZONE ATTEINTE", "%d / %d" % [zone, Levels.count()]],
+	var out := [["TEMPS TOTAL", _fmt(run_time + time)], ["ZONE ATTEINTE", "BERLIN 1945" if Levels.special(zone) else "%d / %d" % [zone, Levels.count()]],
 		["NIVEAU", str(level)], ["CAPITALISTES BONKÉS", str(kills)]]
 	if not client:
 		out += [["MINI-BOSS LIQUIDÉS", str(elites_killed)], ["BOSS RENVERSÉS", str(bosses_killed.size())]]
@@ -2183,6 +2220,9 @@ func _bot_tick(d: float):
 	if multi_run and time >= 720.0:
 		game_over(true)
 		return
+	if test_bph >= 2 and time > 0.3:
+		for k in range(2, test_bph + 1): berlin_phase(k)
+		test_bph = 0
 	if test_endshot and test_dur > 0.0 and time >= test_dur and state == "play":
 		player.last_cause = "Trader"
 		game_over(true)
@@ -2371,6 +2411,7 @@ func _client_down(q, down: bool):
 
 func net_event(ev: String, args: Array):
 	match ev:
+		"bph": berlin_phase(int(args[0]))
 		"toast": hud.toast(args[0], args[1])
 		"blind": hud.blind()
 		"hit_from": hud.hit_from(args[0])

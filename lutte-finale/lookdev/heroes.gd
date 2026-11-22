@@ -18,19 +18,26 @@ func _ready():
 	if "enemies" in OS.get_cmdline_user_args():
 		# every capitalist with its accessories, close up
 		var kinds := ["stagiaire", "cadre", "trader", "influenceur", "banquier", "crypto", "avocat", "huissier", "coach", "lobbyiste", "drh", "golden"]
-		if "zone" in OS.get_cmdline_user_args():
+		if "berlin" in OS.get_cmdline_user_args():
+			Levels.set_zone(Levels.BERLIN)
+			kinds = ["boss3", "stagiaire", "cadre", "huissier", "actionnaire", "golden", "pretorien"]
+		elif "zone" in OS.get_cmdline_user_args():
 			kinds = ["chef_rayon", "consultant", "daytrader", "evade", "livreur", "moderateur", "moniteur", "touriste", "pretorien", "pretenom"]
 		cam.fov = 22
 		cam.global_position = c + Vector3(-2.5, 2.2, 6.0)
 		cam.look_at(c + Vector3(-2.5, 1.55, 0))
-		if "zone" in OS.get_cmdline_user_args():
+		if "zone" in OS.get_cmdline_user_args() or "berlin" in OS.get_cmdline_user_args():
 			cam.fov = 30
 			cam.global_position = c + Vector3(-0.3, 2.2, 13.0)
 			cam.look_at(c + Vector3(-0.3, 1.2, 0))
+		if "face" in OS.get_cmdline_user_args():
+			cam.fov = 20
+			cam.global_position = c + Vector3(-5.2, 1.75, 2.6)
+			cam.look_at(c + Vector3(-5.5, 1.45, 0))
 		for j in kinds.size():
 			var kind: String = kinds[j]
 			var e := Chars.build_enemy(self, kind, c + Vector3(-5.5 + j * 1.15, 0, 0), 1.6)
-			var acc: Array = Data.ENEMIES[kind]["acc"]
+			var acc: Array = Levels.edef(kind)["acc"]
 			if kind == "cadre": acc = ["tophat", "cigar"]
 			if not acc.is_empty(): Chars.attach(e, acc)
 			var eap := U.anim_player(e)

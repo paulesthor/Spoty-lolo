@@ -444,6 +444,19 @@ static func _build_accessories(root: Node3D, kinds: Array, w: float, top: float,
 				var st := Label3D.new(); st.text = "★"; st.font = _sym_font; st.font_size = 64; st.pixel_size = w * 0.003
 				st.modulate = Color(1, 0.8, 0.2); st.outline_size = 0; st.position = Vector3(0, top + w * 0.1, cz + w * 0.51); st.shaded = false
 				root.add_child(st)
+			"officer_cap":
+				# grey peaked cap: band, wide flat crown, black visor, silver cord (no insignia)
+				var oc := solid(Color(0.36, 0.38, 0.34), 0.0, 0.8)
+				cyl(root, w * 0.47, w * 0.2, Vector3(0, top + w * 0.0, cz), oc)
+				var crown := cyl(root, w * 0.54, w * 0.08, Vector3(0, top + w * 0.11, cz + w * 0.02), oc)
+				crown.rotation.x = -0.12
+				box(root, Vector3(w * 0.62, w * 0.035, w * 0.26), Vector3(0, top - w * 0.1, front + w * 0.08), solid(Color(0.05, 0.05, 0.05), 0.0, 0.2))
+				cyl(root, w * 0.48, w * 0.04, Vector3(0, top - w * 0.06, cz), solid(Color(0.8, 0.8, 0.82), 0.0, 0.3, 1.0))
+			"toothbrush":
+				# the ridiculous little square moustache, and the hair plastered sideways on the forehead
+				box(root, Vector3(w * 0.12, w * 0.065, w * 0.05), Vector3(0, top - w * (eye_k + 0.11), front + w * 0.035), solid(Color(0.05, 0.04, 0.04), 0.0, 1.0))
+				var fringe := box(root, Vector3(w * 0.36, w * 0.08, w * 0.05), Vector3(w * 0.08, top - w * (eye_k - 0.12), front + w * 0.01), solid(Color(0.06, 0.05, 0.05), 0.0, 0.6))
+				fringe.rotation.z = -0.4
 			"big_moustache":
 				var mo := solid(Color(0.12, 0.08, 0.06), 0.0, 1.0)
 				for sx in [-1.0, 1.0]:

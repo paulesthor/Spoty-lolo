@@ -255,7 +255,7 @@ func _process(d: float):
 	var t: float = game.time
 	timer_label.text = "%02d:%02d" % [int(t) / 60, int(t) % 60]
 	timer_label.add_theme_color_override("font_color", Color(1, 0.35, 0.3) if game.krach else Color.WHITE)
-	var zt: String = ("ZONE %d · SANS FIN" % game.zone) if game.endless else ("ACTE %s · ZONE %d/3" % [["I", "II", "III"][Levels.act(game.zone)], (game.zone - 1) % 3 + 1])
+	var zt: String = "NIVEAU SPÉCIAL" if Levels.special(game.zone) else ("ZONE %d · SANS FIN" % game.zone) if game.endless else ("ACTE %s · ZONE %d/3" % [["I", "II", "III"][Levels.act(game.zone)], (game.zone - 1) % 3 + 1])
 	if game.door != null: zt = "LA PORTE EST OUVERTE · SUIS LE FAISCEAU ROUGE"
 	elif game.krach: zt = "LE KRACH  ·  FUIS OU MEURS"
 	else: zt += "  ·  " + (game.tpl["name"] as String).to_upper()

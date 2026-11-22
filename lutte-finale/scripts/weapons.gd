@@ -420,12 +420,8 @@ func _sickle(dir: Vector3, s: Dictionary):
 	Snd.play("slice", -8.0, 0.15, 0.15)
 	var n := Node3D.new()
 	add_child(n)
-	var blade := MeshInstance3D.new()
-	var tm := TorusMesh.new(); tm.inner_radius = 0.42; tm.outer_radius = 0.55; tm.rings = 24
-	blade.mesh = tm; blade.scale = Vector3(1, 0.25, 1)
-	blade.material_override = U.solid(Color(0.85, 0.86, 0.9), 0.6, 0.2, 1.0)
-	n.add_child(blade)
-	U.box(n, Vector3(0.1, 0.1, 0.5), Vector3(0.5, 0, 0.3), U.solid(Color(0.75, 0.08, 0.1), 0.0, 0.6))
+	var blade := _model(n, "weapons/scythe.gltf", 1.15)
+	blade.rotation = Vector3(PI / 2, 0, 0)      # lying flat, it spins like a boomerang
 	_fx(n, "twirl_01.png", Vector3.ZERO, 1.8, Color(1, 0.25, 0.2, 0.7), 2.0, false, Vector3(-PI / 2, 0, 0))
 	n.global_position = pl.global_position + Vector3(0, 1.1, 0)
 	VFX.sparkle_trail(n, Color(1.0, 0.35, 0.25), 0.7, "trace_05.png")
@@ -436,8 +432,8 @@ func _molotov(from: Vector3, to: Vector3, s: Dictionary):
 	var n := Node3D.new()
 	add_child(n)
 	n.global_position = from
-	U.cyl(n, 0.08, 0.3, Vector3.ZERO, U.solid(Color(0.25, 0.55, 0.3, 0.9), 0.0, 0.1))
-	U.cyl(n, 0.03, 0.12, Vector3(0, 0.2, 0), U.solid(Color(0.9, 0.85, 0.7)))
+	_model(n, "weapons/pirate/bottle.glb", 0.45, true)
+	U.cyl(n, 0.035, 0.14, Vector3(0, 0.27, 0), U.solid(Color(0.9, 0.85, 0.7)))      # the rag
 	VFX.fire_trail(n, 0.45)
 	VFX.smoke_trail(n, 0.5, true)
 	projectiles.append({"t": "molotov", "n": n, "from": from, "to": to, "age": 0.0, "dur": 0.6, "s": s})
@@ -625,6 +621,7 @@ func _fire_new(id: String, s: Dictionary, pp: Vector3) -> bool:
 					hit_any = true
 				if hit_any:
 					any = true
+					(b as Node3D).set_meta("swipe", 0.35)
 					_slash_fx(bp, s["area"], Color(0.9, 0.6, 0.3))
 			return any
 		"vodka":
@@ -735,20 +732,48 @@ func _slash_fx(p: Vector3, rad: float, col: Color):
 	tw.tween_callback(fx.queue_free)
 	VFX.impact(self, Vector3(p.x, 0.8, p.z), col, 8)
 
+# ---------------------------------------------------------------- asset models (CC0 packs, see assets/weapons/LICENSE.txt)
+# instance a model centred on `parent`, its largest side scaled to `size`; long_y turns its long axis upright
+func _model(parent: Node3D, file: String, size: float, long_y := false, tint := Color.WHITE) -> Node3D:
+	var pivot := Node3D.new()
+	parent.add_child(pivot)
+	var inner: Node3D = U.scene("res://assets/" + file).instantiate()
+	pivot.add_child(inner)
+	var a: AABB = pivot.global_transform.affine_inverse() * U.world_aabb(inner)
+	if long_y:
+		if a.size.x >= a.size.y and a.size.x >= a.size.z: inner.rotation.z = PI / 2
+		elif a.size.z >= a.size.y: inner.rotation.x = PI / 2
+		a = pivot.global_transform.affine_inverse() * U.world_aabb(inner)
+	var k := size / maxf(maxf(a.size.x, a.size.y), maxf(a.size.z, 0.001))
+	inner.scale *= k
+	inner.position = -a.get_center() * k
+	for m in inner.find_children("*", "GeometryInstance3D", true, false):
+		(m as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	if tint != Color.WHITE:
+		for m in inner.find_children("*", "MeshInstance3D", true, false):
+			var mi: MeshInstance3D = m
+			for i in mi.mesh.get_surface_count():
+				var src = mi.get_active_material(i)
+				if src is StandardMaterial3D:
+					var key := "%d_%s" % [src.get_instance_id(), tint.to_html()]
+					if not _tinted.has(key):
+						var dm: StandardMaterial3D = src.duplicate()
+						dm.albedo_color = dm.albedo_color * tint
+						_tinted[key] = dm
+					mi.set_surface_override_material(i, _tinted[key])
+	return pivot
+var _tinted := {}
+
 # ---------------------------------------------------------------- tracteur
 func _tractor(from: Vector3, dir: Vector3, s: Dictionary):
 	var n := Node3D.new()
 	add_child(n)
 	n.global_position = Vector3(from.x, 0.0, from.z)
 	var w: float = s["area"]
-	var red := U.solid(Color(0.75, 0.1, 0.1), 0.0, 0.5)
-	U.box(n, Vector3(w * 1.1, 1.0, 2.2), Vector3(0, 0.9, 0), red)
-	U.box(n, Vector3(w * 0.8, 0.9, 0.9), Vector3(0, 1.8, -0.4), U.solid(Color(0.2, 0.2, 0.22)))
-	for sx in [-1.0, 1.0]:
-		var wh := U.cyl(n, 0.65, 0.4, Vector3(sx * w * 0.6, 0.65, -0.6), U.solid(Color(0.1, 0.1, 0.1)))
-		wh.rotation = Vector3(0, 0, PI / 2)
-		var fw := U.cyl(n, 0.4, 0.3, Vector3(sx * w * 0.55, 0.4, 0.8), U.solid(Color(0.1, 0.1, 0.1)))
-		fw.rotation = Vector3(0, 0, PI / 2)
+	var tm := _model(n, "car-kit/tractor.glb", clampf(w * 1.1, 2.6, 3.6), false, Color(1.0, 0.55, 0.5))
+	var ta: AABB = n.global_transform.affine_inverse() * U.world_aabb(tm)
+	tm.position.y = ta.size.y * 0.5
+	tm.rotation.y = PI
 	n.look_at(n.global_position + dir, Vector3.UP)
 	n.rotate_object_local(Vector3.UP, PI)
 	VFX.ps(n, "smoke_05.png", {"n": 20, "life": 0.8, "size": 1.4, "add": false, "ramp": "dust", "curve": "grow", "spread": 60.0, "vel": [0.5, 1.5], "pos": Vector3(0, 0.3, 1.2)})
@@ -760,17 +785,26 @@ func _update_bears(d: float):
 	var s := stats("ours")
 	var n: int = s["count"]
 	while bears.size() < n:
+		# KayKit bear (CC0): head and arms are separate pieces, animated below
 		var b := Node3D.new()
 		add_child(b)
-		var br := U.solid(Color(0.38, 0.24, 0.14), 0.0, 0.9)
-		U.sphere(b, 0.75, Vector3(0, 0.85, 0), br, 1.0)
-		U.sphere(b, 0.45, Vector3(0, 1.35, 0.65), br)
-		U.sphere(b, 0.18, Vector3(0, 1.28, 1.05), U.solid(Color(0.55, 0.4, 0.3)))
-		for ex in [-0.28, 0.28]:
-			U.sphere(b, 0.14, Vector3(ex, 1.75, 0.55), br)
-		var hat := Node3D.new(); b.add_child(hat); hat.position = Vector3(0, 1.72, 0.6)
-		U.cyl(hat, 0.3, 0.25, Vector3.ZERO, U.solid(Color(0.35, 0.25, 0.18), 0.0, 1.0))
-		U.cyl(hat, 0.08, 0.05, Vector3(0, 0.05, 0.3), U.solid(Color(0.8, 0.1, 0.1), 1.0)).rotation = Vector3(PI / 2, 0, 0)
+		var body := U.place(b, "res://assets/weapons/kk_bear.gltf", Vector3.ZERO, 1.7, 0.0)
+		body.name = "body"
+		for m in body.find_children("*", "GeometryInstance3D", true, false):
+			(m as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		U.blob(b, Vector3(0, 0.04, 0), 1.6)
+		var head: Node3D = body.find_child("character_bearHead", true, false)
+		if head:
+			var ha: AABB = head.global_transform.affine_inverse() * U.world_aabb(head)
+			var hat := Node3D.new(); head.add_child(hat)
+			hat.position = Vector3(ha.get_center().x, ha.end.y - ha.size.y * 0.04, ha.get_center().z)
+			var hs: float = ha.size.x
+			U.cyl(hat, hs * 0.34, hs * 0.26, Vector3(0, hs * 0.06, 0), U.solid(Color(0.55, 0.55, 0.58), 0.0, 1.0))
+			U.cyl(hat, hs * 0.37, hs * 0.12, Vector3(0, -hs * 0.06, 0), U.solid(Color(0.72, 0.72, 0.74), 0.0, 1.0))
+			var st := Label3D.new(); st.text = "★"; st.font = load("res://fonts/Symbols.ttf"); st.font_size = 96; st.pixel_size = hs * 0.004
+			st.modulate = Color(0.9, 0.1, 0.1); st.outline_size = 0; st.position = Vector3(0, hs * 0.05, hs * 0.36); st.shaded = false
+			hat.add_child(st)
+		b.set_meta("swipe", 0.0)
 		b.scale = Vector3.ONE * (1.3 if owned["ours"]["evo"] else 1.0)
 		b.global_position = pl.global_position + Vector3(randf_range(-2, 2), 0, randf_range(-2, 2))
 		bears.append(b)
@@ -783,11 +817,28 @@ func _update_bears(d: float):
 		if t != null and t.node.position.distance_to(pp) < 14.0: target = t.node.position
 		var v := target - b.global_position
 		v.y = 0
-		if v.length() > 0.8:
+		var moving := v.length() > 0.8
+		if moving:
 			var step: Vector3 = v.normalized() * minf(v.length(), float(s["speed"]) * d * (1.6 if v.length() > 10.0 else 1.0))
 			b.global_position += step
-			b.rotation.y = atan2(v.x, v.z)
-		b.global_position.y = absf(sin(Time.get_ticks_msec() / 120.0 + i)) * 0.15
+			b.rotation.y = lerp_angle(b.rotation.y, atan2(v.x, v.z), 12.0 * d)
+		# animation: a heavy waddle when it walks, a double paw swipe when it hits
+		var tt := Time.get_ticks_msec() / 1000.0 * 9.0 + i
+		var sw: float = maxf(0.0, float(b.get_meta("swipe", 0.0)) - d)
+		b.set_meta("swipe", sw)
+		var body: Node3D = b.get_node_or_null("body")
+		b.global_position.y = absf(sin(tt)) * (0.18 if moving else 0.04)
+		if body:
+			body.rotation.z = sin(tt) * (0.14 if moving else 0.03)
+			body.rotation.x = 0.18 if sw > 0.0 else (0.06 if moving else 0.0)
+			var k := sin(sw / 0.35 * PI) if sw > 0.0 else 0.0
+			for arm in [["character_bearArmLeft", 1.0], ["character_bearArmRight", -1.0]]:
+				var an: Node3D = body.find_child(arm[0], true, false)
+				if an == null: continue
+				an.rotation.x = -k * 2.2 + (sin(tt + (0.0 if arm[1] > 0 else PI)) * 0.5 if moving else 0.0)
+				an.rotation.z = arm[1] * k * 0.5
+			var hd: Node3D = body.find_child("character_bearHead", true, false)
+			if hd: hd.rotation.x = -k * 0.25 + sin(tt * 0.5) * 0.06
 		if b.global_position.distance_to(pp) > 25.0: b.global_position = pp
 
 # ---------------------------------------------------------------- vodka
@@ -796,8 +847,7 @@ func _vodka(from: Vector3, target, s: Dictionary, chain: int, hit: Array, mult: 
 	var n := Node3D.new()
 	add_child(n)
 	n.global_position = from
-	U.cyl(n, 0.09, 0.4, Vector3.ZERO, U.solid(Color(0.85, 0.92, 1.0, 0.7), 0.4, 0.1))
-	U.cyl(n, 0.04, 0.12, Vector3(0, 0.25, 0), U.solid(Color(0.8, 0.1, 0.1)))
+	_model(n, "food-kit/wine-white.glb", 0.5, true)
 	VFX.sparkle_trail(n, Color(0.6, 0.85, 1.0), 0.35, "magic_01.png")
 	projectiles.append({"t": "vodka", "n": n, "target": target, "s": s, "chain": chain, "hits": hit, "mult": mult, "life": 1.5})
 
@@ -821,8 +871,14 @@ func _wall(c: Vector3, along: Vector3, s: Dictionary):
 	add_child(n)
 	n.global_position = Vector3(c.x, 0, c.z)
 	var half: float = s["area"]
-	U.box(n, Vector3(half * 2.0, 1.2, 0.3), Vector3(0, 0.6, 0), U.solid(Color(0.4, 0.42, 0.45, 0.85), 0.0, 0.4, 0.8))
-	U.box(n, Vector3(half * 2.0, 0.12, 0.36), Vector3(0, 1.24, 0), U.solid(Color(0.75, 0.08, 0.1)))
+	# an actual iron fence, panel after panel
+	var panels := maxi(2, int(ceil(half * 2.0 / 1.6)))
+	for i in panels:
+		var f := _model(n, "weapons/graveyard/iron_fence.glb", 1.7, false, Color(0.45, 0.45, 0.5))
+		f.position = Vector3(-half + (i + 0.5) * half * 2.0 / panels, 0.75, 0)
+		var fa: AABB = n.global_transform.affine_inverse() * U.world_aabb(f)
+		if fa.size.z > fa.size.x: f.rotation.y = PI / 2
+	U.box(n, Vector3(half * 2.0, 0.1, 0.12), Vector3(0, 1.5, 0), U.solid(Color(0.75, 0.08, 0.1)))
 	n.rotation.y = atan2(along.x, along.z) - PI / 2
 	n.scale = Vector3(1, 0.05, 1)
 	var tw := n.create_tween()
@@ -869,7 +925,7 @@ func _rocket(to: Vector3, s: Dictionary, delay: float):
 	var n := Node3D.new()
 	add_child(n)
 	n.global_position = to + Vector3(-3, 16, -3)
-	U.cyl(n, 0.1, 0.8, Vector3.ZERO, U.solid(Color(0.3, 0.35, 0.25)))
+	_model(n, "weapons/weaponpack/rocket.glb", 0.9, true, Color(0.75, 0.85, 0.6))
 	_fx(n, "flame_02.png", Vector3(0, 0.6, 0), 0.6, Color(1, 0.6, 0.2), 3.0)
 	VFX.fire_trail(n, 0.4)
 	VFX.smoke_trail(n, 0.6)
@@ -896,11 +952,10 @@ func _cage(p: Vector3, s: Dictionary):
 	p = Vector3(p.x, 0, p.z)
 	n.global_position = p + Vector3(0, 8, 0)
 	var r: float = s["area"]
-	var bar := U.solid(Color(0.3, 0.3, 0.32), 0.0, 0.4, 0.9)
-	for i in 12:
-		var a := TAU * i / 12.0
-		U.cyl(n, 0.06, 2.4, Vector3(cos(a) * r, 1.2, sin(a) * r), bar)
-	U.cyl(n, r, 0.12, Vector3(0, 2.4, 0), bar)
+	var cg := _model(n, "weapons/cage/Cage_Small.gltf", 1.0)
+	var ca: AABB = n.global_transform.affine_inverse() * U.world_aabb(cg)
+	cg.scale = Vector3(r * 2.0 / maxf(ca.size.x, 0.01), 2.6 / maxf(ca.size.y, 0.01), r * 2.0 / maxf(ca.size.z, 0.01))
+	cg.position.y = 1.3
 	U.label(n, "GOULAG", Vector3(0, 2.8, 0), 64, Color(1, 0.85, 0.3), Color(0, 0, 0, 1))
 	var tw := n.create_tween()
 	tw.tween_property(n, "global_position", p, 0.25).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
@@ -927,9 +982,9 @@ func _star(from: Vector3, to: Vector3, s: Dictionary):
 	var n := Node3D.new()
 	add_child(n)
 	n.global_position = from
-	var l := Label3D.new(); l.text = "★"; l.font = load("res://fonts/Symbols.ttf"); l.font_size = 192; l.pixel_size = 0.012
-	l.modulate = Color(1, 0.2, 0.15); l.outline_size = 0; l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	n.add_child(l)
+	var st := _model(n, "weapons/star_red.gltf", 1.1)
+	var stw := st.create_tween().set_loops()
+	stw.tween_property(st, "rotation:y", TAU, 0.5).from(0.0)
 	_fx(n, "light_01.png", Vector3.ZERO, 2.5, Color(1, 0.3, 0.2, 0.6), 3.0)
 	VFX.sparkle_trail(n, Color(1, 0.3, 0.2), 0.8)
 	projectiles.append({"t": "star", "n": n, "from": from, "to": Vector3(to.x, 0.4, to.z), "age": 0.0, "dur": 0.45, "s": s})

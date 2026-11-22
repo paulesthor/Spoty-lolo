@@ -21,6 +21,7 @@ func build(kind: String, r: Rect2):
 		"carburant": _carburant(r)
 		"antennes": _antennes(r)
 		"defile": _defile(r)
+		"decombres": _decombres(r)
 
 func _v(x: float, z: float) -> Vector3:
 	return Vector3(x, 0, z)
@@ -446,3 +447,61 @@ func _defile(r: Rect2):
 		var bp: Vector3 = c + lat * sd * 3.2
 		U.box(w, Vector3(length, 0.9, 0.08) if along_x else Vector3(0.08, 0.9, length), bp + Vector3(0, 0.45, 0), U.solid(Color(0.75, 0.75, 0.78), 0.0, 0.3, 0.8))
 	w._lot_sign(c + lat * 6.0, "DÉFILÉ DU GRAND SOIR · ENTRÉE LIBRE", Color(1, 0.85, 0.3))
+
+# ---------------------------------------------------------------- Berlin 1945
+# a bombed street block: rubble mounds, anti-tank hedgehogs, sandbag nests, burnt-out cars, shell craters
+func _decombres(r: Rect2):
+	_floor(r, U.pbr("Ground080", 0.4, Color(0.55, 0.5, 0.46), 0.5))
+	var brick := U.solid(Color(0.42, 0.3, 0.25), 0.0, 1.0)
+	var stone := U.solid(Color(0.45, 0.43, 0.4), 0.0, 1.0)
+	var iron := U.solid(Color(0.22, 0.2, 0.18), 0.0, 0.6, 0.6)
+	var sand := U.solid(Color(0.62, 0.55, 0.42), 0.0, 1.0)
+	var area := r.size.x * r.size.y
+	# rubble mounds (they block, enemies walk around)
+	for i in int(area / 260.0) + 1:
+		var c := _rand_in(r, 5.0)
+		if w._blocked(c, 2.5): continue
+		var rad: float = w.rng.randf_range(1.6, 2.8)
+		for q in 9:
+			var a: float = w.rng.randf() * TAU
+			var d: float = w.rng.randf_range(0.0, rad)
+			var sz: float = w.rng.randf_range(0.5, 1.2) * (1.0 - d / rad * 0.5)
+			var b := U.box(w, Vector3(sz * 1.5, sz * 0.7, sz), c + Vector3(cos(a) * d, sz * 0.3 + (rad - d) * 0.25, sin(a) * d), brick if q % 3 else stone)
+			b.rotation = Vector3(w.rng.randf_range(-0.4, 0.4), w.rng.randf() * TAU, w.rng.randf_range(-0.4, 0.4))
+		w.small_obstacle(c, rad * 0.8)
+		w._static_box(c + Vector3(0, 0.5, 0), Vector3(rad * 1.5, 1.0, rad * 1.5))
+	# Czech hedgehogs: three crossed girders
+	for i in int(area / 320.0) + 2:
+		var c := _rand_in(r, 3.0)
+		if w._blocked(c, 1.2): continue
+		var hh := Node3D.new(); w.add_child(hh); hh.position = c + Vector3(0, 0.75, 0); hh.rotation.y = w.rng.randf() * TAU
+		for k in 3:
+			var g := U.box(hh, Vector3(0.16, 2.0, 0.16), Vector3.ZERO, iron)
+			g.rotation = [Vector3(0.95, 0, 0), Vector3(0, 0, 0.95), Vector3(0.6, 1.2, -0.6)][k]
+		w.small_obstacle(c, 0.9)
+	# sandbag half-rings
+	for i in int(area / 600.0) + 1:
+		var c := _rand_in(r, 4.0)
+		if w._blocked(c, 2.2): continue
+		var face: float = w.rng.randf() * TAU
+		for row in 2:
+			for k in 7:
+				var a: float = face - 1.2 + k * 0.4
+				var sb := U.box(w, Vector3(0.75, 0.32, 0.42), c + Vector3(cos(a), 0, sin(a)) * 1.9 + Vector3(0, 0.17 + row * 0.32, 0), sand)
+				sb.rotation.y = -a
+		w.small_obstacle(c + Vector3(cos(face), 0, sin(face)) * 1.6, 1.2)
+	# burnt-out cars
+	for i in int(area / 700.0) + 1:
+		var c := _rand_in(r, 4.0)
+		if w._blocked(c, 2.5): continue
+		var car := U.place(w, U.CAR + ["sedan", "van", "truck", "suv"][w.rng.randi() % 4] + ".glb", c, 1.7, w.rng.randf() * TAU)
+		for m in car.find_children("*", "MeshInstance3D", true, false):
+			(m as MeshInstance3D).material_override = U.solid(Color(0.13, 0.11, 0.1), 0.0, 1.0)
+		car.rotation.z = w.rng.randf_range(-0.15, 0.15)
+		w.add_obstacle(car)
+	# shell craters (just dark scorched discs)
+	for i in int(area / 300.0) + 1:
+		var c := _rand_in(r, 3.0)
+		var rr: float = w.rng.randf_range(1.4, 2.4)
+		U.cyl(w, rr, 0.03, c + Vector3(0, 0.07, 0), U.solid(Color(0.1, 0.09, 0.08), 0.0, 1.0)).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		U.cyl(w, rr * 1.25, 0.02, c + Vector3(0, 0.06, 0), U.solid(Color(0.25, 0.22, 0.2), 0.0, 1.0)).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF

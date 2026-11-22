@@ -1,0 +1,6 @@
+Weapon models — all CC0 1.0 (public domain), fetched from the series-ai/jam-ready-assets mirror:
+- kk_bear.gltf: Kay Lousberg, KayKit Mini-Game Variety Pack (character_bear) — kaylousberg.com
+- kalach.glb: Quaternius, Ultimate Guns (AssaultRifle_1)
+- cage/: Quaternius, Fantasy Props (Cage_Small), textures downscaled to 512 px
+- scythe, guitar_A, star_red, pickaxe (.gltf/.bin/.png): Kay Lousberg, KayKit (Fantasy Weapons, Mixed Bag 1, Platformer, RPG Tools) — kaylousberg.com
+- speaker.glb, iron_fence.glb, bottle.glb, rocket.glb: Kenney (Furniture Kit, Graveyard Kit, Pirate Kit, Weapon Pack) — kenney.nl

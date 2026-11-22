@@ -33,7 +33,7 @@ func build(world):
 	_street_furniture()
 	_flags(int(10 * w.area_k * (2.5 if id == "grandsoir" else 1.0)))
 	_pigeon_flocks(int(5 * w.area_k))
-	_blimp(id)
+	if w.template.get("blimp", "x") != "": _blimp(id)
 	_hoardings(id)
 	match id:
 		"hypermarche": _hypermarche()
@@ -45,6 +45,7 @@ func build(world):
 		"ski": _ski()
 		"fusee": _fusee()
 		"grandsoir": _grandsoir()
+		"berlin": _berlin()
 
 # ---------------------------------------------------------------- shared
 # a free spot, or INF when the map has no room left (the prop is then skipped, never stacked)
@@ -709,3 +710,58 @@ func _firework():
 	fx.emitting = true
 	VFX.free_later(fx, 2.5)
 	if rng.randf() < 0.5: Snd.play("explosion", -22.0, 0.2, 0.3, 1.6)
+
+# ---------------------------------------------------------------- Berlin 1945 (special level)
+func _berlin():
+	var stone := U.solid(Color(0.34, 0.31, 0.28), 0.0, 1.0)
+	var dark := U.solid(Color(0.16, 0.15, 0.14), 0.0, 0.7, 0.5)
+	# the parliament in ruins, a red flag raised on the skeleton of its dome
+	var c := _spot(16.0, 30.0)
+	if c != Vector3.INF:
+		_claim(c, 16.0)
+		var hall := Node3D.new(); add_child(hall); hall.position = c
+		U.box(hall, Vector3(26.0, 9.0, 16.0), Vector3(0, 4.5, 0), stone)
+		for k in 6: U.box(hall, Vector3(1.0, 8.0, 1.0), Vector3(-10.0 + k * 4.0, 4.0, 8.4), stone)      # columns
+		U.box(hall, Vector3(26.0, 1.2, 1.4), Vector3(0, 8.6, 8.6), stone)
+		var lab := U.label(hall, "DEM DEUTSCHEN VOLKE", Vector3(0, 8.6, 9.32), 72, Color(0.8, 0.78, 0.72), Color(0, 0, 0, 0), false)
+		U.fit_label(lab, 20.0, 1.0)
+		# dome: bare ribs
+		for k in 10:
+			var a := TAU * k / 10.0
+			var rib := U.box(hall, Vector3(0.35, 7.0, 0.35), Vector3(cos(a) * 3.6, 12.0, sin(a) * 3.6), dark)
+			rib.rotation = Vector3(sin(a) * 0.55, 0, -cos(a) * 0.55)
+		U.cyl(hall, 6.4, 0.5, Vector3(0, 9.3, 0), dark)
+		U.cyl(hall, 0.09, 6.0, Vector3(0, 18.0, 0), U.solid(Color(0.3, 0.3, 0.3)))
+		var flag := Node3D.new(); hall.add_child(flag); flag.position = Vector3(0, 20.0, 0)
+		var cloth := U.box(flag, Vector3(0.06, 1.9, 3.0), Vector3(0, 0, 1.5), U.solid(Color(0.8, 0.05, 0.07), 0.6, 0.9))
+		cloth.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		flags.append({"n": flag, "base": 0.0, "ph": 0.3})
+		hall.rotation.y = rng.randf() * TAU
+		w.add_obstacle(hall)
+		w.register_occluder(hall)
+	# searchlights sweeping the smoky sky
+	for i in 6:
+		var p := _spot(2.0)
+		if p == Vector3.INF: continue
+		_claim(p, 2.0)
+		U.cyl(self, 0.7, 1.0, p + Vector3(0, 0.5, 0), dark)
+		var piv := Node3D.new(); add_child(piv); piv.position = p + Vector3(0, 1.1, 0)
+		var beam := MeshInstance3D.new()
+		var cm := CylinderMesh.new(); cm.top_radius = 3.0; cm.bottom_radius = 0.35; cm.height = 60.0
+		beam.mesh = cm
+		var bm := StandardMaterial3D.new(); bm.albedo_color = Color(1.0, 0.95, 0.8, 0.07); bm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		bm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; bm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD; bm.cull_mode = BaseMaterial3D.CULL_DISABLED
+		beam.material_override = bm
+		beam.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		beam.position = Vector3(0, 30.0, 0)
+		var tilt := Node3D.new(); piv.add_child(tilt); tilt.rotation.x = rng.randf_range(0.35, 0.6)
+		tilt.add_child(beam)
+		piv.set_meta("airborne", true)
+		spinners.append({"n": piv, "sp": rng.randf_range(0.15, 0.3) * (1.0 if i % 2 else -1.0)})
+		w.small_obstacle(p, 0.8)
+	# fires still burning in the rubble
+	_scatter(8, 2.0, func(p: Vector3, i: int):
+		VFX.fire(self, p, rng.randf_range(0.8, 1.4))
+		w.small_obstacle(p, 0.8))
+	# Red Army posters and a field kitchen
+	_billboard("BERLIN · AVRIL 1945 · LE BUNKER EST ENCERCLÉ · IL AVAIT PROMIS MILLE ANS · PLUS JAMAIS ÇA · ", Color(1.0, 0.35, 0.25))

@@ -262,7 +262,7 @@ static func is_kaykit(n: Node) -> bool:
 	return sk != null and sk.find_bone("handslot.r") >= 0
 
 # accessories on the head bone, sized from the visible meshes (works for both rigs)
-const HATS := ["chapka", "kepi", "beret", "flat_cap", "straw_hat", "hard_hat", "mao_cap", "cap", "tank_helmet", "tophat"]
+const HATS := ["officer_cap", "chapka", "kepi", "beret", "flat_cap", "straw_hat", "hard_hat", "mao_cap", "cap", "tank_helmet", "tophat"]
 const HAT_SINK := 0.16
 
 static func _is_knight(n: Node) -> bool:

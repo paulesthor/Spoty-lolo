@@ -332,21 +332,84 @@ const GRAND_SOIR := {
 	},
 }
 
+# special boss level (not part of the three acts): Berlin, spring 1945. Picked from the Kolkhoze on its own.
+const SPECIAL := 10
+const BERLIN := {
+	"id": "berlin",
+	"special": true,
+	"music": "battle",
+	"name": "Berlin 1945",
+	"boss": "boss3",
+	"boss_time": 150.0,      # the horde is only the warm-up: he shows up at 02:30
+	"roster": [["pretorien", 20.0, 1.6, 0.4], ["touriste", 70.0, 0.6, 0.2]],
+	"bpat": "bunker",
+	"bunker": true,          # a lot is kept for the bunker (phase 3 of the fight happens inside)
+	"width": [230.0, 260.0],
+	"depth": [235.0, 265.0],
+	"shapes": {"rect": 2.0, "croix": 2.0, "L": 1.0},
+	"lots": {"decombres": 4.0, "plaza": 1.5, "square": 1.0, "empty": 1.0},
+	"min": {"decombres": 6, "plaza": 2},
+	"lot_size": [26.0, 44.0],
+	"avenue": 9.0,
+	"blocks": 0.3,
+	"block": "ruins",
+	"border": "ruins",
+	"skyline": "city",
+	"ground": Color(0.36, 0.33, 0.3),
+	"ground_tex": "Ground080",
+	"walk_tex": "PavingStones138",
+	"floor_tex": "PavingStones138",
+	"ambiances": {"couvert": 3.0, "nuit": 2.0},
+	"facade": ["BERLIN", "1945", "IL AVAIT PROMIS MILLE ANS · IL EN A TENU DOUZE", Color(0.45, 0.42, 0.4)],
+	"slogans": ["LES TYRANS FINISSENT TOUJOURS DANS UN BUNKER", "L'ARMÉE ROUGE EST À 300 MÈTRES", "IL AVAIT PROMIS MILLE ANS", "PLUS JAMAIS ÇA"],
+	"shops": ["BOULANGERIE (FERMÉE)", "ABRI ANTIAÉRIEN", "HÔPITAL DE CAMPAGNE", "U-BAHN", "CANTINE DE L'ARMÉE ROUGE"],
+	"blimp": "",
+	"clutter": ["dumpster"],
+	"skins": {
+		"stagiaire": {"name": "Conscrit perdu", "looks": [["Soldier", "F"], ["Swat", "M"]], "colors": {"Swat": Color(0.38, 0.4, 0.34), "Swat_Black": Color(0.2, 0.2, 0.2), "Visor": Color(0.2, 0.2, 0.2)}},
+		"cadre": {"name": "Bureaucrate du régime", "looks": [["Suit", "M"], ["Suit", "F"]], "colors": {"Suit": Color(0.35, 0.36, 0.34), "Tie": Color(0.1, 0.1, 0.1)}, "acc": ["officer_cap"]},
+		"trader": {"name": "Motard de liaison", "looks": [["Swat", "M"]], "colors": {"Swat": Color(0.3, 0.32, 0.28)}},
+		"influenceur": {"name": "Propagandiste", "looks": [["Formal", "F"], ["Suit", "M"]], "colors": {"Red": Color(0.3, 0.3, 0.3), "Suit": Color(0.3, 0.3, 0.3)}},
+		"banquier": {"name": "Banquier suisse", "acc": ["tophat", "monocle"]},
+		"crypto": {"name": "Grenadier paniqué", "looks": [["Soldier", "F"], ["Swat", "M"]], "colors": {"Swat": Color(0.4, 0.38, 0.3)}},
+		"avocat": {"name": "Juriste du régime"},
+		"huissier": {"name": "Agent de la police secrète", "looks": [["Suit", "M"]], "colors": {"Suit": Color(0.08, 0.08, 0.09), "Tie": Color(0.08, 0.08, 0.09)}, "acc": ["round_glasses"]},
+		"coach": {"name": "Médecin du bunker", "looks": [["Formal", "F"]], "colors": {"Red": Color(0.9, 0.9, 0.88)}},
+		"lobbyiste": {"name": "Industriel complice"},
+		"drh": {"name": "Officier recruteur", "looks": [["Suit", "M"]], "colors": {"Suit": Color(0.35, 0.37, 0.3)}, "acc": ["officer_cap"]},
+		"actionnaire": {"name": "Général à monocle", "looks": [["Suit", "M"]], "colors": {"Suit": Color(0.3, 0.32, 0.27)}, "acc": ["officer_cap", "monocle"]},
+		"golden": {"name": "Maréchal déchu", "looks": [["Suit", "M"]], "colors": {"Suit": Color(0.32, 0.33, 0.3), "Tie": Color(0.75, 0.6, 0.2)}, "acc": ["officer_cap", "monocle"]},
+		"pretorien": {"name": "Garde du bunker"},
+		"touriste": {"name": "Aviateur sans avion", "looks": [["Soldier", "F"], ["Swat", "M"]], "colors": {"Swat": Color(0.35, 0.4, 0.45)}},
+		"boss3": {"name": "Le Führer de Pacotille", "h": 4.4, "looks": [["Suit", "M"]], "colors": {"Suit": Color(0.55, 0.47, 0.32), "Tie": Color(0.08, 0.08, 0.08)}, "acc": ["officer_cap", "toothbrush"]},
+	},
+}
+
 const ZONES := [HYPERMARCHE, QUARTIER, BOURSE, PARADIS, STARTUP, DATACENTER, SKI, FUSEE, GRAND_SOIR]
 const ACTS := ["ACTE I · LA VILLE", "ACTE II · LE CAPITAL MONDIALISÉ", "ACTE III · LA LUTTE FINALE"]
 
 static func zone(n: int) -> Dictionary:
+	if n == SPECIAL: return BERLIN
 	return ZONES[(n - 1) % ZONES.size()]
 
 static func count() -> int:
 	return ZONES.size()
 
-# zone 3, 6 and 9 close an act: beating their boss wins the run
+static func special(n: int) -> bool:
+	return n == SPECIAL
+
+# zone 3, 6 and 9 close an act: beating their boss wins the run (the special level too)
 static func act_end(n: int) -> bool:
-	return n % 3 == 0
+	return n % 3 == 0 or n == SPECIAL
 
 static func act(n: int) -> int:
+	if n == SPECIAL: return 2      # tuned like the last act
 	return ((n - 1) % ZONES.size()) / 3
+
+# position inside the act (0, 1, 2)
+static func slot(n: int) -> int:
+	if n == SPECIAL: return 2
+	return (n - 1) % 3
 
 static func pick(rng: RandomNumberGenerator, weights: Dictionary) -> String:
 	var total := 0.0

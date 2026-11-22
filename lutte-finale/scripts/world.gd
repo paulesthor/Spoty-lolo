@@ -18,6 +18,9 @@ var shape := "rect"
 var ambiance := "fin_journee"
 var rng := RandomNumberGenerator.new()
 var env: Environment
+var sun_light: DirectionalLight3D
+var ruins: Array = []        # Berlin: {n, top: [pieces], a} (phase 2 collapses them further)
+var bunker := {}             # Berlin: {rect, center, roof, block, lights}
 var _bscale := 1.0
 var gen_tries := 0
 var decor: Node3D
@@ -129,11 +132,21 @@ func _plan_layout():
 	usable.shuffle()
 	# guaranteed lot kinds first, then weighted picks
 	var kinds := []
+	if template.get("bunker", false) and not usable.is_empty():
+		# Berlin: the biggest lot away from the start becomes the bunker
+		var bi := 0
+		var best := -1.0
+		for i in usable.size():
+			var ur0: Rect2 = usable[i]
+			var sc: float = minf(ur0.size.x, ur0.size.y) * 10.0 + ur0.get_center().distance_to(Vector2(player_start.x, player_start.z)) * 0.2
+			if sc > best: best = sc; bi = i
+		var tmp: Rect2 = usable[bi]; usable[bi] = usable[0]; usable[0] = tmp
+		kinds.append("bunker")
 	for k in template["min"]:
 		for i in template["min"][k]: kinds.append(k)
 	while kinds.size() < usable.size():
 		kinds.append(Levels.pick(rng, template["lots"]))
-	var n_min := 0
+	var n_min := 1 if template.get("bunker", false) else 0
 	for k in template["min"]: n_min += int(template["min"][k])
 	for i in usable.size():
 		var ur: Rect2 = usable[i]
@@ -311,6 +324,7 @@ func _env():
 	we.environment = env
 	add_child(we)
 	add_child(sun)
+	sun_light = sun
 
 func _ground():
 	var g := MeshInstance3D.new()
@@ -455,6 +469,7 @@ func _fill_lots():
 			"corbeille": _lot_corbeille(r)
 			"ecrans": _lot_ecrans(r)
 			"coffre": _lot_coffre(r)
+			"bunker": _lot_bunker(r)
 			_: lots2.build(l[1], r)
 	for i in plateaus.size():
 		if plateaus[i]["kind"] != "container": _build_plateau(i)
@@ -1070,6 +1085,8 @@ func _tall_piece(style: String, pos: Vector3, face: Vector3, back := false) -> N
 					var top := U.world_aabb(n)
 					var ch := U.place(self, U.IND + ["chimney-large", "chimney-medium", "chimney-basic"][rng.randi() % 3] + ".glb", Vector3(top.get_center().x, top.end.y - 0.2, top.get_center().z), rng.randf_range(6.0, 10.0), 0.0)
 					far_smokes.append({"p": Vector3(top.get_center().x, U.world_aabb(ch).end.y + 0.5, top.get_center().z), "t": 0.0, "s": 5.0})
+		"ruins":
+			n = _ruin(U.CC + BNAMES[rng.randi() % 14] + ".glb", pos, rot, face, back)
 		"servers":
 			n = _server_tower(pos, rng.randf_range(15.0, 26.0) * (1.25 if back else 1.0), face)
 		"rocks":
@@ -1078,6 +1095,159 @@ func _tall_piece(style: String, pos: Vector3, face: Vector3, back := false) -> N
 			n = _bld(U.CC + BNAMES[rng.randi() % 14] + ".glb", pos, rot)
 	if n: register_occluder(n)
 	return n
+
+# Berlin 1945: a gutted building, its top torn off, blackened, rubble at its foot, sometimes still smoking.
+# Phase 1 leaves them standing fairly high; berlin_phase(2) brings them down further.
+var _scorched := {}
+func _ruin(path: String, pos: Vector3, rot: float, face: Vector3, back: bool) -> Node3D:
+	var n := _bld(path, pos, rot)
+	var a0 := U.world_aabb(n)
+	n.scale.y *= rng.randf_range(0.62, 0.92) * (1.1 if back else 1.0)
+	n.position.y -= (U.world_aabb(n).position.y - a0.position.y)
+	for m in n.find_children("*", "MeshInstance3D", true, false):
+		var mi: MeshInstance3D = m
+		for i in mi.mesh.get_surface_count():
+			var src = mi.get_active_material(i)
+			if not (src is StandardMaterial3D): continue
+			var key: int = src.get_instance_id()
+			if not _scorched.has(key):
+				var dm: StandardMaterial3D = src.duplicate()
+				dm.albedo_color = dm.albedo_color * Color(0.62, 0.58, 0.55)
+				dm.roughness = 1.0
+				_scorched[key] = dm
+			mi.set_surface_override_material(i, _scorched[key])
+	var a := U.world_aabb(n)
+	var entry := {"n": n, "top": _ruin_top(a, 1.6), "face": face, "back": back}
+	ruins.append(entry)
+	if not back: _rubble(a, face, 4)
+	if rng.randf() < 0.12:
+		far_smokes.append({"p": Vector3(a.get_center().x, a.end.y + 1.0, a.get_center().z), "t": 0.0, "s": 7.0})
+	return n
+
+const RUIN_WALL := Color(0.36, 0.3, 0.27)
+# jagged broken walls along the roof edges and twisted girders; `rough` = how high the broken bits go
+func _ruin_top(a: AABB, rough: float) -> Array:
+	var out := []
+	var wall := U.solid(RUIN_WALL, 0.0, 1.0)
+	var steel := U.solid(Color(0.2, 0.18, 0.17), 0.0, 0.6, 0.6)
+	for e in 4:
+		var along := Vector3(1, 0, 0) if e < 2 else Vector3(0, 0, 1)
+		var off := (Vector3(0, 0, a.size.z * 0.5 - 0.25) if e < 2 else Vector3(a.size.x * 0.5 - 0.25, 0, 0)) * (1.0 if e % 2 == 0 else -1.0)
+		var span: float = a.size.x if e < 2 else a.size.z
+		var x := -span * 0.5
+		while x < span * 0.5 - 0.5:
+			var wdt := rng.randf_range(1.0, 2.6)
+			var h := rng.randf_range(0.0, rough * 2.0)
+			if h > 0.6:
+				var b := U.box(self, Vector3(wdt if e < 2 else 0.5, h, 0.5 if e < 2 else wdt), Vector3(a.get_center().x, a.end.y + h * 0.5, a.get_center().z) + off + along * (x + wdt * 0.5), wall)
+				b.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+				out.append(b)
+			x += wdt
+	for g in rng.randi_range(1, 2 + int(rough)):
+		var gb := U.box(self, Vector3(0.25, rng.randf_range(2.0, 2.5 + rough * 1.6), 0.25), Vector3(rng.randf_range(a.position.x + 1, a.end.x - 1), a.end.y + 1.3, rng.randf_range(a.position.z + 1, a.end.z - 1)), steel)
+		gb.rotation = Vector3(rng.randf_range(-0.6, 0.6), 0, rng.randf_range(-0.6, 0.6))
+		out.append(gb)
+	return out
+
+func _rubble(a: AABB, face: Vector3, n: int):
+	var wall := U.solid(RUIN_WALL, 0.0, 1.0)
+	var base := Vector3(a.get_center().x, 0, a.get_center().z) + face * ((a.size.z if absf(face.z) > 0.5 else a.size.x) * 0.5 + 1.2)
+	var side := Vector3(face.z, 0, -face.x)
+	for q in n:
+		var rp := base + side * rng.randf_range(-4.0, 4.0) + face * rng.randf_range(-0.5, 1.2)
+		var sz := rng.randf_range(0.5, 1.3)
+		var rb := U.box(self, Vector3(sz * 1.4, sz * 0.6, sz), rp + Vector3(0, sz * 0.25, 0), wall)
+		rb.rotation = Vector3(rng.randf_range(-0.3, 0.3), rng.randf() * TAU, rng.randf_range(-0.3, 0.3))
+		rb.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+# the bunker: a squat concrete blockhouse. Its roof comes off in phase 3 and the duel happens inside.
+func _lot_bunker(r: Rect2):
+	var side := clampf(minf(r.size.x, r.size.y) - 4.0, 18.0, 30.0)
+	var c := Vector3(r.get_center().x, 0, r.get_center().y)
+	var h := 5.0
+	var th := 1.2
+	var conc := U.pbr("Concrete034", 0.25, Color(0.55, 0.55, 0.53), 0.9)
+	var conc_s := U.solid(Color(0.48, 0.48, 0.46), 0.0, 1.0)
+	var inner := side - th * 2.0
+	# floor and props inside (hidden under the roof until phase 3)
+	U.box(self, Vector3(inner, 0.06, inner), c + Vector3(0, 0.05, 0), U.solid(Color(0.25, 0.24, 0.23), 0.0, 0.9))
+	var table := U.box(self, Vector3(5.0, 0.9, 2.6), c + Vector3(0, 0.45, -inner * 0.25), U.solid(Color(0.3, 0.2, 0.12), 0.0, 0.8))
+	var mp := U.box(self, Vector3(4.6, 0.03, 2.2), c + Vector3(0, 0.92, -inner * 0.25), U.solid(Color(0.85, 0.8, 0.65), 0.0, 1.0))
+	var ml := U.label(self, "BERLIN", c + Vector3(0, 0.95, -inner * 0.25), 96, Color(0.4, 0.2, 0.1), Color(0, 0, 0, 0), false)
+	ml.rotation = Vector3(-PI / 2, 0, 0)
+	small_obstacle(c + Vector3(0, 0, -inner * 0.25), 2.0)
+	_static_box(c + Vector3(0, 0.45, -inner * 0.25), Vector3(5.0, 0.9, 2.6))
+	var lights := []
+	for k in 4:
+		var lp := c + Vector3((k % 2) * 2.0 - 1.0, 0, (k / 2) * 2.0 - 1.0) * inner * 0.3 + Vector3(0, 3.6, 0)
+		U.sphere(self, 0.2, lp, U.solid(Color(1.0, 0.2, 0.1), 4.0))
+		var ol := OmniLight3D.new(); ol.light_color = Color(1.0, 0.25, 0.15); ol.light_energy = 2.5; ol.omni_range = inner * 0.7
+		ol.position = lp; ol.visible = false
+		add_child(ol); lights.append(ol)
+	# walls (they stay)
+	for e in 4:
+		var ax := e < 2
+		var sgn := 1.0 if e % 2 == 0 else -1.0
+		var size := Vector3(side, h, th) if ax else Vector3(th, h, side)
+		var pos := c + (Vector3(0, h * 0.5, sgn * (side - th) * 0.5) if ax else Vector3(sgn * (side - th) * 0.5, h * 0.5, 0))
+		var wl := U.box(self, size, pos, conc)
+		register_occluder(wl)
+		_static_box(pos, size)
+		obstacles.append(Rect2(pos.x - size.x * 0.5, pos.z - size.z * 0.5, size.x, size.z))
+		var txt := U.label(self, ["MILLE ANS (ENVIRON)", "ICI COMMANDE UN GÉNIE", "LA VICTOIRE EST PROCHE", "NE PAS DÉRANGER"][e], pos - (Vector3(0, 0, sgn) if ax else Vector3(sgn, 0, 0)) * (th * 0.5 + 0.02) + Vector3(0, 0.6, 0), 64, Color(0.75, 0.72, 0.68), Color(0, 0, 0, 0), false)
+		txt.rotation.y = (PI if sgn > 0 else 0.0) if ax else (-PI / 2 if sgn > 0 else PI / 2)
+		U.fit_label(txt, side * 0.6, 1.2)
+	# roof + sign + an invisible block that keeps everyone out until phase 3
+	var roof := Node3D.new(); add_child(roof)
+	U.box(roof, Vector3(side + 0.6, 0.8, side + 0.6), c + Vector3(0, h + 0.4, 0), conc_s)
+	var sign := U.label(roof, "LE BUNKER", c + Vector3(0, h + 0.82, 0), 200, Color(0.85, 0.1, 0.1), Color(0, 0, 0, 1), false)
+	sign.rotation = Vector3(-PI / 2, 0, 0)
+	U.fit_label(sign, side * 0.7, 4.0)
+	for k in 3:
+		U.cyl(roof, 0.35, 1.4, c + Vector3(-side * 0.3 + k * side * 0.3, h + 1.5, side * 0.3), U.solid(Color(0.3, 0.3, 0.3), 0.0, 0.8))      # air vents
+	var rect := Rect2(c.x - inner * 0.5, c.z - inner * 0.5, inner, inner)
+	obstacles.append(rect)
+	var block := StaticBody3D.new()
+	var cs := CollisionShape3D.new(); var bs := BoxShape3D.new(); bs.size = Vector3(inner, h, inner); cs.shape = bs
+	block.add_child(cs); block.position = c + Vector3(0, h * 0.5, 0); add_child(block)
+	bunker = {"rect": rect, "center": c, "roof": roof, "block": block, "lights": lights, "inner": inner}
+
+# Berlin special level: the map follows the boss fight. 2: the bombing brings the city down. 3: the bunker opens.
+func berlin_phase(n: int):
+	if n == 2:
+		for rr in ruins:
+			for t in rr["top"]:
+				if is_instance_valid(t): t.queue_free()
+			var b: Node3D = rr["n"]
+			var a0 := U.world_aabb(b)
+			b.scale.y *= rng.randf_range(0.45, 0.65)
+			b.position.y -= (U.world_aabb(b).position.y - a0.position.y)
+			var a := U.world_aabb(b)
+			rr["top"] = _ruin_top(a, 2.4)
+			if not rr["back"]: _rubble(a, rr["face"], 3)
+			if rng.randf() < 0.3:
+				VFX.puff(self, Vector3(a.get_center().x, a.end.y, a.get_center().z), 4.0, false, 6)
+		for k in 14:
+			var p := free_spot(8.0, 2.0)
+			VFX.fire(self, p, rng.randf_range(0.9, 1.6))
+		if env:
+			var tw := create_tween().set_parallel()
+			tw.tween_property(env, "ambient_light_energy", env.ambient_light_energy * 0.7, 3.0)
+			tw.tween_property(env, "fog_density", env.fog_density * 1.8 + 0.002, 3.0)
+			tw.tween_property(env, "fog_light_color", Color(0.55, 0.35, 0.25), 3.0)
+		if sun_light:
+			create_tween().tween_property(sun_light, "light_color", Color(1.0, 0.55, 0.35), 3.0)
+	elif n == 3 and not bunker.is_empty():
+		var roof: Node3D = bunker["roof"]
+		if is_instance_valid(roof): roof.queue_free()
+		if is_instance_valid(bunker["block"]): (bunker["block"] as Node).queue_free()
+		obstacles.erase(bunker["rect"])
+		for l in bunker["lights"]: (l as OmniLight3D).visible = true
+		if env:
+			env.ambient_light_energy *= 0.55
+			env.fog_density = maxf(env.fog_density, 0.012)
+			env.fog_light_color = Color(0.25, 0.08, 0.06)
+		if sun_light: sun_light.light_energy *= 0.35
 
 # a block of tall pieces filling `r`; pieces on the edge face the avenue around it
 func _fill_block(r: Rect2, style: String):

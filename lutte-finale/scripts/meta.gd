@@ -26,7 +26,7 @@ func tier_unlocked(t: int) -> bool:
 	return t <= int(data.get("tier_max", 1))
 
 func zone_unlocked(z: int) -> bool:
-	return z <= 1 or int(data.get("bosses", {}).get(str(z - 1), 0)) > 0
+	return z <= 1 or z == Levels.SPECIAL or int(data.get("bosses", {}).get(str(z - 1), 0)) > 0
 
 func endless_unlocked() -> bool:
 	return int(data.get("wins", 0)) > 0

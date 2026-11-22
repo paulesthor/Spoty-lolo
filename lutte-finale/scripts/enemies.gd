@@ -587,6 +587,7 @@ func _ai_boss(e: Enemy, dir: Vector3, dist: float, d: float) -> Vector3:
 	e.tp_t -= d
 	var pat: String = Levels.cur.get("bpat", {"boss": "stampede", "boss2": "meeting", "boss3": "invisible"}.get(e.kind, ""))
 	if pat == "marche": pat = _marche_phase(e)
+	elif pat == "bunker": pat = _bunker_phase(e)
 	if _boss_special(e, pat, dir, dist): return Vector3.ZERO
 	match e.phase:
 		"":
@@ -627,6 +628,22 @@ func _marche_phase(e: Enemy) -> String:
 			e.tp_t = 2.0
 		e.bphase = ph
 	if ph == "algo" and e.combo % 2 == 1: return "avalanche"
+	return ph
+
+# Berlin 1945: the little moustached tyrant, in three acts of decline
+func _bunker_phase(e: Enemy) -> String:
+	var k: float = e.hp / maxf(e.max_hp, 1.0)
+	var ph := "discours" if k > 0.66 else ("v2" if k > 0.33 else "colere")
+	if ph != e.bphase:
+		if e.bphase != "":
+			if ph == "v2":
+				game._toast_all("IL APPELLE SES « ARMES MIRACLES » · ELLES TOMBENT SUR TOUT LE MONDE", 3.0)
+			else:
+				game._toast_all("CRISE DE NERFS DANS LE BUNKER ! IL TAPE DU POING SUR LA CARTE", 3.0)
+				e.speed *= 1.35
+			e.tp_t = 1.5
+			game.berlin_phase(2 if ph == "v2" else 3)
+		e.bphase = ph
 	return ph
 
 # signature attacks; returns true while the boss holds still (off-screen, landing...)
@@ -742,6 +759,51 @@ func _boss_special(e: Enemy, pat: String, dir: Vector3, dist: float) -> bool:
 				for k in 3:
 					var dd := dir.rotated(Vector3.UP, (k - 1) * 0.35)
 					_ball(pos + dd * 2.5, dd, 11.0, 1.7, e.dmg * 0.9, 3.8, 1.0, "snow", "l'avalanche de " + e.def["name"])
+		"discours":
+			# an endless speech: shock waves of shouting in a fan, and his last guards
+			if e.tp_t <= 0.0 and e.phase == "":
+				e.tp_t = 8.0
+				game._toast_all(["DISCOURS INTERMINABLE !", "IL HURLE. PERSONNE N'ÉCOUTE.", "IL ACCUSE TOUT LE MONDE SAUF LUI", "IL ANNONCE LA VICTOIRE. ENCORE."][randi() % 4], 1.6)
+				_act(e, "Wave", 1.2, 1.4)
+				for k in 5:
+					_beam(pos, dir.rotated(Vector3.UP, (k - 2) * 0.28), 24.0, 1.0, e.dmg * 0.7, "un discours du " + e.def["name"])
+				for i in 4:
+					if count() >= game.enemy_cap() + 20: break
+					var a := TAU * i / 4.0 + randf()
+					spawn("pretorien", game.world.resolve(pos + Vector3(cos(a), 0, sin(a)) * 5.0, 0.6), m[0], m[1])
+		"v2":
+			# his "miracle weapons": rockets falling everywhere (on his own men too)
+			if e.tp_t <= 0.0 and e.phase == "":
+				e.tp_t = 8.5
+				_act(e, "Wave", 0.8, 1.2)
+				var dmg2: float = e.dmg
+				var cause2: String = "une « arme miracle » du " + e.def["name"]
+				for k in 9:
+					get_tree().create_timer(0.25 * k, false).timeout.connect(func():
+						if not e.alive or game.players.is_empty(): return
+						var q = game.players[randi() % game.players.size()]
+						var a := randf() * TAU
+						var mp: Vector3 = game.world.resolve(q.global_position + Vector3(cos(a), 0, sin(a)) * randf_range(0.0, 7.0), 0.5)
+						_meteor(mp, 2.8, 1.2, dmg2 * 0.75, cause2)
+						get_tree().create_timer(1.2, false).timeout.connect(func():
+							for o in in_radius(mp, 2.8):
+								if not o.boss: damage(o, o.max_hp * 0.5, mp, 6.0)))
+		"colere":
+			# the famous tantrum: bullets and beams in every direction
+			if e.tp_t <= 0.0 and e.phase == "":
+				e.tp_t = 6.5
+				game._toast_all(["« TOUT LE MONDE SORT ! SAUF… »", "IL CASSE SES CRAYONS DE COULEUR", "IL CRIE QUE C'EST LA FAUTE DES GÉNÉRAUX", "LE PLAFOND DU BUNKER TREMBLE"][randi() % 4], 1.6)
+				_act(e, "Punch_Right", 0.6, 1.6)
+				_slam(pos, 5.5, e.dmg * 1.1, "la colère du " + e.def["name"])
+				var base := randf() * TAU
+				for k in 6:
+					_beam(pos, Vector3.FORWARD.rotated(Vector3.UP, base + k * TAU / 6.0), 26.0, 0.9, e.dmg * 0.7, "la colère du " + e.def["name"])
+				for wv in 3:
+					get_tree().create_timer(0.3 * wv, false).timeout.connect(func():
+						if not e.alive: return
+						for k in 12:
+							var b := TAU * k / 12.0 + wv * 0.26
+							_shoot(e.node.position + Vector3(0, 1.6, 0), Vector3(cos(b), 0, sin(b)), e.dmg * 0.3, ""))
 		"launch":
 			# lifts off, bombs the ground from orbit, then lands on you
 			if e.phase == "" and e.tp_t <= 0.0 and e.node.visible:
