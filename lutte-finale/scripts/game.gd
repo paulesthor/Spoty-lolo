@@ -292,6 +292,8 @@ func _warmup():
 	# enemies (also fills the pools)
 	var spawned := []
 	var kinds := ["stagiaire", "stagiaire", "stagiaire", "cadre", "cadre", "trader", "influenceur", "crypto", "avocat", "banquier", "huissier", "coach", "lobbyiste", "drh", "actionnaire", "golden"]
+	for row in tpl.get("roster", []): kinds.append(row[0])
+	if tpl.get("bpat", "") == "offshore": kinds.append("pretenom")
 	for i in kinds.size():
 		spawned.append(enemies.spawn(kinds[i], front + Vector3((i % 6) * 1.5 - 4.0, 0, -(i / 6) * 2.0)))
 	# weapons: fire each once
@@ -1001,7 +1003,7 @@ func _pick_kind() -> String:
 	var tm := dtime() / 60.0
 	var total := 0.0
 	var pool := []
-	for row in Data.SPAWN_TABLE:
+	for row in Data.SPAWN_TABLE + (tpl.get("roster", []) as Array):
 		if dtime() < row[1]: continue
 		var w: float = row[2] + row[3] * maxf(0.0, tm - row[1] / 60.0)
 		pool.append([row[0], w]); total += w
@@ -1020,7 +1022,7 @@ func _director(d: float):
 	var cap := enemy_cap()
 	var rate := (1.1 + 0.9 * tm + 0.19 * tm * tm) * (1.0 + 0.15 * bets) * (1.0 + 0.25 * dirl("cadence")) * float(Meta.TIERS[tier - 1]["rate"]) * (1.0 + 0.55 * (players.size() - 1))
 	if krach: rate *= 2.2
-	spawn_acc += rate * d
+	spawn_acc = minf(spawn_acc + rate * d, 12.0)      # a hitch must not dump a crowd in one frame
 	while spawn_acc >= 1.0:
 		spawn_acc -= 1.0
 		if enemies.count() >= cap: break
@@ -2192,6 +2194,9 @@ func _bot_tick(d: float):
 		var dl := []
 		for k in dmg_by_weapon: dl.append("%s=%d" % [k, int(dmg_by_weapon[k])])
 		print("[bot] DMG " + " ".join(dl))
+		var kc := {}
+		for e in enemies.alive_list(): kc[e.kind] = int(kc.get(e.kind, 0)) + 1
+		print("[bot] KINDS ", kc)
 		get_tree().quit()
 
 func _screenshot():

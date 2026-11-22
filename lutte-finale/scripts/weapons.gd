@@ -1053,7 +1053,8 @@ func _update_new_projectile(p: Dictionary, n: Node3D, d: float):
 					p["stuck"] = 1.0
 				else:
 					n.global_position += v.normalized() * minf(v.length(), float(s["speed"]) * d)
-					n.look_at(to, Vector3.UP)
+					var lv: Vector3 = to - n.global_position
+					if lv.length() > 0.05 and absf(lv.normalized().y) < 0.99: n.look_at(to, Vector3.UP)
 			else:
 				p["stuck"] -= d
 				if t != null and t.alive:

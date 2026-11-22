@@ -88,6 +88,16 @@ const ENEMY_LOOKS := {
 	"boss2": [["Suit", "M"]],
 	"boss3": [["Suit", "M"]],
 	"fisc": [["Swat", "M"]],
+	"chef_rayon": [["Worker", "M"], ["Worker", "F"]],
+	"consultant": [["Suit", "M"], ["Formal", "F"]],
+	"daytrader": [["Suit", "M"], ["Suit", "F"]],
+	"evade": [["Beach", "M"]],
+	"livreur": [["Worker", "M"], ["Casual_Hoodie", "M"]],
+	"moderateur": [["SciFi", "F"], ["Spacesuit", "M"]],
+	"moniteur": [["Adventurer", "M"], ["Adventurer", "F"]],
+	"touriste": [["Spacesuit", "M"], ["SciFi", "F"]],
+	"pretorien": [["Swat", "M"], ["Soldier", "F"]],
+	"pretenom": [["Suit", "M"]],
 }
 
 const ENEMY_COLORS := {
@@ -108,6 +118,16 @@ const ENEMY_COLORS := {
 	"boss2": {"Suit": Color(0.08, 0.1, 0.2), "Tie": Color(0.85, 0.85, 0.9)},
 	"boss3": {"Suit": Color(0.92, 0.92, 0.95), "Tie": Color(1.0, 0.75, 0.25)},
 	"fisc": {},
+	"chef_rayon": {"Worker_Yellow": Color(0.85, 0.12, 0.12), "Worker_Vest": Color(0.85, 0.12, 0.12), "Yellow": Color(0.85, 0.12, 0.12)},
+	"consultant": {"Suit": Color(0.45, 0.47, 0.5), "Tie": Color(0.2, 0.45, 0.9), "Black": Color(0.45, 0.47, 0.5), "Red": Color(0.45, 0.47, 0.5)},
+	"daytrader": {"Suit": Color(0.1, 0.45, 0.2), "Tie": Color(0.9, 0.15, 0.15)},
+	"evade": {"White": Color(0.95, 0.9, 0.3), "Red_Dark": Color(0.1, 0.4, 0.75), "LightBrown": Color(0.95, 0.9, 0.3)},
+	"livreur": {"Worker_Yellow": Color(0.1, 0.8, 0.7), "Worker_Vest": Color(0.1, 0.8, 0.7), "Purple": Color(0.1, 0.8, 0.7)},
+	"moderateur": {"SciFi_Main": Color(0.1, 0.12, 0.16), "SciFi_Light": Color(1.0, 0.2, 0.25), "SciFi_Light_Accent": Color(1.0, 0.2, 0.25), "Blue": Color(0.12, 0.13, 0.17), "LightBlue": Color(1.0, 0.2, 0.25), "Metal": Color(0.12, 0.13, 0.17)},
+	"moniteur": {"Green": Color(0.85, 0.1, 0.12), "LightGreen": Color(0.95, 0.95, 0.95)},
+	"touriste": {"SciFi_Main": Color(0.95, 0.95, 0.97), "SciFi_Light": Color(1.0, 0.5, 0.1), "SciFi_MainDark": Color(0.2, 0.2, 0.25), "Blue": Color(0.95, 0.95, 0.97), "LightBlue": Color(1.0, 0.5, 0.1)},
+	"pretorien": {"Swat": Color(0.16, 0.13, 0.1), "Swat_Black": Color(0.05, 0.05, 0.05), "Visor": Color(1.0, 0.75, 0.25)},
+	"pretenom": {"Suit": Color(0.35, 0.35, 0.38), "Tie": Color(0.35, 0.35, 0.38)},
 }
 
 const ENEMY_ANIMS := {"walk": "Walk", "run": "Run", "death": "Death", "hit": "HitRecieve", "attack": "Punch_Right", "shoot": "Gun_Shoot", "throw": "Punch_Left", "idle": "Idle"}

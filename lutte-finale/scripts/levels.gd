@@ -11,12 +11,16 @@ class_name Levels
 #   ground_tex       floor texture (+ ground tint), walk_tex for the sidewalks, floor_tex for paved lots
 #   skins            per-enemy overrides for this zone: name, looks [[model, M/F]], colors, acc
 #   shops            shop signs on the facades
+#   roster           zone-specific enemies [kind, from_time, weight, growth/min]
+#   bpat             the boss's signature attack (see enemies._boss_special)
 
 const HYPERMARCHE := {
 	"id": "hypermarche",
 	"music": "battle",
 	"name": "L'Hypermarché",
 	"boss": "boss",
+	"roster": [["chef_rayon", 40.0, 1.6, 0.4]],      # this zone's own capitalists (added to the common spawn table)
+	"bpat": "stampede",      # boss attack pattern (enemies._boss_special)
 	"width": [250.0, 295.0],
 	"depth": [260.0, 305.0],
 	"shapes": {"rect": 3.0, "L": 2.0, "croix": 2.0, "anneau": 2.0},
@@ -42,6 +46,8 @@ const QUARTIER := {
 	"music": "folk",
 	"name": "Le Quartier d'Affaires",
 	"boss": "boss2",
+	"roster": [["consultant", 40.0, 1.5, 0.4]],      # this zone's own capitalists (added to the common spawn table)
+	"bpat": "meeting",      # boss attack pattern (enemies._boss_special)
 	"width": [240.0, 285.0],
 	"depth": [260.0, 300.0],
 	"shapes": {"rect": 2.0, "croix": 3.0, "anneau": 2.0, "L": 1.0},
@@ -67,6 +73,8 @@ const BOURSE := {
 	"music": "techno_bourse",
 	"name": "La Bourse",
 	"boss": "boss3",
+	"roster": [["daytrader", 40.0, 1.6, 0.4]],      # this zone's own capitalists (added to the common spawn table)
+	"bpat": "invisible",      # boss attack pattern (enemies._boss_special)
 	"width": [235.0, 275.0],
 	"depth": [250.0, 290.0],
 	"shapes": {"rect": 2.0, "anneau": 3.0, "croix": 2.0},
@@ -95,6 +103,8 @@ const PARADIS := {
 	"music": "lounge",
 	"name": "Le Paradis Fiscal",
 	"boss": "boss2",
+	"roster": [["evade", 40.0, 1.6, 0.4]],      # this zone's own capitalists (added to the common spawn table)
+	"bpat": "offshore",      # boss attack pattern (enemies._boss_special)
 	"width": [250.0, 290.0],
 	"depth": [255.0, 300.0],
 	"shapes": {"rect": 2.0, "anneau": 2.0, "L": 2.0, "croix": 1.0},
@@ -134,6 +144,8 @@ const STARTUP := {
 	"music": "pop",
 	"name": "La Start-up Nation",
 	"boss": "boss",
+	"roster": [["livreur", 40.0, 1.6, 0.4]],      # this zone's own capitalists (added to the common spawn table)
+	"bpat": "pivot",      # boss attack pattern (enemies._boss_special)
 	"width": [245.0, 285.0],
 	"depth": [255.0, 295.0],
 	"shapes": {"rect": 2.0, "croix": 2.0, "L": 2.0, "anneau": 1.0},
@@ -157,7 +169,7 @@ const STARTUP := {
 		"stagiaire": {"name": "Stagiaire non payé", "looks": [["Casual_Hoodie", "M"], ["Casual", "F"], ["Casual_2", "M"]], "colors": {"Purple": Color(0.55, 0.3, 0.85), "Orange": Color(0.55, 0.3, 0.85), "LightBrown": Color(0.55, 0.3, 0.85)}},
 		"cadre": {"name": "Chief Happiness Officer", "looks": [["Casual_2", "M"], ["Casual", "F"]], "colors": {"LightBrown": Color(1.0, 0.8, 0.2), "Orange": Color(1.0, 0.8, 0.2)}, "acc": ["round_glasses"]},
 		"trader": {"name": "Growth Hacker", "looks": [["Casual_Hoodie", "M"]], "colors": {"Purple": Color(0.1, 0.1, 0.12)}, "acc": ["sunglasses"]},
-		"crypto": {"name": "Livreur à vélo", "looks": [["Worker", "M"]], "colors": {"Worker_Yellow": Color(0.2, 0.85, 0.75), "Worker_Vest": Color(0.2, 0.85, 0.75)}, "acc": ["cap"]},
+		"crypto": {"name": "Freelance en crypto", "looks": [["Casual_Hoodie", "M"]], "colors": {"Purple": Color(0.2, 0.85, 0.75)}, "acc": ["cap"]},
 		"coach": {"name": "Coach agile", "acc": ["cap"]},
 		"drh": {"name": "Talent Manager"},
 		"golden": {"name": "Business Angel"},
@@ -170,6 +182,8 @@ const DATACENTER := {
 	"music": "techno_data",
 	"name": "Le Centre de Données",
 	"boss": "boss3",
+	"roster": [["moderateur", 40.0, 1.4, 0.4]],      # this zone's own capitalists (added to the common spawn table)
+	"bpat": "algo",      # boss attack pattern (enemies._boss_special)
 	"width": [240.0, 280.0],
 	"depth": [250.0, 290.0],
 	"shapes": {"rect": 3.0, "croix": 2.0, "anneau": 2.0},
@@ -210,6 +224,8 @@ const SKI := {
 	"music": "valse",
 	"name": "La Station du 1 %",
 	"boss": "boss",
+	"roster": [["moniteur", 40.0, 1.4, 0.4]],      # this zone's own capitalists (added to the common spawn table)
+	"bpat": "avalanche",      # boss attack pattern (enemies._boss_special)
 	"width": [250.0, 295.0],
 	"depth": [260.0, 305.0],
 	"shapes": {"rect": 2.0, "L": 2.0, "anneau": 2.0, "croix": 2.0},
@@ -249,6 +265,8 @@ const FUSEE := {
 	"music": "cosmos",
 	"name": "La Fusée du Milliardaire",
 	"boss": "boss2",
+	"roster": [["touriste", 40.0, 1.4, 0.4]],      # this zone's own capitalists (added to the common spawn table)
+	"bpat": "launch",      # boss attack pattern (enemies._boss_special)
 	"width": [255.0, 300.0],
 	"depth": [260.0, 305.0],
 	"shapes": {"rect": 3.0, "croix": 2.0, "L": 1.0},
@@ -286,6 +304,8 @@ const GRAND_SOIR := {
 	"music": "hymne",
 	"name": "Le Grand Soir",
 	"boss": "boss3",
+	"roster": [["pretorien", 40.0, 1.0, 0.35], ["chef_rayon", 60.0, 0.5, 0.15], ["moderateur", 90.0, 0.5, 0.15], ["touriste", 120.0, 0.5, 0.15]],      # this zone's own capitalists (added to the common spawn table)
+	"bpat": "marche",      # boss attack pattern (enemies._boss_special)
 	"width": [260.0, 300.0],
 	"depth": [265.0, 310.0],
 	"shapes": {"rect": 2.0, "croix": 2.0, "anneau": 3.0},

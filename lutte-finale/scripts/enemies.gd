@@ -50,6 +50,11 @@ class Enemy:
 	var flinch_cd := 0.0       # diminishing returns: immune to new stuns while > 0           # -1 ground, otherwise index of the plateau it stands on
 	var hit_from := {}
 	var knock_res := 0.0      # knockback diminishing returns: repeated pushes hurt but push less
+	var sig_t := 0.0          # zone signature enemies: their own trick's timer (blink, bull/bear...)
+	var dashes := 0           # bosses: charges left in a combo
+	var combo := 0
+	var hop_dur := 0.45
+	var bphase := ""
 
 var game
 var list: Array = []
@@ -69,6 +74,8 @@ var by_nid := {}
 var _nid := 0
 var _snap_n := 0
 var _nest := 0
+var seen_kinds := {}       # zone signature enemies already introduced by a toast
+var shells: Array = []     # Paradis Fiscal boss: its nominees (the boss is untouchable while they live)
 const KINDS: Array = []
 const ANIMS := ["Walk", "Run", "Idle", "Run_Back", "Run_Left", "Run_Right", "HitRecieve", "HitRecieve_2", "Death", "Punch_Right", "Punch_Left",
 	"Idle_Gun_Shoot", "Idle_Gun_Pointing", "Idle_Sword", "Sword_Slash", "Wave", "Gun_Shoot", "Jump"]
@@ -89,8 +96,10 @@ func setup(g):
 func alive_list() -> Array:
 	return _alive_cache
 
+# live count (spawns of this frame included): the caps must hold even when a slow frame spawns a lot at once,
+# otherwise a slow frame spawns more, which makes the next frame slower...
 func count() -> int:
-	return _alive_cache.size()
+	return list.size()
 
 func _tint(n: Node3D, col: Color):
 	var key := col.to_html()
@@ -119,7 +128,7 @@ func spawn(kind: String, pos: Vector3, hp_mult := 1.0, dmg_mult := 1.0) -> Enemy
 		if kind == "stagiaire" and randf() < 0.15: acc = ["sunglasses"]
 		if not acc.is_empty(): Chars.attach(e.node, acc)
 		if def.get("elite", false) or def.get("boss", false): Chars.outline(e.node, 0.03)
-		var show_tag: bool = def.get("elite", false) or def.get("boss", false) or def.get("invincible", false) or kind in ["coach", "lobbyiste", "drh"]
+		var show_tag: bool = def.get("elite", false) or def.get("boss", false) or def.get("invincible", false) or kind in ["coach", "lobbyiste", "drh", "pretenom"]
 		if show_tag:
 			var col := Color(1, 0.82, 0.3)
 			if def.get("invincible", false): col = Color(0.6, 0.8, 1)
@@ -187,6 +196,11 @@ func spawn(kind: String, pos: Vector3, hp_mult := 1.0, dmg_mult := 1.0) -> Enemy
 	e.hop_t = 0.0
 	e.hit_from.clear()
 	e.knock_res = 0.0
+	e.sig_t = randf_range(0.5, 2.5)
+	e.dashes = 0; e.combo = 0; e.bphase = ""
+	if def.has("hint") and not ghost and not game.warming and not seen_kinds.has(kind):
+		seen_kinds[kind] = true
+		game._toast_all("NOUVEAU · %s : %s" % [def["name"].to_upper(), def["hint"]], 3.5)
 	if e.ap:
 		e.act_t = 0.0
 		var an: String = Chars.ENEMY_ANIMS["run"] if e.speed > 3.4 else Chars.ENEMY_ANIMS["walk"]
@@ -208,7 +222,7 @@ const AFFIX_INFO := {
 
 const HOP_TIME := 0.45
 func _hop(e: Enemy, to: Vector3, lvl: int):
-	e.hop_t = HOP_TIME
+	e.hop_t = HOP_TIME; e.hop_dur = HOP_TIME
 	e.hop_from = e.node.position
 	e.hop_to = to
 	e.hop_lvl = lvl
@@ -285,6 +299,7 @@ func _process(d: float):
 		e.stun_imm = maxf(0.0, e.stun_imm - d)
 		e.knock_res = maxf(0.0, e.knock_res - 0.3 * d)
 		e.slow_t = maxf(0.0, e.slow_t - d)
+		e.sig_t -= d
 		e.vuln_t = maxf(0.0, e.vuln_t - d)
 		var spd: float = e.speed * slow_world * (0.6 if e.slow_t > 0.0 else 1.0)
 		var move := dir
@@ -306,6 +321,14 @@ func _process(d: float):
 				"lobber": move = _ai_lobber(e, dir, dist, d)
 				"summoner": move = _ai_summoner(e, dir, dist, d)
 				"slammer": move = _ai_slammer(e, dir, dist, d)
+				"fan": move = _ai_fan(e, dir, dist, d)
+				"bullbear": move = _ai_bullbear(e, dir, dist, d)
+				"courier": move = _ai_charger(e, dir, dist, d, 0.35, 22.0, 1.1, Vector2(0.6, 1.4))
+				"bulldozer": move = _ai_charger(e, dir, dist, d, 0.8, 12.0, 0.6, Vector2(3.0, 4.5))
+				"beamer": move = _ai_beamer(e, dir, dist, d)
+				"roller": move = _ai_roller(e, dir, dist, d)
+				"leaper": move = _ai_leaper(e, dir, dist, d)
+				"static": move = Vector3.ZERO
 			if e.boss: move = _ai_boss(e, dir, dist, d)
 			if e.phase == "dash": spd *= 4.5
 			elif e.phase in ["aim", "wind"]: spd = 0.0
@@ -320,9 +343,9 @@ func _process(d: float):
 		var on_ramp: Array = w.ramp_at(p)
 		if e.hop_t > 0.0:
 			e.hop_t -= d
-			var hk := clampf(1.0 - e.hop_t / HOP_TIME, 0.0, 1.0)
+			var hk := clampf(1.0 - e.hop_t / e.hop_dur, 0.0, 1.0)
 			var hp3: Vector3 = e.hop_from.lerp(e.hop_to, hk)
-			hp3.y = lerpf(e.hop_from.y, e.hop_to.y, hk) + sin(hk * PI) * 1.6
+			hp3.y = lerpf(e.hop_from.y, e.hop_to.y, hk) + sin(hk * PI) * (5.0 if e.hop_dur > 0.5 else 1.6)
 			e.node.position = hp3
 			if e.hop_t <= 0.0: e.level = e.hop_lvl
 			if dist > 0.1: e.node.rotation.y = lerp_angle(e.node.rotation.y, atan2(dir.x, dir.z), 10.0 * d)
@@ -333,7 +356,7 @@ func _process(d: float):
 		if e.phase != "dash" and not e.invincible and e.stun_t <= 0.0 and on_ramp.is_empty() and pl_player != e.level:
 			if e.level >= 0 and e.level < w.plateaus.size():
 				var pr0: Rect2 = w.plateaus[e.level]["rect"]
-				if not pr0.grow(-(e.r + 0.3)).has_point(Vector2(p.x, p.z)):
+				if not pr0.grow(-minf(e.r + 0.3, minf(pr0.size.x, pr0.size.y) * 0.45)).has_point(Vector2(p.x, p.z)):
 					var out := Vector3(p.x, 0, p.z) + dir * 1.6
 					if pl_player >= 0 and pl_player < w.plateaus.size():
 						var pr1: Rect2 = w.plateaus[pl_player]["rect"]
@@ -410,21 +433,97 @@ func _process(d: float):
 	_update_hazards(d)
 
 # ---------------------------------------------------------------- behaviours
-func _ai_charger(e: Enemy, dir: Vector3, dist: float, d: float) -> Vector3:
+func _ai_charger(e: Enemy, dir: Vector3, dist: float, d: float, aim := 0.7, reach := 14.0, dash := 0.55, cool := Vector2(2.5, 4.0)) -> Vector3:
 	e.t_act -= d
 	match e.phase:
 		"":
-			if e.t_act <= 0.0 and dist < 14.0 and dist > 3.0:
-				e.phase = "aim"; e.t_act = 0.7
+			if e.t_act <= 0.0 and dist < reach and dist > 3.0:
+				e.phase = "aim"; e.t_act = aim
 				e.dash_dir = dir
-				_telegraph_line(e.node.position, dir, 12.0, 0.7)
+				_telegraph_line(e.node.position, dir, e.speed * 4.5 * dash + 1.0, aim)
 			return dir
 		"aim":
-			if e.t_act <= 0.0: e.phase = "dash"; e.t_act = 0.55
+			if e.t_act <= 0.0: e.phase = "dash"; e.t_act = dash
 			return dir
 		"dash":
-			if e.t_act <= 0.0: e.phase = ""; e.t_act = randf_range(2.5, 4.0)
+			if e.t_act <= 0.0:
+				e.phase = ""; e.t_act = randf_range(cool.x, cool.y)
+				if e.ai == "bulldozer":
+					_slam(e.node.position, 3.2, e.dmg * 1.2, "la charge d'un Garde prétorien")
+					_act(e, "Punch_Right", 0.5, 1.3)
 			return e.dash_dir
+	return dir
+
+# ---------------------------------------------------------------- zone signature enemies
+# Hypermarché: price tags thrown in a fan of three
+func _ai_fan(e: Enemy, dir: Vector3, dist: float, d: float) -> Vector3:
+	e.t_act -= d
+	if e.t_act <= 0.0 and dist < 16.0:
+		e.t_act = randf_range(2.6, 3.4)
+		for k in 3:
+			_shoot(e.node.position + Vector3(0, 1.1, 0), dir.rotated(Vector3.UP, (k - 1) * 0.32), e.dmg, "")
+		_act(e, "Punch_Left", 0.5, 1.4)
+	if dist < 7.0: return -dir * 0.5
+	if dist > 11.0: return dir
+	return Vector3(-dir.z, 0, dir.x) * 0.5
+
+# Bourse: bull market (rushes) / bear market (stops and hardens), every 2.5 s
+func _ai_bullbear(e: Enemy, dir: Vector3, dist: float, d: float) -> Vector3:
+	var lab: Label3D = e.node.get_node_or_null("bb")
+	if lab == null:
+		lab = U.label(e.node, "▲", Vector3(0, (e.def["h"] + 0.35) / e.node.scale.y, 0), 96, Color(0.3, 1, 0.4), Color(0, 0, 0, 1))
+		lab.name = "bb"
+	if e.sig_t <= 0.0:
+		e.sig_t = 2.5
+		if e.phase == "bear":
+			e.phase = ""; e.armor -= 14.0
+		else:
+			e.phase = "bear"; e.armor += 14.0
+	lab.text = "▼" if e.phase == "bear" else "▲"
+	lab.modulate = Color(1, 0.25, 0.2) if e.phase == "bear" else Color(0.3, 1, 0.4)
+	return dir * (0.15 if e.phase == "bear" else 1.9)
+
+# Data center: scans you, then fires a beam along the red line
+func _ai_beamer(e: Enemy, dir: Vector3, dist: float, d: float) -> Vector3:
+	e.t_act -= d
+	if e.t_act <= 0.0 and dist < 16.0:
+		e.t_act = randf_range(4.0, 5.0)
+		_beam(e.node.position, dir, 18.0, 1.0, e.dmg, "le rayon d'un Modérateur IA")
+		_act(e, "Idle_Gun_Shoot", 1.0, 1.0)
+	if dist < 8.0: return -dir * 0.6
+	if dist > 12.0: return dir
+	return Vector3.ZERO
+
+# Ski: rolls a snowball at you
+func _ai_roller(e: Enemy, dir: Vector3, dist: float, d: float) -> Vector3:
+	e.t_act -= d
+	if e.t_act <= 0.0 and dist < 18.0:
+		e.t_act = randf_range(3.5, 4.5)
+		_ball(e.node.position + dir * 1.2, dir, 9.0, 0.7, e.dmg, 2.6, 0.6, "snow", "une boule de neige d'un Moniteur")
+		_act(e, "Punch_Left", 0.5, 1.2)
+	if dist < 8.0: return -dir * 0.6
+	if dist > 12.0: return dir
+	return Vector3(-dir.z, 0, dir.x) * 0.4
+
+# Fusée: a zero-g leap that lands on where you stood
+func _ai_leaper(e: Enemy, dir: Vector3, dist: float, d: float) -> Vector3:
+	e.t_act -= d
+	if e.phase == "" and e.t_act <= 0.0 and dist < 12.0 and dist > 3.0 and e.level < 0:
+		e.phase = "aim"; e.t_act = 0.8
+		var tgt: Vector3 = game.world.resolve(Vector3(e.tgt.global_position.x, 0, e.tgt.global_position.z), e.r)
+		_telegraph_circle(tgt, 2.6, 0.8 + HOP_TIME * 2.0)
+		e.dash_dir = tgt
+		return Vector3.ZERO
+	if e.phase == "aim":
+		if e.t_act <= 0.0:
+			e.phase = ""; e.t_act = randf_range(3.5, 5.0)
+			e.hop_from = e.node.position; e.hop_to = e.dash_dir; e.hop_lvl = -1; e.hop_t = HOP_TIME * 2.0; e.hop_dur = e.hop_t
+			_act(e, "Jump", e.hop_dur, 0.8)
+			var land: Vector3 = e.dash_dir
+			var dmg: float = e.dmg
+			get_tree().create_timer(HOP_TIME * 2.0, false).timeout.connect(func():
+				if e.alive: _slam(land, 2.6, dmg, "l'atterrissage d'un Touriste spatial"))
+		return Vector3.ZERO
 	return dir
 
 func _ai_ranged(e: Enemy, dir: Vector3, dist: float, d: float, keep: float, cd: float) -> Vector3:
@@ -442,7 +541,7 @@ func _ai_lobber(e: Enemy, dir: Vector3, dist: float, d: float) -> Vector3:
 		e.t_act = randf_range(3.5, 4.5)
 		var target: Vector3 = e.tgt.global_position + e.tgt.velocity * 0.5
 		target.y = 0
-		_lob(e.node.position + Vector3(0, 1.5, 0), target, e.dmg)
+		_lob(e.node.position + Vector3(0, 1.5, 0), target, e.dmg, e.def.get("lob", "debt"))
 		_act(e, "Sword_Slash", 0.6, 1.5)
 	if dist < 9.0: return -dir
 	if dist > 14.0: return dir
@@ -477,52 +576,25 @@ func _ai_slammer(e: Enemy, dir: Vector3, dist: float, d: float) -> Vector3:
 			return Vector3.ZERO
 	return dir
 
+func _shells_alive() -> int:
+	var n := 0
+	for s in shells:
+		if s.alive and s.kind == "pretenom": n += 1
+	return n
+
 func _ai_boss(e: Enemy, dir: Vector3, dist: float, d: float) -> Vector3:
 	e.t_act -= d
 	e.tp_t -= d
-	# zone 2 boss: calls emergency meetings (summons executives) and jumps on you
-	if e.kind == "boss2" and e.tp_t <= 0.0 and e.phase == "":
-		e.tp_t = 11.0
-		game.toast("RÉUNION D'URGENCE ! Le PDG convoque ses cadres", 1.5)
-		_act(e, "Wave", 1.2, 1.2)
-		var m: Array = game.mults()
-		for i in 8:
-			var a := TAU * i / 8.0
-			spawn("cadre" if i % 2 == 0 else "trader", game.world.resolve(e.node.position + Vector3(cos(a), 0, sin(a)) * 4.0, 0.5), m[0], m[1])
-		var target: Vector3 = e.tgt.global_position
-		_telegraph_circle(target, 5.0, 1.3)
-		get_tree().create_timer(1.3, false).timeout.connect(func():
-			if not e.alive: return
-			e.node.position = game.world.resolve(Vector3(target.x, 0, target.z), e.r)
-			_slam(target, 5.0, e.dmg * 1.2, "l'atterrissage du PDG Vertical"))
-	# final boss: vanishes, reappears next to you and slaps the market
-	if e.kind == "boss3" and e.phase == "":
-		if e.tp_t <= 0.0 and e.node.visible:
-			e.tp_t = 9.0
-			e.node.visible = false
-			e.t_act = 2.4
-			game.toast("LA MAIN INVISIBLE DISPARAÎT…", 1.2)
-			var a2 := randf() * TAU
-			var dest: Vector3 = game.world.resolve(e.tgt.global_position + Vector3(cos(a2), 0, sin(a2)) * 6.0, e.r)
-			_telegraph_circle(dest, 4.5, 2.2)
-			get_tree().create_timer(2.2, false).timeout.connect(func():
-				if not e.alive: return
-				e.node.position = dest
-				e.node.visible = true
-				_slam(dest, 4.5, e.dmg * 1.3, "la gifle de la Main Invisible")
-				_act(e, "Punch_Right", 0.6, 1.3)
-				for k in 8:
-					var b := TAU * k / 8.0
-					_shoot(dest + Vector3(0, 1.5, 0), Vector3(cos(b), 0, sin(b)), e.dmg * 0.35, ""))
-		if not e.node.visible:
-			return Vector3.ZERO
+	var pat: String = Levels.cur.get("bpat", {"boss": "stampede", "boss2": "meeting", "boss3": "invisible"}.get(e.kind, ""))
+	if pat == "marche": pat = _marche_phase(e)
+	if _boss_special(e, pat, dir, dist): return Vector3.ZERO
 	match e.phase:
 		"":
 			if e.t_act <= 0.0:
 				if dist < 22.0 and randf() < 0.6:
 					e.phase = "aim"; e.t_act = 0.9; e.dash_dir = dir
 					_telegraph_line(e.node.position, dir, 18.0, 0.9)
-					game.toast("%s charge !" % e.def["name"], 1.0)
+					if e.dashes <= 0: game.toast("%s charge !" % e.def["name"], 1.0)
 				else:
 					e.t_act = randf_range(3.0, 5.0)
 					_act(e, "Sword_Slash", 0.7, 1.3)
@@ -534,9 +606,167 @@ func _ai_boss(e: Enemy, dir: Vector3, dist: float, d: float) -> Vector3:
 			if e.t_act <= 0.0: e.phase = "dash"; e.t_act = 0.8
 			return dir
 		"dash":
-			if e.t_act <= 0.0: e.phase = ""; e.t_act = randf_range(3.5, 5.5)
+			if e.t_act <= 0.0:
+				if e.dashes > 0:
+					# combo (La Licorne): charges again straight away
+					e.dashes -= 1
+					e.phase = "aim"; e.t_act = 0.4; e.dash_dir = dir
+					_telegraph_line(e.node.position, dir, 18.0, 0.4)
+				else:
+					e.phase = ""; e.t_act = randf_range(3.5, 5.5)
 			return e.dash_dir
 	return dir
+
+# Le Grand Soir: the Market itself uses every trick, one act after another
+func _marche_phase(e: Enemy) -> String:
+	var k: float = e.hp / maxf(e.max_hp, 1.0)
+	var ph := "stampede" if k > 0.66 else ("algo" if k > 0.33 else "launch")
+	if ph != e.bphase:
+		if e.bphase != "":
+			game._toast_all(["", "LE MARCHÉ S'AUTORÉGULE · IL PASSE EN TRADING ALGORITHMIQUE", "LE MARCHÉ S'ENVOLE · IL BOMBARDE DEPUIS L'ORBITE"][1 if ph == "algo" else 2], 3.0)
+			e.tp_t = 2.0
+		e.bphase = ph
+	if ph == "algo" and e.combo % 2 == 1: return "avalanche"
+	return ph
+
+# signature attacks; returns true while the boss holds still (off-screen, landing...)
+func _boss_special(e: Enemy, pat: String, dir: Vector3, dist: float) -> bool:
+	var pos: Vector3 = e.node.position
+	var m: Array = game.mults()
+	match pat:
+		"stampede":
+			# Black Friday: runaway trolleys sweep across your lane
+			if e.tp_t <= 0.0 and e.phase == "":
+				e.tp_t = 11.0
+				game._toast_all("CHARIOTS EN FOLIE ! SORS DES LIGNES ROUGES", 1.6)
+				_act(e, "Wave", 1.0, 1.2)
+				var tgt: Vector3 = e.tgt.global_position
+				var a := randf() * TAU
+				var lane := Vector3(cos(a), 0, sin(a))
+				var side := Vector3(-lane.z, 0, lane.x)
+				var gap := randi() % 5
+				for i in 5:
+					if i == gap: continue     # always one safe lane
+					_ball(tgt - lane * 22.0 + side * (i - 2) * 2.6, lane, 17.0, 0.9, e.dmg * 0.7, 2.7, 1.3, "cart", "un chariot du Black Friday")
+		"meeting":
+			# emergency meeting (summons executives), then lands on you
+			if e.tp_t <= 0.0 and e.phase == "":
+				e.tp_t = 11.0
+				game._toast_all("RÉUNION D'URGENCE ! Le PDG convoque ses cadres", 1.5)
+				_act(e, "Wave", 1.2, 1.2)
+				for i in 8:
+					if count() >= game.enemy_cap() + 20: break
+					var a := TAU * i / 8.0
+					spawn("cadre" if i % 2 == 0 else "consultant", game.world.resolve(pos + Vector3(cos(a), 0, sin(a)) * 4.0, 0.5), m[0], m[1])
+				var target: Vector3 = e.tgt.global_position
+				_telegraph_circle(target, 5.0, 1.3)
+				get_tree().create_timer(1.3, false).timeout.connect(func():
+					if not e.alive: return
+					e.node.position = game.world.resolve(Vector3(target.x, 0, target.z), e.r)
+					_slam(target, 5.0, e.dmg * 1.2, "l'atterrissage du " + e.def["name"]))
+		"invisible":
+			# vanishes, reappears next to you and slaps the market
+			if e.phase == "" and e.tp_t <= 0.0 and e.node.visible:
+				e.tp_t = 9.0
+				e.node.visible = false
+				e.t_act = 2.4
+				game._toast_all(e.def["name"].to_upper() + " DISPARAÎT…", 1.2)
+				var a2 := randf() * TAU
+				var dest: Vector3 = game.world.resolve(e.tgt.global_position + Vector3(cos(a2), 0, sin(a2)) * 6.0, e.r)
+				_telegraph_circle(dest, 4.5, 2.2)
+				get_tree().create_timer(2.2, false).timeout.connect(func():
+					if not e.alive: return
+					e.node.position = dest
+					e.node.visible = true
+					_slam(dest, 4.5, e.dmg * 1.3, "la gifle de " + e.def["name"])
+					_act(e, "Punch_Right", 0.6, 1.3)
+					for k in 8:
+						var b := TAU * k / 8.0
+						_shoot(dest + Vector3(0, 1.5, 0), Vector3(cos(b), 0, sin(b)), e.dmg * 0.35, ""))
+			return not e.node.visible
+		"offshore":
+			# shell companies: untouchable while its nominees stand
+			var guard: Node3D = e.node.get_node_or_null("guard")
+			if guard == null:
+				guard = U.sprite(e.node, "circle_03.png", Vector3(0, 0.1, 0), 9.0 / e.node.scale.x, Color(1.0, 0.8, 0.2, 0.55), 2.0, false, Vector3(-PI / 2, 0, 0))
+				guard.name = "guard"
+			var alive := _shells_alive()
+			guard.visible = alive > 0
+			if alive == 0 and e.tp_t <= 0.0:
+				e.tp_t = 22.0
+				shells.clear()
+				game._toast_all("SOCIÉTÉS-ÉCRANS ! %s EST INTOUCHABLE TANT QUE SES PRÊTE-NOMS TIENNENT" % e.def["name"].to_upper(), 3.0)
+				_act(e, "Wave", 1.0, 1.2)
+				for i in 3:
+					var a := TAU * i / 3.0 + randf()
+					shells.append(spawn("pretenom", game.world.resolve(pos + Vector3(cos(a), 0, sin(a)) * 10.0, 0.6), m[0] * 1.5, m[1]))
+		"pivot":
+			# the Unicorn pivots: hyper-growth (three charges) or a fundraising (a spiral of cash)
+			if e.tp_t <= 0.0 and e.phase == "":
+				e.tp_t = 9.0
+				e.combo += 1
+				if e.combo % 2 == 1:
+					game._toast_all("PIVOT · HYPERCROISSANCE !", 1.4)
+					e.dashes = 2
+					e.phase = "aim"; e.t_act = 0.7; e.dash_dir = dir
+					_telegraph_line(pos, dir, 18.0, 0.7)
+				else:
+					game._toast_all("PIVOT · LEVÉE DE FONDS !", 1.4)
+					_act(e, "Wave", 1.6, 1.0)
+					for w in 4:
+						get_tree().create_timer(0.35 * w, false).timeout.connect(func():
+							if not e.alive: return
+							for k in 10:
+								var b := TAU * k / 10.0 + w * 0.3
+								_shoot(e.node.position + Vector3(0, 1.6, 0), Vector3(cos(b), 0, sin(b)), e.dmg * 0.35, ""))
+		"algo":
+			# the Algorithm: beams in a rotating cross
+			if e.tp_t <= 0.0 and e.phase == "":
+				e.tp_t = 7.5
+				e.combo += 1
+				_act(e, "Idle_Gun_Shoot", 1.0, 1.0)
+				var base := randf() * TAU
+				for k in 4:
+					_beam(pos, Vector3.FORWARD.rotated(Vector3.UP, base + k * PI / 2.0), 30.0, 1.1, e.dmg * 0.8, "un rayon de " + e.def["name"])
+				get_tree().create_timer(1.3, false).timeout.connect(func():
+					if not e.alive: return
+					for k in 4:
+						_beam(e.node.position, Vector3.FORWARD.rotated(Vector3.UP, base + PI / 4.0 + k * PI / 2.0), 30.0, 1.1, e.dmg * 0.8, "un rayon de " + e.def["name"]))
+		"avalanche":
+			# the Rentier rolls giant snowballs at you
+			if e.tp_t <= 0.0 and e.phase == "":
+				e.tp_t = 8.0
+				e.combo += 1
+				game._toast_all("AVALANCHE !", 1.0)
+				_act(e, "Punch_Left", 0.8, 1.0)
+				for k in 3:
+					var dd := dir.rotated(Vector3.UP, (k - 1) * 0.35)
+					_ball(pos + dd * 2.5, dd, 11.0, 1.7, e.dmg * 0.9, 3.8, 1.0, "snow", "l'avalanche de " + e.def["name"])
+		"launch":
+			# lifts off, bombs the ground from orbit, then lands on you
+			if e.phase == "" and e.tp_t <= 0.0 and e.node.visible:
+				e.tp_t = 15.0
+				e.node.visible = false
+				game._toast_all(e.def["name"].to_upper() + " DÉCOLLE… PLUIE DE DÉBRIS", 1.6)
+				VFX.explosion(self, pos + Vector3(0, 0.5, 0), 3.0, Color(1.0, 0.6, 0.2))
+				var dmg: float = e.dmg
+				var cause: String = "un débris de " + e.def["name"]
+				for k in 10:
+					get_tree().create_timer(0.3 * k, false).timeout.connect(func():
+						if not e.alive or game.players.is_empty(): return
+						var q = game.players[randi() % game.players.size()]
+						var a := randf() * TAU
+						_meteor(game.world.resolve(q.global_position + Vector3(cos(a), 0, sin(a)) * randf_range(0.0, 6.0), 0.5), 2.6, 1.2, dmg * 0.7, cause))
+				get_tree().create_timer(4.4, false).timeout.connect(func():
+					if not e.alive: return
+					var dest: Vector3 = game.world.resolve(Vector3(e.tgt.global_position.x, 0, e.tgt.global_position.z), e.r)
+					_meteor(dest, 4.5, 1.3, dmg * 1.2, "l'atterrissage de " + e.def["name"])
+					get_tree().create_timer(1.3, false).timeout.connect(func():
+						if not e.alive: return
+						e.node.position = dest
+						e.node.visible = true))
+			return not e.node.visible
+	return false
 
 # ---------------------------------------------------------------- hazards
 func _shoot(from: Vector3, dir: Vector3, dmg: float, effect: String):
@@ -548,25 +778,94 @@ func _shoot(from: Vector3, dir: Vector3, dmg: float, effect: String):
 	U.sprite(n, "flare_01.png" if ResourceLoader.exists("res://fx/flare_01.png") else "light_01.png", Vector3.ZERO, 0.9, Color(1, 0.9, 0.6), 2.0)
 	hazards.append({"t": "shot", "n": n, "v": dir * 11.0, "life": 2.5, "dmg": dmg, "eff": effect})
 
-func _lob(from: Vector3, to: Vector3, dmg: float):
+func _lob(from: Vector3, to: Vector3, dmg: float, eff := "debt"):
 	to = game.world.resolve(to, 0.3)
-	_send("_lob", [from, to, dmg])
+	_send("_lob", [from, to, dmg, eff])
 	_nest += 1
 	var tele := _telegraph_circle(to, 2.4, 1.0)
 	_nest -= 1
 	var n := Node3D.new()
 	add_child(n)
 	n.global_position = from
-	U.cyl(n, 0.3, 0.45, Vector3.ZERO, U.solid(Color(0.3, 0.45, 0.25), 0.0, 0.8))
-	U.label(n, "$", Vector3(0, 0, 0.32), 48, Color(1, 0.85, 0.3), Color(0, 0, 0, 1), false)
-	hazards.append({"t": "lob", "n": n, "from": from, "to": to, "age": 0.0, "dur": 1.0, "dmg": dmg})
+	if eff == "slow":
+		# a PowerPoint deck: a flat slide with a bullet list
+		U.box(n, Vector3(0.9, 0.06, 0.6), Vector3.ZERO, U.solid(Color(0.95, 0.95, 0.97)))
+		U.box(n, Vector3(0.8, 0.07, 0.12), Vector3(0, 0.01, -0.2), U.solid(Color(0.85, 0.35, 0.15)))
+	else:
+		U.cyl(n, 0.3, 0.45, Vector3.ZERO, U.solid(Color(0.3, 0.45, 0.25), 0.0, 0.8))
+		U.label(n, "$", Vector3(0, 0, 0.32), 48, Color(1, 0.85, 0.3), Color(0, 0, 0, 1), false)
+	hazards.append({"t": "lob", "n": n, "from": from, "to": to, "age": 0.0, "dur": 1.0, "dmg": dmg, "eff": eff})
 
-func _debt_zone(p: Vector3, dmg: float):
+func _debt_zone(p: Vector3, dmg: float, eff := "debt"):
 	var root := Node3D.new()
 	add_child(root)
 	root.global_position = p
-	U.sprite(root, "circle_05.png", Vector3(0, 0.05, 0), 5.0, Color(0.3, 0.8, 0.3, 0.5), 1.6, false, Vector3(-PI / 2, 0, 0))
-	hazards.append({"t": "zone", "n": root, "life": 4.0, "r": 2.4, "dmg": dmg, "tick": 0.0})
+	U.sprite(root, "circle_05.png", Vector3(0, 0.05, 0), 5.0, Color(0.3, 0.55, 1.0, 0.5) if eff == "slow" else Color(0.3, 0.8, 0.3, 0.5), 1.6, false, Vector3(-PI / 2, 0, 0))
+	if eff == "slow":
+		var t := U.label(root, "RÉUNION", Vector3(0, 0.08, 0), 64, Color(0.75, 0.85, 1.0), Color(0, 0, 0, 1), false)
+		t.rotation = Vector3(-PI / 2, 0, 0)
+	hazards.append({"t": "zone", "n": root, "life": 4.0, "r": 2.4, "dmg": dmg, "tick": 0.0, "eff": eff})
+
+# a beam along a line, after a telegraph (Modérateur IA, l'Algorithme)
+func _beam(p: Vector3, dir: Vector3, length: float, delay: float, dmg: float, cause: String):
+	_send("_beam", [p, dir, length, delay, dmg, cause])
+	_nest += 1
+	_telegraph_line(p, dir, length, delay)
+	_nest -= 1
+	get_tree().create_timer(delay, false).timeout.connect(func():
+		for q in (game.players if not ghost else []):
+			var v: Vector3 = q.global_position - p
+			v.y = 0
+			var along := v.dot(dir)
+			if along > 0.0 and along < length and absf(v.dot(Vector3(-dir.z, 0, dir.x))) < 0.9 and q.global_position.y < 3.0:
+				q.take_damage(dmg, false, p, cause)
+		var m := MeshInstance3D.new()
+		var bx := BoxMesh.new(); bx.size = Vector3(0.5, 0.5, length)
+		m.mesh = bx
+		m.material_override = U.solid(Color(1.0, 0.25, 0.3), 6.0)
+		m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(m)
+		m.global_position = Vector3(p.x, 1.0, p.z) + dir * length * 0.5
+		m.rotation.y = atan2(dir.x, dir.z)
+		var tw := m.create_tween()
+		tw.tween_property(m, "scale", Vector3(0.1, 0.1, 1.0), 0.3)
+		tw.tween_callback(m.queue_free))
+
+# something rolling along a line after a telegraph: snowballs (ski), runaway trolleys (hypermarché)
+func _ball(from: Vector3, dir: Vector3, speed: float, r: float, dmg: float, life: float, delay: float, look: String, cause: String):
+	from = Vector3(from.x, 0.0, from.z)
+	_send("_ball", [from, dir, speed, r, dmg, life, delay, look, cause])
+	_nest += 1
+	_telegraph_line(from, dir, minf(speed * life, 45.0), delay)
+	_nest -= 1
+	var n := Node3D.new()
+	add_child(n)
+	n.global_position = from
+	if look == "cart":
+		var metal := U.solid(Color(0.75, 0.78, 0.82), 0.0, 0.3, 0.8)
+		U.box(n, Vector3(1.0, 0.7, 1.4), Vector3(0, 0.75, 0), metal)
+		U.box(n, Vector3(1.05, 0.08, 0.1), Vector3(0, 1.2, -0.75), U.solid(Color(0.85, 0.1, 0.1)))
+		for k in 4: U.cyl(n, 0.12, 0.08, Vector3((k % 2) * 0.8 - 0.4, 0.12, (k / 2) * 1.1 - 0.55), U.solid(Color(0.1, 0.1, 0.1)))
+	else:
+		U.sphere(n, r, Vector3(0, r, 0), U.solid(Color(0.95, 0.97, 1.0), 0.0, 0.9))
+	n.rotation.y = atan2(dir.x, dir.z)
+	hazards.append({"t": "ball", "n": n, "v": dir * speed, "life": life, "wait": delay, "r": r, "dmg": dmg, "hit": [], "look": look, "cause": cause})
+
+# something falling from the sky on a marked circle (Fusée)
+func _meteor(p: Vector3, r: float, delay: float, dmg: float, cause: String):
+	_send("_meteor", [p, r, delay, dmg, cause])
+	_nest += 1
+	_telegraph_circle(p, r, delay)
+	_nest -= 1
+	get_tree().create_timer(delay, false).timeout.connect(func():
+		for q in (game.players if not ghost else []):
+			var v: Vector3 = q.global_position - p
+			v.y = 0
+			if v.length() < r and q.global_position.y < 3.0:
+				q.take_damage(dmg, false, p, cause)
+				q.velocity += v.normalized() * 8.0 + Vector3(0, 5, 0)
+		VFX.explosion(self, p + Vector3(0, 0.3, 0), r, Color(1.0, 0.5, 0.15))
+		game.shake(0.1))
 
 func _telegraph_circle(p: Vector3, r: float, dur: float) -> Node3D:
 	_send("_telegraph_circle", [p, r, dur])
@@ -653,7 +952,7 @@ func _update_hazards(d: float):
 				n.rotation.x += d * 8.0
 				if k >= 1.0:
 					hazards.erase(h); n.queue_free()
-					_debt_zone(h["to"], h["dmg"])
+					_debt_zone(h["to"], h["dmg"], h.get("eff", "debt"))
 			"zone":
 				h["life"] -= d
 				h["tick"] -= d
@@ -663,10 +962,29 @@ func _update_hazards(d: float):
 					var v: Vector3 = q.global_position - n.global_position
 					v.y = 0
 					if v.length() < h["r"] and q.global_position.y < 1.0:
-						q.apply_status("debt")
-						if tick: q.take_damage(h["dmg"], true, n.global_position, "une zone de Dette")
+						q.apply_status(h.get("eff", "debt"))
+						if tick: q.take_damage(h["dmg"], true, n.global_position, "une réunion de Consultant" if h.get("eff", "") == "slow" else "une zone de Dette")
 				if h["life"] <= 0.0:
 					hazards.erase(h); n.queue_free()
+			"ball":
+				if h["wait"] > 0.0:
+					h["wait"] -= d
+					continue
+				n.global_position += h["v"] * d
+				if h["look"] == "snow": n.rotation.x += d * h["v"].length() / maxf(h["r"], 0.1)
+				h["life"] -= d
+				for q in (game.players if not ghost else []):
+					if q in h["hit"]: continue
+					var v: Vector3 = q.global_position - n.global_position
+					v.y = 0
+					if v.length() < h["r"] + 0.5 and q.global_position.y < h["r"] * 2.0 + 0.5:
+						h["hit"].append(q)
+						q.take_damage(h["dmg"], false, n.global_position, h["cause"])
+						q.velocity += (h["v"] as Vector3).normalized() * 10.0 + Vector3(0, 5, 0)
+				if h["life"] <= 0.0:
+					hazards.erase(h)
+					VFX.puff(self, n.global_position + Vector3(0, 0.5, 0), h["r"] * 1.5, false)
+					n.queue_free()
 
 # ---------------------------------------------------------------- damage
 func damage(e: Enemy, amount: float, knock_from := Vector3.INF, knock_force := 0.0, src := "", show_num := true, ignore_armor := false, crit_chance := 0.05, wid := ""):
@@ -699,6 +1017,7 @@ func damage(e: Enemy, amount: float, knock_from := Vector3.INF, knock_force := 0
 	if not ignore_armor:
 		amt = maxf(amt - e.armor, amt * 0.15)
 	if e.shielded: amt *= 0.6
+	if e.boss and _shells_alive() > 0: amt *= 0.12      # Paradis Fiscal: hidden behind its nominees
 	e.hp -= amt
 	if crit and amt > 150.0 and randf() < 0.15: game.pop_word(e.node.position + Vector3(0, e.def["h"] + 0.9, 0), ["PAF !", "CRAC !", "POW !"][randi() % 3], Color(1, 0.3, 0.2), 0.8)
 	if show_num or crit:
@@ -711,8 +1030,17 @@ func damage(e: Enemy, amount: float, knock_from := Vector3.INF, knock_force := 0
 	if show_num or crit: Snd.play("hit", -16.0, 0.25, 0.045)
 	if e.hp <= 0.0:
 		kill(e)
-	elif knock_force >= 6.0 or crit:
+		return
+	if knock_force >= 6.0 or crit:
 		flinch(e)
+	# Évadé fiscal: vanishes somewhere else when you catch it
+	if e.def.get("blink", false) and e.sig_t <= 0.0 and not ghost:
+		e.sig_t = 3.0
+		_heal_fx(e.node.position)
+		var a := randf() * TAU
+		e.node.position = game.world.resolve(e.node.position + Vector3(cos(a), 0, sin(a)) * randf_range(7.0, 10.0), e.r)
+		e.level = -1
+		_heal_fx(e.node.position)
 
 # stun with diminishing returns; big enemies are stunned less and recover immunity longer
 func stun(e: Enemy, dur: float, force := false):
