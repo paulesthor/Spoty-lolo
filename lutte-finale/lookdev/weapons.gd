@@ -9,6 +9,17 @@ func _ready():
 	var items := [["ours_yeti.gltf", 1.8], ["kalach.glb", 0.4], ["scythe.gltf", 1.2], ["guitar_A.gltf", 1.0], ["star_red.gltf", 0.8], ["pickaxe.gltf", 1.0],
 		["furniture/speaker.glb", 0.8], ["graveyard/iron_fence.glb", 1.2], ["pirate/bottle.glb", 0.6], ["weaponpack/rocket.glb", 0.8], ["cage/Cage_Small.gltf", 1.2]]
 	if "bear" in OS.get_cmdline_user_args(): items = [["kk_bear.gltf", 1.6]]
+	if "sign" in OS.get_cmdline_user_args():
+		U.fonts()
+		U.sign_panel(self, "PRENEZ UN NUMÉRO", Vector2(3.0, 1.0), Vector3(-2, 2.5, 0), 0.0, Color(0.93, 0.9, 0.82), Color(0.1, 0.1, 0.12), true)
+		U.sign_panel(self, "-70 %", Vector2(1.5, 0.7), Vector3(2, 2.5, 0), 0.0, Color(1, 0.85, 0.1), Color(0.8, 0.05, 0.05), true)
+		var cam4 := Camera3D.new(); add_child(cam4); cam4.fov = 40
+		cam4.global_position = Vector3(0, 2.5, 6.0); cam4.look_at(Vector3(0, 2.5, 0))
+		await get_tree().create_timer(0.8).timeout
+		for a in OS.get_cmdline_user_args():
+			if a.begins_with("out="): get_viewport().get_texture().get_image().save_png(a.substr(4))
+		get_tree().quit()
+		return
 	if "flag" in OS.get_cmdline_user_args():
 		for k in 3:
 			var pole := U.cyl(self, 0.05, 4.0, Vector3(-3.0 + k * 3.0, 2.0, 0), U.solid(Color(0.7, 0.7, 0.72)))

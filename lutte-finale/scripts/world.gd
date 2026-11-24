@@ -570,9 +570,12 @@ func _lot_square(r: Rect2):
 	if rng.randf() < 0.5:
 		_matryoshka(c)
 	else:
-		var basin := U.cyl(self, 3.0, 0.8, c + Vector3(0, 0.4, 0), U.solid(Color(0.6, 0.58, 0.55)))
-		U.cyl(self, 2.7, 0.1, c + Vector3(0, 0.75, 0), U.solid(Color(0.3, 0.5, 0.7), 0.0, 0.1))
-		U.cyl(self, 0.3, 2.4, c + Vector3(0, 1.2, 0), U.solid(Color(0.6, 0.58, 0.55)))
+		var fo := U.place(self, U.PROPS + "k_fantasy_town_kit/fountain-round-detail.glb", c, 2.0, rng.randf() * TAU)
+		var fa := U.world_aabb(fo)
+		fo.scale *= 6.2 / maxf(fa.size.x, fa.size.z)
+		fa = U.world_aabb(fo); fo.position += Vector3(c.x - fa.get_center().x, -fa.position.y, c.z - fa.get_center().z)
+		VFX.ps(self, "smoke_05.png", {"n": 10, "life": 1.2, "preprocess": 1.2, "size": 0.6, "add": false, "ramp": "steam", "curve": "grow",
+			"spread": 25.0, "vel": [2.0, 3.0], "grav": Vector3(0, -3.0, 0), "pos": c + Vector3(0, fa.size.y * 0.9, 0)})      # spray
 		obstacles.append(Rect2(c.x - 3, c.z - 3, 6, 6)); _static_box(c + Vector3(0, 0.4, 0), Vector3(6, 0.8, 6))
 	for i in 6:
 		var a := rng.randf() * TAU
@@ -642,15 +645,18 @@ func _matryoshka(mp: Vector3):
 func _lot_station(r: Rect2):
 	# petrol station: canopy on pillars, pumps, a small shop
 	var c := _v(r.get_center().x, r.get_center().y)
-	U.box(self, Vector3(14, 0.5, 9), c + Vector3(0, 4.5, 0), U.solid(Color(0.85, 0.12, 0.12)))
-	U.fit_label(U.label(self, "PÉTROLE DU PEUPLE", c + Vector3(0, 4.5, 4.52), 90, Color(1, 0.95, 0.85), Color(0, 0, 0, 0), false, U.font_main), 13.0, 0.42)
+	U.box(self, Vector3(14, 0.5, 9), c + Vector3(0, 4.5, 0), U.pbr("Metal049A", 0.3, Color(0.95, 0.2, 0.18), 0.6))
+	U.sign_panel(self, "PÉTROLE DU PEUPLE", Vector2(12.0, 0.46), c + Vector3(0, 4.5, 4.52), 0.0, Color(0.8, 0.08, 0.08), Color(1, 0.95, 0.85))
 	for px in [-5.5, 5.5]:
 		for pz in [-3.5, 3.5]:
-			U.box(self, Vector3(0.4, 4.5, 0.4), c + Vector3(px, 2.25, pz), U.solid(Color(0.8, 0.8, 0.8)))
+			U.cyl(self, 0.22, 4.5, c + Vector3(px, 2.25, pz), U.pbr("Metal049A", 0.3, Color(0.9, 0.9, 0.9), 0.8))
+	# fuel: barrels and jerrycans by the islands (KayKit, CC0), the shop is a real kiosk building
 	for px in [-3.0, 3.0]:
-		var pump := U.box(self, Vector3(0.9, 1.6, 0.6), c + Vector3(px, 0.8, 0), U.solid(Color(0.9, 0.85, 0.2)))
+		var pump := U.place(self, U.PROPS + "kk_resource_bits/Fuel_A_Barrel_Dirty.gltf", c + Vector3(px, 0, 0), 1.3, 0.0)
 		add_obstacle(pump)
-	var shop := U.box(self, Vector3(8, 3.5, 5), c + Vector3(0, 1.75, -r.size.y * 0.3), U.solid(Color(0.85, 0.82, 0.75)))
+	var shop := U.place(self, U.CC + "low-detail-building-a.glb", c + Vector3(0, 0, -r.size.y * 0.3), 4.5, 0.0)
+	var sa := U.world_aabb(shop)
+	if sa.size.x > 9.0: shop.scale *= 9.0 / sa.size.x; sa = U.world_aabb(shop); shop.position += Vector3(c.x - sa.get_center().x, -sa.position.y, c.z - r.size.y * 0.3 - sa.get_center().z)
 	add_obstacle(shop)
 
 func _lot_empty(r: Rect2, start := false):
@@ -672,11 +678,17 @@ func _build_plateau(i: int):
 	# railing posts and stripes so the edge reads clearly
 	U.box(self, Vector3(r.size.x, 0.12, r.size.y), Vector3(c.x, h + 0.06, c.z), U.pbr("PavingStones138" if pl["kind"] != "estrade" else "Marble012", 0.45, Color(1, 1, 1) if pl["kind"] != "estrade" else Color(1.2, 0.5, 0.5), 0.9))
 	if pl["kind"] == "chantier":
-		for k in 4:
-			U.box(self, Vector3(0.2, 2.5, 0.2), Vector3(r.position.x + 0.5 + k * (r.size.x - 1.0) / 3.0, h + 1.25, r.position.y + 0.5), U.solid(Color(0.4, 0.4, 0.42), 0.0, 0.4, 0.8))
-		U.box(self, Vector3(r.size.x - 0.6, 0.9, 0.08), Vector3(c.x, h + 2.6, r.position.y + 0.5), U.solid(Color(0.15, 0.15, 0.17)))
-		var cl := U.label(self, "CHANTIER DU PEUPLE", Vector3(c.x, h + 2.6, r.position.y + 0.44), 80, Color(1, 0.85, 0.3), Color(0, 0, 0, 1), false)
-		cl.rotation.y = PI; U.fit_label(cl, r.size.x - 1.0, 0.8)
+		# scaffolding (Kenney, CC0) on the back edge, a works sign, barriers at the foot
+		var yel := U.solid(Color(0.95, 0.7, 0.15), 0.0, 0.5, 0.6)
+		for k in 2:
+			var sc := U.place(self, U.CAT + "k_retro_urban_kit/scaffolding-structure.glb", Vector3(r.position.x + 2.2 if k == 0 else r.end.x - 2.2, h, r.end.y - 1.4), 2.4, 0.0)
+			var sa := U.world_aabb(sc)
+			if maxf(sa.size.x, sa.size.z) > 3.2: sc.scale *= 3.2 / maxf(sa.size.x, sa.size.z)
+			sa = U.world_aabb(sc); sc.position.y += h - sa.position.y
+			for m in sc.find_children("*", "MeshInstance3D", true, false): (m as MeshInstance3D).material_override = yel
+		U.sign_panel(self, "CHANTIER DU PEUPLE · DÉLAI : 5 ANS (PLAN QUINQUENNAL)", Vector2(minf(r.size.x - 1.0, 9.0), 0.9), Vector3(c.x, h * 0.55, r.position.y - 0.08), PI, Color(1.0, 0.78, 0.1), Color(0.1, 0.1, 0.1), false)
+		for q in 3:
+			U.place(self, U.CAT + "q_zombie_apocalypse/" + ["PlasticBarrier", "TrafficBarrier_1"][q % 2] + ".gltf", Vector3(r.position.x + 2.0 + q * 3.0, 0, r.position.y - 1.2), 1.0, 0.0)
 	elif pl["kind"] == "passerelle":
 		var glass := U.solid(Color(0.6, 0.8, 0.95, 0.35), 0.3, 0.1, 0.2)
 		U.box(self, Vector3(r.size.x, 1.0, 0.08), Vector3(c.x, h + 0.5, r.position.y), glass)
@@ -743,7 +755,7 @@ func _props():
 				U.box(self, Vector3(0.9, 0.08, 0.05), p + Vector3(0, 1.6, 0.47), U.solid(Color(0.3, 1.0, 0.5), 3.0))
 				add_obstacle(rk)
 			_:
-				var d := U.place(self, U.CR + "dumpster.glb", p, 1.6, rng.randf() * TAU)
+				var d := U.place(self, U.PROPS + "kk_city_builder/dumpster.gltf", p, 1.6, rng.randf() * TAU)
 				add_obstacle(d)
 
 func _walls():
@@ -1066,6 +1078,11 @@ func _dress(n: Node3D, face: Vector3):
 		U.box(self, Vector3(sw + 0.14, 1.14, 0.16), sp, U.solid(Color(0.12, 0.12, 0.13), 0.0, 0.4, 0.6), Vector3(0, rot, 0))
 		U.sign_panel(self, txt, Vector2(sw, 1.0), sp + face * 0.085, rot, col, Color(1, 0.94, 0.8), false, 0.6 if ambiance == "nuit" else 0.0)
 		var side := Vector3(face.z, 0, -face.x)
+		# a striped awning over the shop window, under the sign (Kenney commercial kit)
+		var aw := U.place(self, U.CC + "detail-awning-wide.glb", sp - Vector3(0, 0.95, 0) + face * 0.6, 0.8, rot)
+		var awa := U.world_aabb(aw)
+		var wdt_aw: float = absf(awa.size.dot(side))
+		if wdt_aw > 0.1: aw.scale *= Vector3.ONE * minf(sw / wdt_aw, 3.0)
 		for k in [-1.0, 1.0]:
 			var lp: Vector3 = sp + side * k * sw * 0.32 + Vector3(0, 0.75, 0) + face * 0.25
 			U.box(self, Vector3(0.05, 0.05, 0.35), lp - face * 0.12, U.solid(Color(0.15, 0.15, 0.15)), Vector3(0, rot, 0))

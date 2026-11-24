@@ -33,6 +33,7 @@ func build(world):
 	_street_furniture()
 	_flags(int(10 * w.area_k * (2.5 if id == "grandsoir" else 1.0)))
 	_pigeon_flocks(int(5 * w.area_k))
+	if not id in ["ski", "fusee", "datacenter", "berlin"]: _city_details()
 	if w.template.get("blimp", "x") != "": _blimp(id)
 	_hoardings(id)
 	match id:
@@ -94,14 +95,15 @@ func _street_furniture():
 			var war: bool = w.template.get("id", "") == "berlin"
 			match rng.randi() % 5:
 				0, 1:  # bench (in Berlin: charred, knocked over, missing its back)
-					var b := U.place(self, U.PROPS + ("k_graveyard_kit/bench-damaged.glb" if war else "kk_city_builder/bench.gltf"), p, 0.7 if war else 0.55, e[1] + PI)
+					var bp: String = "k_graveyard_kit/bench-damaged.glb" if war else ["../_catalog/k_holiday_kit/bench.glb", "kk_city_builder/bench.gltf"][rng.randi() % 2]
+					var b := U.place(self, U.PROPS + bp, p, 0.7 if war else 0.75, e[1] + PI)
 					if war: b.rotation.z = rng.randf_range(-0.4, 0.4)
 				2:  # bin (in Berlin: a dented oil drum lying on its side)
 					if war:
 						var bn := U.place(self, U.PROPS + "kk_resource_bits/Fuel_A_Barrel_Dirty.gltf", p, 1.0, rng.randf() * TAU)
 						bn.rotation = Vector3(PI / 2, rng.randf() * TAU, 0); bn.position.y += 0.3
 					else:
-						U.place(self, U.PROPS + "kk_city_builder/" + ["trash_A", "trash_B"][rng.randi() % 2] + ".gltf", p, 1.0, e[1])
+						U.place(self, U.CAT + "k_coaster_kit/trash.glb", p, 0.95, e[1])
 				3:  # hydrant
 					U.place(self, U.PROPS + "kk_city_builder/firehydrant.gltf", p, 0.8, rng.randf() * TAU)
 				4:  # sign (in Berlin: bent by the blast)
@@ -165,9 +167,14 @@ func _pigeon_flocks(n: int):
 			var b := Node3D.new(); add_child(b)
 			var home := c + Vector3(rng.randf_range(-2.5, 2.5), 0, rng.randf_range(-2.5, 2.5))
 			b.position = home
-			U.sphere(b, 0.13, Vector3(0, 0.14, 0), grey, 0.2)
-			U.sphere(b, 0.07, Vector3(0, 0.26, 0.1), grey)
-			U.box(b, Vector3(0.03, 0.03, 0.06), Vector3(0, 0.25, 0.18), beak)
+			var pm := U.model_local(b, U.CAT + "q_ultimate_monsters/Pigeon.gltf", 0.42)
+			for m in pm.find_children("*", "MeshInstance3D", true, false):
+				var mi: MeshInstance3D = m
+				for si in mi.mesh.get_surface_count():
+					var src = mi.get_active_material(si)
+					if src is StandardMaterial3D and (src as StandardMaterial3D).albedo_color.b > (src as StandardMaterial3D).albedo_color.r + 0.05:
+						mi.set_surface_override_material(si, grey)      # purple monster -> city pigeon
+			b.set_meta("ap", U.anim_player(pm))
 			b.rotation.y = rng.randf() * TAU
 			pigeons.append({"n": b, "home": home, "fly": false, "v": Vector3.ZERO, "t": rng.randf() * 3.0})
 
@@ -219,7 +226,7 @@ func _hypermarche():
 		var p := _spot(2.0)
 		if p == Vector3.INF: continue
 		_claim(p, 2.0)
-		var pal := U.box(self, Vector3(1.6, 0.15, 1.2), p + Vector3(0, 0.08, 0), U.solid(Color(0.6, 0.45, 0.25)))
+		var pal := U.place(self, U.CAT + "k_retro_urban_kit/pallet.glb", p, 0.16, rng.randf_range(-0.1, 0.1))
 		var goods := U.place(self, U.SHOP + ["display-cans", "display-fruit", "display-bread", "shelf-boxes"][rng.randi() % 4] + ".glb", p + Vector3(0, 0.15, 0), 1.0, 0.0)
 		var ga := U.world_aabb(goods)
 		var fit := minf(1.5 / maxf(ga.size.x, 0.01), 1.1 / maxf(ga.size.z, 0.01))
@@ -227,12 +234,8 @@ func _hypermarche():
 			goods.scale *= fit
 			goods.position += Vector3(p.x, 0, p.z) - Vector3(U.world_aabb(goods).get_center().x, 0, U.world_aabb(goods).get_center().z)
 		w.add_obstacle(goods, false, 0.4)
-		var sg := U.box(self, Vector3(1.5, 0.7, 0.05), p + Vector3(0, 1.75, 0), U.solid(Color(1, 0.85, 0.1)))
 		U.cyl(self, 0.03, 1.45, p + Vector3(0.0, 0.72, -0.06), U.solid(Color(0.3, 0.3, 0.3)))
-		var l := U.label(self, prices[i % prices.size()], p + Vector3(0, 1.75, 0.04), 52, Color(0.8, 0.05, 0.05), Color(0, 0, 0, 0), false)
-		l.pixel_size = 0.006
-		l.width = 1.4 / l.pixel_size; l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		l.outline_size = 0
+		U.sign_panel(self, prices[i % prices.size()], Vector2(1.5, 0.7), p + Vector3(0, 1.75, 0), 0.0, Color(1, 0.85, 0.1), Color(0.8, 0.05, 0.05), true)
 		w.add_obstacle(pal, false, 0.3)
 	# café terraces under parasols
 	for i in 4:
@@ -431,10 +434,12 @@ func _update_pigeons(d: float):
 		if pg["fly"]:
 			pg["t"] -= d
 			n.position += pg["v"] * d
-			n.rotation.z = sin(t * 30.0) * 0.4
+			n.rotation.z = sin(t * 6.0) * 0.15
 			if pg["t"] <= 0.0 and pp.distance_to(pg["home"]) > 12.0:
 				pg["fly"] = false
 				n.position = pg["home"] + Vector3(0, 12, 0)
+				var lap = n.get_meta("ap", null)
+				if lap: (lap as AnimationPlayer).stop()
 		else:
 			if n.position.y > 0.0:
 				n.position.y = maxf(0.0, n.position.y - d * 4.0)
@@ -449,6 +454,8 @@ func _update_pigeons(d: float):
 			if pp.distance_to(n.position) < 4.5:
 				pg["fly"] = true
 				pg["t"] = 4.0
+				var fap = n.get_meta("ap", null)
+				if fap and (fap as AnimationPlayer).has_animation("Fast_Flying"): (fap as AnimationPlayer).play("Fast_Flying")
 				var away := (n.position - pp); away.y = 0
 				pg["v"] = away.normalized() * rng.randf_range(5, 8) + Vector3(0, rng.randf_range(5, 7), 0)
 				n.rotation.y = atan2(away.x, away.z)
@@ -894,8 +901,8 @@ func _smoke_columns():
 		var a: AABB = o["aabb"]
 		if a.size.y < 9.0 or a.size.y > 40.0: continue
 		var cp := Vector3(a.position.x + a.size.x * rng.randf_range(0.25, 0.75), a.end.y - 0.3, a.position.z + a.size.z * rng.randf_range(0.25, 0.75))
-		U.box(self, Vector3(0.7, 1.8, 0.7), cp + Vector3(0, 0.9, 0), brick).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		U.box(self, Vector3(0.85, 0.15, 0.85), cp + Vector3(0, 1.85, 0), brick).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var chm := U.place(self, U.IND + "chimney-small.glb", cp, 2.0, rng.randf() * TAU)
+		cp.y = U.world_aabb(chm).end.y - 2.1
 		VFX.ps(self, "smoke_05.png", {"n": 8, "life": 5.0, "preprocess": 5.0, "size": 1.4, "add": false, "ramp": "smoke_light", "curve": "grow",
 			"spread": 10.0, "vel": [1.0, 1.6], "grav": Vector3(0.4, 0.15, 0.1), "angvel": 15.0, "pos": cp + Vector3(0, 2.1, 0)})
 		n += 1
@@ -903,3 +910,53 @@ func _smoke_columns():
 func _steam(p: Vector3):
 	VFX.ps(self, "smoke_05.png", {"n": 6, "life": 2.6, "preprocess": 2.6, "size": 0.8, "add": false, "ramp": "steam", "curve": "grow",
 		"spread": 12.0, "vel": [0.6, 1.1], "grav": Vector3(0.15, 0.1, 0), "angvel": 20.0, "pos": p + Vector3(0, 0.1, 0), "shape": "sphere", "r": 0.25})
+
+# ---------------------------------------------------------------- city clutter (all real CC0 models)
+# what makes a street look lived in: litter and boxes on the ground, traffic lights at the crossings,
+# water towers, dishes and chimneys on the roofs, awnings over the shops
+func _city_details():
+	var litter := ["soda-can-crushed", "candy-bar-wrapper", "bag-flat", "pizza-box", "soda-can", "can-open"]
+	for i in int(70 * w.area_k):
+		var p := _spot(0.4, 3.0)
+		if p == Vector3.INF: continue
+		var it := U.place(self, U.FOOD + litter[rng.randi() % litter.size()] + ".glb", p, 0.12 if i % 3 else 0.06, rng.randf() * TAU)
+		if i % 4 == 0: it.rotation.x = PI / 2      # cans lying on their side
+	# cardboard boxes piled against walls and by the stalls
+	for i in int(16 * w.area_k):
+		var p := _spot(1.0, 6.0)
+		if p == Vector3.INF: continue
+		_claim(p, 1.0)
+		for k in rng.randi_range(1, 3):
+			U.place(self, U.CAT + "k_furniture_kit/" + ["cardboardBoxClosed", "cardboardBoxOpen"][rng.randi() % 2] + ".glb", p + Vector3(rng.randf_range(-0.5, 0.5), k * 0.0, rng.randf_range(-0.5, 0.5)), 0.5, rng.randf() * TAU)
+		w.small_obstacle(p, 0.6)
+	# oil stains on the parkings
+	for l in w.lots:
+		if l[1] != "parking": continue
+		var r: Rect2 = l[0]
+		for k in 6:
+			var sp := Vector3(rng.randf_range(r.position.x + 2, r.end.x - 2), 0.035, rng.randf_range(r.position.y + 2, r.end.y - 2))
+			var st := U.cyl(self, rng.randf_range(0.4, 0.9), 0.01, sp, U.solid(Color(0.08, 0.08, 0.09, 0.6), 0.0, 0.2, 0.4))
+			st.scale = Vector3(1, 1, rng.randf_range(0.5, 1.0)); st.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# traffic lights at some lot corners (the avenues' crossings)
+	var n_tl := 0
+	for l in w.lots:
+		if n_tl > int(14 * w.area_k): break
+		var r: Rect2 = l[0]
+		var q := Vector3(r.position.x - 1.0, 0, r.position.y - 1.0)
+		if rng.randf() < 0.45 and w.inside(q) and not w._blocked(q, 0.8) and not _near_decor(q, 1.0):
+			_claim(q, 0.8)
+			U.place(self, U.CR + "traffic-light.glb", q, 4.2, PI * 0.25)
+			w.small_obstacle(q, 0.4)
+			n_tl += 1
+	# rooftops: water towers, satellite dishes
+	var cands: Array = w.occluders.duplicate()
+	cands.shuffle()
+	var nr := 0
+	for o in cands:
+		if nr >= int(10 * w.area_k): break
+		var a: AABB = o["aabb"]
+		if a.size.y < 8.0 or a.size.y > 34.0 or a.size.x < 6.0 or a.size.z < 6.0: continue
+		var rp := Vector3(a.position.x + a.size.x * rng.randf_range(0.3, 0.7), a.end.y - 0.35, a.position.z + a.size.z * rng.randf_range(0.3, 0.7))
+		if nr % 2 == 0: U.place(self, U.PROPS + "kk_city_builder/watertower.gltf", rp, 4.5, rng.randf() * TAU)
+		else: U.place(self, U.CAT + "k_space_kit/satelliteDish.glb", rp, 1.8, rng.randf() * TAU)
+		nr += 1

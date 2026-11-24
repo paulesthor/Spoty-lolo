@@ -22,7 +22,20 @@ static func fonts():
 		font_num = load("res://fonts/Oswald.woff2")
 		_sym_font = load("res://fonts/Symbols.ttf")
 
-const PROPS := "res://assets/props/"      # CC0 map props (see assets/props/LICENSE.txt)
+const PROPS := "res://assets/props/"
+const CAT := "res://assets/_catalog/"     # more CC0 props (same licences, see assets/_catalog/LICENSE.txt)
+
+# instance a model in `parent`'s local space: largest side (or height) = size, centred on x/z, base on y = 0
+static func model_local(parent: Node3D, path: String, size: float, by_height := false) -> Node3D:
+	var n: Node3D = scene(path).instantiate()
+	parent.add_child(n)
+	var inv := parent.global_transform.affine_inverse()
+	var a: AABB = inv * world_aabb(n)
+	var ref: float = a.size.y if by_height else maxf(maxf(a.size.x, a.size.y), a.size.z)
+	n.scale *= size / maxf(ref, 0.001)
+	a = inv * world_aabb(n)
+	n.position += Vector3(-a.get_center().x, -a.position.y, -a.get_center().z)
+	return n      # CC0 map props (see assets/props/LICENSE.txt)
 static func scene(path: String) -> PackedScene:
 	if not _scenes.has(path):
 		_scenes[path] = load(path)
@@ -217,90 +230,68 @@ static func solid(color: Color, emissive := 0.0, rough := 0.8, metal := 0.0) -> 
 	return m
 
 # ---------------------------------------------------------------- painted signs
-# the text of a sign painted into a texture (rendered once in a small 2D viewport, then kept):
-# coloured enamel plate, double rim, little stars, a top-to-bottom wear gradient, text sized to fit
-static var _sign_tex := {}
-static func sign_tex(text: String, bg: Color, fg: Color, aspect := 5.0, stars := true) -> Texture2D:
-	var key := "%s|%s|%s|%.1f|%s" % [text, bg.to_html(), fg.to_html(), aspect, stars]
-	if _sign_tex.has(key): return _sign_tex[key]
-	fonts()
-	var h := 160
-	var w := int(clampf(h * aspect, 256.0, 1600.0))
-	var vp := SubViewport.new()
-	vp.size = Vector2i(w, h)
-	vp.disable_3d = true
-	vp.transparent_bg = false
-	vp.render_target_update_mode = SubViewport.UPDATE_ONCE
-	(Engine.get_main_loop() as SceneTree).root.add_child(vp)
-	var plate := Panel.new()
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = bg
-	sb.border_color = fg.lerp(bg, 0.15); sb.set_border_width_all(7)
-	sb.set_corner_radius_all(14)
-	plate.add_theme_stylebox_override("panel", sb)
-	plate.size = Vector2(w, h)
-	vp.add_child(plate)
-	var inner := Panel.new()
-	var sb2 := StyleBoxFlat.new()
-	sb2.bg_color = Color(0, 0, 0, 0)
-	sb2.border_color = fg.lerp(bg, 0.45); sb2.set_border_width_all(2)
-	sb2.set_corner_radius_all(9)
-	inner.add_theme_stylebox_override("panel", sb2)
-	inner.position = Vector2(14, 14); inner.size = Vector2(w - 28, h - 28)
-	vp.add_child(inner)
-	# wear: lighter at the top, a little grime at the bottom
-	var wear := TextureRect.new()
-	var gt := GradientTexture2D.new()
-	var gr := Gradient.new()
-	gr.offsets = PackedFloat32Array([0.0, 0.45, 1.0])
-	gr.colors = PackedColorArray([Color(1, 1, 1, 0.1), Color(1, 1, 1, 0.0), Color(0, 0, 0, 0.22)])
-	gt.gradient = gr; gt.fill_from = Vector2(0, 0); gt.fill_to = Vector2(0, 1); gt.width = 8; gt.height = 64
-	wear.texture = gt; wear.size = Vector2(w, h); wear.stretch_mode = TextureRect.STRETCH_SCALE
-	wear.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	vp.add_child(wear)
-	var pad := 70 if stars else 34
-	if stars:
-		for sx in [0, 1]:
-			var st := Label.new(); st.text = "★"
-			st.add_theme_font_override("font", _sym_font); st.add_theme_font_size_override("font_size", 54)
-			st.add_theme_color_override("font_color", fg)
-			st.position = Vector2(22 if sx == 0 else w - 74, h * 0.5 - 40)
-			vp.add_child(st)
-	var l := Label.new()
-	l.text = text.to_upper()
-	l.add_theme_font_override("font", font_main)
-	l.add_theme_color_override("font_color", fg)
-	l.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.35))
-	l.add_theme_constant_override("shadow_offset_x", 3); l.add_theme_constant_override("shadow_offset_y", 3)
-	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	var fs := 104
-	while fs > 22 and font_main.get_string_size(l.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > w - pad * 2: fs -= 2
-	l.add_theme_font_size_override("font_size", fs)
-	l.position = Vector2(pad, 0); l.size = Vector2(w - pad * 2, h)
-	vp.add_child(l)
-	var tex := vp.get_texture()
-	_sign_tex[key] = tex
+# enamel plate texture drawn pixel by pixel: coloured face, double rim, rivets, a top-to-bottom wear gradient
+static var _plate_tex := {}
+static func plate_tex(bg: Color, fg: Color, aspect: float) -> Texture2D:
+	var w := int(clampf(64.0 * aspect, 64.0, 512.0))
+	var h := 64
+	var key := "%s|%s|%d" % [bg.to_html(), fg.to_html(), w]
+	if _plate_tex.has(key): return _plate_tex[key]
+	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
+	for y in h:
+		var k := 1.06 - 0.16 * float(y) / h       # lighter at the top, a little grime at the bottom
+		img.fill_rect(Rect2i(0, y, w, 1), Color(bg.r * k, bg.g * k, bg.b * k))
+	var rim := fg.lerp(bg, 0.2)
+	for t in 3:
+		img.fill_rect(Rect2i(t, t, w - 2 * t, 1), rim); img.fill_rect(Rect2i(t, h - 1 - t, w - 2 * t, 1), rim)
+		img.fill_rect(Rect2i(t, t, 1, h - 2 * t), rim); img.fill_rect(Rect2i(w - 1 - t, t, 1, h - 2 * t), rim)
+	var rim2 := fg.lerp(bg, 0.55)
+	img.fill_rect(Rect2i(6, 6, w - 12, 1), rim2); img.fill_rect(Rect2i(6, h - 7, w - 12, 1), rim2)
+	img.fill_rect(Rect2i(6, 6, 1, h - 12), rim2); img.fill_rect(Rect2i(w - 7, 6, 1, h - 12), rim2)
+	for cx in [9, w - 11]:
+		for cy in [9, h - 11]:
+			img.fill_rect(Rect2i(cx, cy, 3, 3), Color(0.75, 0.75, 0.72))      # rivets
+	img.generate_mipmaps()
+	var tex := ImageTexture.create_from_image(img)
+	_plate_tex[key] = tex
 	return tex
 
-# a flat painted panel (both faces when `back`), its centre at pos, facing +Z rotated by rot_y
+# a painted sign: the enamel plate, the text painted on it (lit like paint), a star at each end.
+# Centre at pos, facing +Z rotated by rot_y; `back` paints both faces.
 static func sign_panel(parent: Node, text: String, size: Vector2, pos: Vector3, rot_y: float, bg: Color, fg: Color, back := false, glow := 0.0) -> Node3D:
+	fonts()
 	var root := Node3D.new(); parent.add_child(root)
 	root.position = pos; root.rotation.y = rot_y
-	var tex := sign_tex(text, bg, fg, size.x / maxf(size.y, 0.01))
 	var m := StandardMaterial3D.new()
-	m.albedo_texture = tex
-	m.roughness = 0.55
+	m.albedo_texture = plate_tex(bg, fg, size.x / maxf(size.y, 0.01))
+	m.roughness = 0.45
 	if glow > 0.0:
-		m.emission_enabled = true; m.emission_texture = tex; m.emission_energy_multiplier = glow
+		m.emission_enabled = true; m.emission = bg; m.emission_energy_multiplier = glow * 0.4
+	var stars := size.x / maxf(size.y, 0.01) > 2.2
 	for f in ([1.0, -1.0] if back else [1.0]):
+		var face := Node3D.new(); root.add_child(face)
+		face.position = Vector3(0, 0, 0.012 * f)
+		if f < 0.0: face.rotation.y = PI
 		var q := MeshInstance3D.new()
 		var qm := QuadMesh.new(); qm.size = size
 		q.mesh = qm; q.material_override = m
 		q.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		root.add_child(q)
-		q.position = Vector3(0, 0, 0.012 * f)
-		if f < 0.0: q.rotation.y = PI
+		face.add_child(q)
+		var l := Label3D.new()
+		l.text = text.to_upper(); l.font = font_main; l.font_size = 96
+		l.modulate = fg; l.outline_size = 0
+		l.shaded = true; l.double_sided = false
+		l.position = Vector3(0, 0, 0.006)
+		face.add_child(l)
+		var tw := size.x - (size.y * 1.9 if stars else size.y * 0.4)
+		fit_label(l, tw, size.y * 0.62)
+		if stars:
+			for sx in [-1.0, 1.0]:
+				var st := Label3D.new(); st.text = "★"; st.font = _sym_font; st.font_size = 96
+				st.modulate = fg; st.outline_size = 0; st.shaded = true; st.double_sided = false
+				st.pixel_size = size.y * 0.3 / 96.0
+				st.position = Vector3(sx * (size.x * 0.5 - size.y * 0.42), 0, 0.006)
+				face.add_child(st)
 	return root
 
 # a cloth flag that really waves (shaders/flag.gdshader): its pole edge is at `pos`, it flies towards +Z

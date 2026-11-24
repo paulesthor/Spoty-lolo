@@ -1,0 +1,3 @@
+Prop catalogue — all CC0 1.0 (public domain), via the series-ai/jam-ready-assets mirror:
+k_* = Kenney (kenney.nl), kk_* = Kay Lousberg / KayKit (kaylousberg.com), q_* = Quaternius (quaternius.com),
+tiny_treats = Isa Lousberg (isalousberg.com). Large textures downscaled to 1024 px.

@@ -630,7 +630,7 @@ func _setup_map_objects():
 
 # lid swings open and coins burst out; runs while the game is paused on the reward choice
 func _chest_open_fx(n: Node3D):
-	var lid: Node3D = n.get_node_or_null("lid")
+	var lid: Node3D = n.find_child("lid", true, false)
 	var tw := create_tween().set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
 	if lid: tw.tween_property(lid, "rotation:x", -1.9, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	for i in 8:
@@ -654,18 +654,10 @@ func _make_chest(p: Vector3, free: bool, rarity_bonus := 0):
 	n.global_position = p
 	n.rotation.y = rng.randf() * TAU
 	var body_col := Color(0.95, 0.68, 0.15) if rarity_bonus == 0 else Color(0.75, 0.4, 1.0)
-	var wood := U.solid(Color(0.42, 0.25, 0.12), 0.0, 0.8)
-	U.box(n, Vector3(1.2, 0.62, 0.8), Vector3(0, 0.31, 0), wood)
-	for bx in [-0.5, 0.5]:
-		U.box(n, Vector3(0.1, 0.64, 0.84), Vector3(bx, 0.32, 0), U.solid(body_col, 0.0, 0.4, 0.6))
-	var lid := Node3D.new(); lid.name = "lid"; n.add_child(lid); lid.position = Vector3(0, 0.62, -0.4)
-	U.box(lid, Vector3(1.22, 0.26, 0.82), Vector3(0, 0.13, 0.4), wood)
-	for bx in [-0.5, 0.5]:
-		U.box(lid, Vector3(0.1, 0.28, 0.86), Vector3(bx, 0.13, 0.4), U.solid(body_col, 0.0, 0.4, 0.6))
-	U.box(lid, Vector3(0.18, 0.22, 0.06), Vector3(0, 0.05, 0.83), U.solid(Color(1, 0.85, 0.3), 0.5, 0.3, 1.0))
-	var st := Label3D.new(); st.text = "★"; st.font = load("res://fonts/Symbols.ttf"); st.font_size = 96; st.pixel_size = 0.004
-	st.modulate = Color(0.85, 0.1, 0.1); st.outline_size = 0; st.position = Vector3(0, 0.3, 0.41)
-	n.add_child(st)
+	# KayKit chest (CC0): the gold one for rare chests; its lid node opens (see _chest_open_fx)
+	var cm := U.model_local(n, U.CAT + "kk_dungeon/" + ("chest.gltf" if rarity_bonus == 0 else "chest_gold.gltf"), 1.25)
+	var ln: Node3D = cm.find_child("*_lid", true, false)
+	if ln: ln.name = "lid"
 	_beam(n, Color(1, 0.8, 0.3) if rarity_bonus == 0 else Color(0.8, 0.5, 1.0), 14.0)
 	var lab := U.label(n, "GRATUIT" if free else "", Vector3(0, 1.6, 0), 48, Color(1, 0.88, 0.4), Color(0, 0, 0, 1))
 	chests.append({"n": n, "free": free, "label": lab, "bonus": rarity_bonus, "id": _chest_ids})
@@ -690,7 +682,9 @@ func _make_shrine(kind: String, p: Vector3):
 	var col: Color = info[1]
 	match kind:
 		"statue":
-			U.box(n, Vector3(3, 2.2, 3), Vector3(0, 1.1, 0), U.solid(Color(0.55, 0.52, 0.5)))
+			U.box(n, Vector3(3, 2.2, 3), Vector3(0, 1.1, 0), U.pbr("Marble012", 0.35, Color(0.8, 0.78, 0.74), 0.4))
+			U.box(n, Vector3(3.3, 0.25, 3.3), Vector3(0, 2.25, 0), U.pbr("Marble012", 0.35, Color(0.7, 0.68, 0.64), 0.4))
+			U.box(n, Vector3(3.4, 0.3, 3.4), Vector3(0, 0.15, 0), U.pbr("Marble012", 0.35, Color(0.7, 0.68, 0.64), 0.4))
 			var holder := Node3D.new(); n.add_child(holder); holder.position = Vector3(0, 2.2, 0)
 			var st := Chars.build_hero(holder, char_id, 0)
 			st.position = Vector3.ZERO      # build_hero places at the world origin; re-centre on the plinth
@@ -700,40 +694,45 @@ func _make_shrine(kind: String, p: Vector3):
 			if ap and ap.has_animation("Cheer"):
 				ap.play("Cheer"); ap.seek(0.55, true); ap.pause()
 			for m in st.find_children("*", "MeshInstance3D", true, false):
-				(m as MeshInstance3D).material_override = U.solid(Color(0.75, 0.12, 0.12), 0.0, 0.45, 0.3)
+				(m as MeshInstance3D).material_override = U.solid(Color(0.72, 0.45, 0.22), 0.0, 0.35, 0.85)      # bronze
 			world.obstacles.append(Rect2(p.x - 1.5, p.z - 1.5, 3, 3))
 			_static_box(p + Vector3(0, 8.0, 0), Vector3(3, 16.0, 3))
 			for fx in [-3.0, 3.0]:
-				U.box(n, Vector3(0.15, 5.0, 0.15), Vector3(fx, 2.5, 0), U.solid(Color(0.3, 0.3, 0.32), 0.0, 0.4, 0.8))
-				U.box(n, Vector3(2.4, 1.5, 0.05), Vector3(fx + 1.25, 4.2, 0), U.solid(Color(0.72, 0.05, 0.1)))
-				var s2 := Label3D.new(); s2.text = "☭"; s2.font = load("res://fonts/Symbols.ttf"); s2.font_size = 128; s2.pixel_size = 0.008
-				s2.modulate = Color(1, 0.8, 0.25); s2.outline_size = 0; s2.position = Vector3(fx + 1.25, 4.2, 0.05); s2.shaded = true
-				n.add_child(s2)
+				U.cyl(n, 0.06, 5.2, Vector3(fx, 2.6, 0), U.solid(Color(0.75, 0.75, 0.78), 0.0, 0.3, 0.9))
+				U.sphere(n, 0.11, Vector3(fx, 5.25, 0), U.solid(Color(1, 0.8, 0.2), 0.4, 0.3, 1.0))
+				var fh := Node3D.new(); n.add_child(fh); fh.position = Vector3(fx, 4.6, 0); fh.rotation.y = PI / 2
+				U.flag_cloth(fh, Vector2(2.4, 1.5), Vector3(0, 0, 0.05), "res://assets/textures/flag_soviet.png", fx)
 		"file":
-			for i in 6:
-				U.cyl(n, 0.08, 1.0, Vector3(-3.5 + i * 1.4, 0.5, 2.5), U.solid(Color(0.75, 0.75, 0.78), 0.0, 0.3, 0.9))
-			U.box(n, Vector3(7.0, 0.08, 0.05), Vector3(0, 0.85, 2.5), U.solid(Color(0.8, 0.1, 0.1)))
-			U.box(n, Vector3(0.14, 1.7, 0.14), Vector3(0, 0.85, -0.12), U.solid(Color(0.3, 0.3, 0.32), 0.0, 0.4, 0.8))
-			U.box(n, Vector3(2.2, 1.6, 0.15), Vector3(0, 2.4, 0), U.solid(Color(0.9, 0.88, 0.8)))
-			U.label(n, "PRENEZ UN\nNUMÉRO", Vector3(0, 2.4, 0.1), 56, Color(0.1, 0.1, 0.1), Color(0, 0, 0, 0), false)
+			# Kenney queue barriers (CC0) snaking in front, a ticket sign on its post
+			for i in 3:
+				var qb := Node3D.new(); n.add_child(qb); qb.position = Vector3(-3.0 + i * 3.0, 0, 2.5); qb.rotation.y = PI / 2
+				U.model_local(qb, U.CAT + "k_coaster_kit/queue-straight.glb", 3.0)
+			U.cyl(n, 0.07, 1.8, Vector3(0, 0.9, -0.12), U.solid(Color(0.3, 0.3, 0.32), 0.0, 0.4, 0.8))
+			U.box(n, Vector3(2.3, 1.15, 0.12), Vector3(0, 2.2, -0.12), U.solid(Color(0.12, 0.12, 0.13), 0.0, 0.4, 0.6))
+			U.sign_panel(n, "PRENEZ UN NUMÉRO", Vector2(2.2, 1.05), Vector3(0, 2.2, -0.05), 0.0, Color(0.93, 0.9, 0.82), Color(0.1, 0.1, 0.12), false)
 		"pari":
-			U.box(n, Vector3(2.6, 2.6, 2.0), Vector3(0, 1.3, 0), U.solid(Color(0.12, 0.35, 0.18)))
-			U.box(n, Vector3(2.2, 1.2, 0.1), Vector3(0, 3.4, 0), U.solid(Color(0.05, 0.05, 0.06)))
-			U.label(n, "▲ +312 %", Vector3(0, 3.4, 0.08), 70, Color(0.3, 1, 0.4), Color(0, 0, 0, 0), false)
+			# a bookmaker's kiosk: a green stall (Kenney) under a quotes board
+			var kio := Node3D.new(); n.add_child(kio); kio.rotation.y = PI
+			U.model_local(kio, U.PROPS + "k_fantasy_town_kit/stall-green.glb", 3.0)
+			U.box(n, Vector3(2.4, 1.3, 0.12), Vector3(0, 3.5, -0.4), U.solid(Color(0.08, 0.08, 0.09), 0.0, 0.4, 0.5))
+			U.sign_panel(n, "▲ +312 %", Vector2(2.2, 1.1), Vector3(0, 3.5, -0.32), 0.0, Color(0.04, 0.1, 0.06), Color(0.3, 1, 0.4), false, 1.0)
+			U.cyl(n, 0.06, 3.0, Vector3(0, 1.5, -0.42), U.solid(Color(0.25, 0.25, 0.27), 0.0, 0.4, 0.8))
 			world.obstacles.append(Rect2(p.x - 1.3, p.z - 1.0, 2.6, 2.0)); _static_box(p + Vector3(0, 8.0, 0), Vector3(2.6, 16.0, 2.0))
 		"goulag":
-			U.box(n, Vector3(4, 2.6, 3), Vector3(0, 1.3, 0), U.solid(Color(0.32, 0.3, 0.3)))
-			U.box(n, Vector3(4.4, 0.3, 3.4), Vector3(0, 2.75, 0), U.solid(Color(0.2, 0.2, 0.22)))
-			for i in 5:
-				U.box(n, Vector3(0.06, 1.6, 0.06), Vector3(-2.4 + i * 1.2, 0.8, 2.2), U.solid(Color(0.4, 0.4, 0.4), 0.0, 0.3, 0.8))
-			U.box(n, Vector3(5.0, 0.04, 0.04), Vector3(0, 1.4, 2.2), U.solid(Color(0.5, 0.5, 0.5), 0.0, 0.3, 0.8))
+			# a camp in miniature: iron cage (Quaternius), iron fence and barbed wire on posts (Kenney)
+			var cg := Node3D.new(); n.add_child(cg)
+			U.model_local(cg, "res://assets/weapons/cage/Cage_Small.gltf", 3.0)
+			for i in 3:
+				var fe := Node3D.new(); n.add_child(fe); fe.position = Vector3(-2.4 + i * 2.4, 0, 2.2)
+				U.model_local(fe, "res://assets/weapons/graveyard/iron_fence.glb", 2.4)
 			world.obstacles.append(Rect2(p.x - 2.0, p.z - 1.5, 4, 3)); _static_box(p + Vector3(0, 8.0, 0), Vector3(4, 16.0, 3))
 		"marche":
-			U.box(n, Vector3(3.2, 1.0, 1.2), Vector3(0, 0.5, 0), U.solid(Color(0.3, 0.2, 0.25)))
-			U.box(n, Vector3(3.6, 0.12, 2.0), Vector3(0, 2.6, 0.2), U.solid(Color(0.35, 0.15, 0.45)))
-			for px in [-1.65, 1.65]:
-				for pz in [-0.6, 1.0]:
-					U.box(n, Vector3(0.1, 2.55, 0.1), Vector3(px, 1.27, pz), U.solid(Color(0.25, 0.25, 0.27), 0.0, 0.4, 0.8))
+			# a market stall (Kenney, CC0) under a purple light, a few crates of contraband
+			var stl := Node3D.new(); n.add_child(stl); stl.rotation.y = PI
+			U.model_local(stl, U.PROPS + "k_fantasy_town_kit/stall.glb", 3.4)
+			for k in 2:
+				var cr := Node3D.new(); n.add_child(cr); cr.position = Vector3(-2.3, 0, -0.4 + k * 0.9); cr.rotation.y = randf()
+				U.model_local(cr, U.PROPS + "kk_resource_bits/Containers_Crate_Medium_Wood.gltf", 0.8)
 			var gm := U.place(n, U.SHOP + "gacha-machine.glb", p + Vector3(2.4, 0, 0), 1.8, 0.0)
 			var lamp := OmniLight3D.new(); lamp.light_color = col; lamp.light_energy = 1.5; lamp.omni_range = 5.0; lamp.position = Vector3(0, 2.2, 0.6)
 			n.add_child(lamp)
@@ -744,7 +743,7 @@ func _make_shrine(kind: String, p: Vector3):
 			U.box(n, Vector3(1.6, 0.6, 0.1), Vector3(0, fa.end.y - p.y + 0.28, fa.end.z - p.z + 0.02), U.solid(Color(0.72, 0.05, 0.1)))
 			world.obstacles.append(Rect2(p.x - 0.8, p.z - 0.6, 1.6, 1.2))
 		"defi":
-			U.box(n, Vector3(2.4, 1.2, 2.4), Vector3(0, 0.6, 0), U.solid(Color(0.3, 0.28, 0.25)))
+			U.box(n, Vector3(2.4, 1.2, 2.4), Vector3(0, 0.6, 0), U.pbr("Marble012", 0.35, Color(0.4, 0.38, 0.36), 0.4))
 			var g := Chars.build_enemy(n, "golden", p + Vector3(0, 1.2, 0), 3.2)
 			Chars.attach(g, ["tophat", "cigar", "monocle"])
 			var ap2 := U.anim_player(g)
