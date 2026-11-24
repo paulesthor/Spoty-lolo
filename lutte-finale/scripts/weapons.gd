@@ -266,7 +266,7 @@ func on_landed(fall_speed: float):
 	slam_cd = 0.6
 	var s := stats("marteau")
 	_shockwave(pl.global_position, s["area"] * 1.15, s["dmg"] * 2.0 * (1.0 + game.mods.get("slam_bonus", 0.0) / 100.0), Color(1.0, 0.75, 0.2), s, owned["marteau"]["evo"])
-	game.pop_word(pl.global_position + Vector3(0, 2.6, 0), ["BONK !", "KRACH !", "BAM !"][randi() % 3], Color(1.0, 0.85, 0.2), 1.1)
+	if false: game.pop_word(pl.global_position + Vector3(0, 2.6, 0), ["BONK !", "KRACH !", "BAM !"][randi() % 3], Color(1.0, 0.85, 0.2), 1.1)
 
 func _shockwave(center: Vector3, area: float, dmg: float, col: Color, s: Dictionary, stun := false):
 	Snd.play("hammer", -4.0, 0.1, 0.12)
@@ -736,7 +736,7 @@ func _toughest(p: Vector3, rad: float, n: int) -> Array:
 
 func _blast(p: Vector3, rad: float, dmg: float, s: Dictionary, col: Color, show := true):
 	Snd.play("explosion" if rad >= 2.4 else "explosion2", -6.0 if rad >= 2.4 else -9.0, 0.12, 0.08)
-	if rad >= 2.5 and randf() < 0.25: game.pop_word(p + Vector3(0, 2.2, 0), ["BOUM !", "PAF !", "VLAN !"][randi() % 3], Color(1.0, 0.55, 0.15), 0.9)
+	if false: game.pop_word(p + Vector3(0, 2.2, 0), ["BOUM !", "PAF !", "VLAN !"][randi() % 3], Color(1.0, 0.55, 0.15), 0.9)
 	for e in game.enemies.in_radius(p, rad):
 		_hit(e, dmg, s, p, 6.0, "", show)
 	VFX.explosion(self, Vector3(p.x, maxf(p.y, 0.2), p.z), rad, col)

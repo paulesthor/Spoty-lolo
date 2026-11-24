@@ -79,7 +79,7 @@ func setup(g):
 	timer_label.add_theme_constant_override("outline_size", 16)
 	zone_label = _label(root, "ZONE 1/3  ·  HYPERMARCHÉ", 22, C_ACC)
 	zone_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_at(zone_label, Control.PRESET_CENTER_TOP, Vector2(-250, 128), Vector2(500, 30))
+	_at(zone_label, Control.PRESET_CENTER_TOP, Vector2(-420, 122), Vector2(840, 56))
 	zone_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
 	zone_label.add_theme_constant_override("outline_size", 8)
 	# HP
@@ -260,6 +260,7 @@ func _threats():
 		if h["t"] in ["shot", "lob", "ball"] and hp.distance_to(pp) < 30.0: pts.append([hp, Color(1, 0.25, 0.2)])
 	for e in game.enemies.alive_list():
 		if (e.elite or e.boss) and e.node.position.distance_to(pp) < 45.0: pts.append([e.node.position + Vector3(0, 1.5, 0), Color(1, 0.8, 0.25)])
+	if game.portal != null: pts.append([game.portal_pos + Vector3(0, 1.0, 0), Color(0.4, 1.0, 0.5)])
 	var used := 0
 	var cx := vs * 0.5
 	for it in pts:
@@ -303,11 +304,17 @@ func _process(d: float):
 	timer_label.text = "%02d:%02d" % [int(t) / 60, int(t) % 60]
 	timer_label.add_theme_color_override("font_color", Color(1, 0.35, 0.3) if game.krach else Color.WHITE)
 	var zt: String = "NIVEAU SPÉCIAL" if Levels.special(game.zone) else ("ZONE %d · SANS FIN" % game.zone) if game.endless else ("ACTE %s · ZONE %d/3" % [["I", "II", "III"][Levels.act(game.zone)], (game.zone - 1) % 3 + 1])
-	if game.door != null: zt = "LA PORTE EST OUVERTE · SUIS LE FAISCEAU ROUGE"
-	elif game.krach: zt = "LE KRACH  ·  FUIS OU MEURS"
-	else: zt += "  ·  " + (game.tpl["name"] as String).to_upper()
-	if game.tier > 1 and game.door == null and not game.krach: zt += "  ·  " + (Meta.TIERS[game.tier - 1]["name"] as String).to_upper()
-	zone_label.text = zt
+	# the objective of the moment, always on screen
+	var obj := ""
+	if game.door != null: obj = "OBJECTIF · LA PORTE EST OUVERTE · SUIS LE FAISCEAU ROUGE"
+	elif game.boss != null and is_instance_valid(game.boss.node) and game.boss.alive: obj = "OBJECTIF · BONKE " + (game.boss.def["name"] as String).to_upper() + ("  ·  LE KRACH EST LÀ" if game.krach else "")
+	elif game.krach: obj = "LE KRACH · LA HORDE FINALE · SURVIS"
+	elif game.portal != null: obj = "OBJECTIF · LE PORTAIL DU BOSS EST OUVERT (FAISCEAU DORÉ) · IL VIENDRA SEUL À 10:00"
+	elif game.tpl.has("boss_time"): obj = "OBJECTIF · TIENS BON · IL ARRIVE À %02d:%02d" % [int(game.tpl["boss_time"]) / 60, int(game.tpl["boss_time"]) % 60]
+	else:
+		var left: int = maxi(0, int(game.PORTAL_TIME - t))
+		obj = "OBJECTIF · EXPLORE · COFFRES ET AUTELS · PORTAIL DU BOSS DANS %d:%02d" % [left / 60, left % 60]
+	zone_label.text = zt + "  ·  " + (game.tpl["name"] as String).to_upper() + "\n" + obj
 	hp_fill.size = Vector2(244.0 * clampf(p.hp / p.max_hp, 0.0, 1.0), 24)
 	hp_label.text = "%d / %d" % [mini(ceili(p.hp), ceili(p.max_hp)), ceili(p.max_hp)]
 	rub_label.text = "%d RBL" % game.rubles
@@ -347,6 +354,10 @@ func _process(d: float):
 		boss_name.text = Levels.edef(boss.kind)["name"].to_upper()
 		boss_fill.size = Vector2(836.0 * clampf(boss.hp / boss.max_hp, 0.0, 1.0), 16)
 	toast_t -= d
+	_toast_shown += d
+	if not _toast_q.is_empty() and (toast_t <= 0.0 or _toast_shown >= 1.2):
+		var nx: Array = _toast_q.pop_front()
+		_show_toast(nx[0], nx[1])
 	toast_label.modulate.a = clampf(toast_t * 2.0, 0.0, 1.0)
 	hurt_a = maxf(0.0, hurt_a - d * 1.5)
 	blind_a = maxf(0.0, blind_a - d * 0.6)
@@ -368,9 +379,22 @@ func _process(d: float):
 	if choice_root.visible:
 		_choice_input()
 
+# one message at a time: a new one waits for the current one (min. 1.2 s on screen); duplicates are dropped
+var _toast_q: Array = []
+var _toast_shown := 0.0
 func toast(t: String, dur := 2.0):
+	if t == toast_label.text and toast_t > 0.0: return
+	for q in _toast_q:
+		if q[0] == t: return
+	if toast_t > 0.0 and _toast_shown < 1.2:
+		if _toast_q.size() < 3: _toast_q.append([t, dur])
+		return
+	_show_toast(t, dur)
+
+func _show_toast(t: String, dur: float):
 	toast_label.text = t
 	toast_t = dur
+	_toast_shown = 0.0
 
 func prompt(t: String):
 	prompt_label.text = t

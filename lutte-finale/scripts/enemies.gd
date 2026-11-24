@@ -76,6 +76,7 @@ var _nid := 0
 var _snap_n := 0
 var _nest := 0
 var seen_kinds := {}
+var warn_cands: Array = []
 var shot_budget := 4.0     # ranged attacks allowed right now (refills): never a hail from everywhere
 const SHOOTER_AI := ["ranged", "lobber", "fan", "beamer", "roller", "leaper"]       # zone signature enemies already introduced by a toast
 var shells: Array = []     # Paradis Fiscal boss: its nominees (the boss is untouchable while they live)
@@ -131,7 +132,7 @@ func spawn(kind: String, pos: Vector3, hp_mult := 1.0, dmg_mult := 1.0) -> Enemy
 		if kind == "stagiaire" and randf() < 0.15: acc = ["sunglasses"]
 		if not acc.is_empty(): Chars.attach(e.node, acc)
 		if def.get("elite", false) or def.get("boss", false): Chars.outline(e.node, 0.03)
-		var show_tag: bool = def.get("elite", false) or def.get("boss", false) or def.get("invincible", false) or kind in ["coach", "lobbyiste", "drh", "pretenom"]
+		var show_tag: bool = def.get("elite", false) or def.get("boss", false) or def.get("invincible", false) or kind == "pretenom"
 		if show_tag:
 			var col := Color(1, 0.82, 0.3)
 			if def.get("invincible", false): col = Color(0.6, 0.8, 1)
@@ -247,11 +248,7 @@ func _give_affix(e: Enemy, a: String):
 	e.node.add_child(fx)
 	var sc: float = e.node.scale.y
 	U.sprite(fx, "circle_03.png", Vector3(0, 0.05 / sc, 0), 2.4 / sc, Color(info[1].r, info[1].g, info[1].b, 0.8), 2.0, false, Vector3(-PI / 2, 0, 0))
-	var l := U.label(fx, info[0], Vector3(0, (e.def["h"] + 0.35) / sc, 0), 40, info[1], Color(0, 0, 0, 1))
-	l.fixed_size = true
-	l.pixel_size = 0.0006
-	l.visibility_range_end = 19.0     # only near the player: the coloured ring is enough at a distance
-	e.affix_fx = fx
+	e.affix_fx = fx      # the coloured ring says it: no floating word over the crowd
 
 func _process(d: float):
 	if game == null: return
@@ -265,6 +262,7 @@ func _process(d: float):
 	if game.state != "play": return
 	_frame += 1
 	shot_budget = minf(4.0, shot_budget + d * 1.6)
+	warn_cands.clear()
 	var grid := {}
 	const CELL := 1.6
 	var slow_world: float = game.enemy_speed_mult()
@@ -307,7 +305,9 @@ func _process(d: float):
 		e.knock_res = maxf(0.0, e.knock_res - 0.3 * d)
 		e.slow_t = maxf(0.0, e.slow_t - d)
 		e.sig_t -= d
-		if e.ai in SHOOTER_AI: _warn(e, e.t_act < 0.6 and e.t_act > -0.1 and dist < 20.0 and e.stun_t <= 0.0)
+		if e.ai in SHOOTER_AI:
+			if e.t_act < 0.6 and dist < 20.0 and e.stun_t <= 0.0: warn_cands.append([dist, e])
+			else: _warn(e, false)
 		e.vuln_t = maxf(0.0, e.vuln_t - d)
 		var spd: float = e.speed * slow_world * (0.6 if e.slow_t > 0.0 else 1.0)
 		var move := dir
@@ -439,6 +439,10 @@ func _process(d: float):
 						var minr: float = e.r + o.r
 						if dd < minr and dd > 0.0001 and not e.boss:
 							e.node.position += v / dd * (minr - dd) * 0.5 * (0.3 if o.boss else 1.0)
+	# "!" only over the 3 nearest shooters about to fire (and only while shots are available)
+	warn_cands.sort_custom(func(a, b): return a[0] < b[0])
+	for i in warn_cands.size():
+		_warn(warn_cands[i][1], i < mini(3, int(shot_budget)))
 	_update_hazards(d)
 
 # ---------------------------------------------------------------- behaviours
@@ -476,7 +480,7 @@ func _may_shoot(e: Enemy) -> bool:
 			var vs := get_viewport().get_visible_rect().size
 			ok = sp.x > vs.x * 0.04 and sp.x < vs.x * 0.96 and sp.y > vs.y * 0.06 and sp.y < vs.y * 0.94
 	if not ok:
-		e.t_act = 0.55      # retry soon, with the "!" warning shown again
+		e.t_act = randf_range(0.55, 1.8)      # retry a little later (desynchronised), the "!" shows again before it
 		return false
 	shot_budget -= 1.0
 	return true
@@ -872,8 +876,8 @@ func _shoot(from: Vector3, dir: Vector3, dmg: float, effect: String):
 	var n := Node3D.new()
 	add_child(n)
 	n.global_position = from
-	U.sphere(n, 0.2, Vector3.ZERO, U.solid(Color(1.0, 0.95, 0.7), 4.0))
-	U.sprite(n, "flare_01.png" if ResourceLoader.exists("res://fx/flare_01.png") else "light_01.png", Vector3.ZERO, 0.9, Color(1, 0.9, 0.6), 2.0)
+	U.danger(U.sphere(n, 0.22, Vector3.ZERO, U.solid(Color(1.0, 0.2, 0.15), 4.0)))
+	U.danger(U.sprite(n, "flare_01.png" if ResourceLoader.exists("res://fx/flare_01.png") else "light_01.png", Vector3.ZERO, 1.0, Color(1, 0.3, 0.2), 2.0))
 	hazards.append({"t": "shot", "n": n, "v": dir * 11.0, "life": 2.5, "dmg": dmg, "eff": effect})
 
 func _lob(from: Vector3, to: Vector3, dmg: float, eff := "debt"):
@@ -968,6 +972,7 @@ func _meteor(p: Vector3, r: float, delay: float, dmg: float, cause: String):
 func _telegraph_circle(p: Vector3, r: float, dur: float) -> Node3D:
 	_send("_telegraph_circle", [p, r, dur])
 	var s := U.sprite(self, "circle_03.png", Vector3(p.x, 0.06, p.z), r * 2.0, Color(1, 0.15, 0.1, 0.8), 2.0, false, Vector3(-PI / 2, 0, 0))
+	U.danger(s)
 	var tw := s.create_tween()
 	tw.tween_property(s, "scale", Vector3.ONE * 1.05, dur)
 	tw.tween_callback(s.queue_free)
@@ -979,6 +984,7 @@ func _telegraph_line(p: Vector3, dir: Vector3, length: float, dur: float):
 	var q := PlaneMesh.new(); q.size = Vector2(1.2, length)
 	m.mesh = q
 	m.material_override = U.solid(Color(1, 0.15, 0.1, 0.35), 1.5)
+	U.danger(m)
 	m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(m)
 	m.global_position = Vector3(p.x, 0.07, p.z) + dir * length * 0.5
@@ -1117,7 +1123,7 @@ func damage(e: Enemy, amount: float, knock_from := Vector3.INF, knock_force := 0
 	if e.shielded: amt *= 0.6
 	if e.boss and _shells_alive() > 0: amt *= 0.12      # Paradis Fiscal: hidden behind its nominees
 	e.hp -= amt
-	if crit and amt > 150.0 and randf() < 0.15: game.pop_word(e.node.position + Vector3(0, e.def["h"] + 0.9, 0), ["PAF !", "CRAC !", "POW !"][randi() % 3], Color(1, 0.3, 0.2), 0.8)
+	if false and crit: game.pop_word(e.node.position + Vector3(0, e.def["h"] + 0.9, 0), ["PAF !", "CRAC !", "POW !"][randi() % 3], Color(1, 0.3, 0.2), 0.8)
 	if show_num or crit:
 		game.damage_number(e.node.position + Vector3(0, e.def["h"] + 0.3, 0), amt, crit, e.armor > 0.0 and not ignore_armor and amt < amount * 0.6)
 	if knock_from != Vector3.INF and not e.boss and e.ai != "slammer":

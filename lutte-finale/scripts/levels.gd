@@ -16,6 +16,7 @@ class_name Levels
 
 const HYPERMARCHE := {
 	"id": "hypermarche",
+	"commons": ["stagiaire", "cadre", "influenceur", "crypto", "actionnaire"],      # the only common capitalists of this zone (+ its signature enemy)
 	"music": "battle",
 	"name": "L'Hypermarché",
 	"boss": "boss",
@@ -43,6 +44,7 @@ const HYPERMARCHE := {
 
 const QUARTIER := {
 	"id": "quartier",
+	"commons": ["stagiaire", "cadre", "avocat", "drh", "actionnaire"],      # the only common capitalists of this zone (+ its signature enemy)
 	"music": "folk",
 	"name": "Le Quartier d'Affaires",
 	"boss": "boss2",
@@ -70,6 +72,7 @@ const QUARTIER := {
 
 const BOURSE := {
 	"id": "bourse",
+	"commons": ["stagiaire", "trader", "banquier", "lobbyiste", "actionnaire"],      # the only common capitalists of this zone (+ its signature enemy)
 	"music": "techno_bourse",
 	"name": "La Bourse",
 	"boss": "boss3",
@@ -100,6 +103,7 @@ const BOURSE := {
 # ---------------------------------------------------------------- act II
 const PARADIS := {
 	"id": "paradis",
+	"commons": ["stagiaire", "cadre", "banquier", "influenceur", "avocat"],      # the only common capitalists of this zone (+ its signature enemy)
 	"music": "lounge",
 	"name": "Le Paradis Fiscal",
 	"boss": "boss2",
@@ -141,6 +145,7 @@ const PARADIS := {
 
 const STARTUP := {
 	"id": "startup",
+	"commons": ["stagiaire", "crypto", "coach", "drh", "trader"],      # the only common capitalists of this zone (+ its signature enemy)
 	"music": "pop",
 	"name": "La Start-up Nation",
 	"boss": "boss",
@@ -179,6 +184,7 @@ const STARTUP := {
 
 const DATACENTER := {
 	"id": "datacenter",
+	"commons": ["stagiaire", "cadre", "huissier", "crypto", "lobbyiste"],      # the only common capitalists of this zone (+ its signature enemy)
 	"music": "techno_data",
 	"name": "Le Centre de Données",
 	"boss": "boss3",
@@ -221,6 +227,7 @@ const DATACENTER := {
 # ---------------------------------------------------------------- act III
 const SKI := {
 	"id": "ski",
+	"commons": ["stagiaire", "cadre", "banquier", "avocat", "actionnaire"],      # the only common capitalists of this zone (+ its signature enemy)
 	"music": "valse",
 	"name": "La Station du 1 %",
 	"boss": "boss",
@@ -262,6 +269,7 @@ const SKI := {
 
 const FUSEE := {
 	"id": "fusee",
+	"commons": ["stagiaire", "trader", "crypto", "huissier", "actionnaire"],      # the only common capitalists of this zone (+ its signature enemy)
 	"music": "cosmos",
 	"name": "La Fusée du Milliardaire",
 	"boss": "boss2",
@@ -301,6 +309,7 @@ const FUSEE := {
 
 const GRAND_SOIR := {
 	"id": "grandsoir",
+	"commons": ["stagiaire", "cadre", "trader", "avocat", "lobbyiste", "actionnaire"],      # the only common capitalists of this zone (+ its signature enemy)
 	"music": "hymne",
 	"name": "Le Grand Soir",
 	"boss": "boss3",
@@ -336,6 +345,7 @@ const GRAND_SOIR := {
 const SPECIAL := 10
 const BERLIN := {
 	"id": "berlin",
+	"commons": ["stagiaire", "cadre", "huissier", "drh", "actionnaire"],      # the only common capitalists of this zone (+ its signature enemy)
 	"special": true,
 	"music": "battle",
 	"name": "Berlin 1945",

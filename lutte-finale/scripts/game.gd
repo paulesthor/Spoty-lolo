@@ -755,6 +755,8 @@ func _make_shrine(kind: String, p: Vector3):
 			world.obstacles.append(Rect2(p.x - 1.2, p.z - 1.2, 2.4, 2.4)); _static_box(p + Vector3(0, 8.0, 0), Vector3(2.4, 16.0, 2.4))
 	_beam(n, col)
 	var lab := U.label(n, info[0], Vector3(0, 6.0 if kind == "statue" else 4.2, 0), 60, col, Color(0.05, 0.03, 0, 1))
+	lab.visibility_range_end = 18.0; lab.visibility_range_end_margin = 4.0      # only when you are close: the light beam marks it from afar
+	lab.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
 	if kind == "statue": lab.position.y = 7.0
 	var ring = null
 	if kind in ["statue", "file"]:
@@ -988,6 +990,7 @@ func mults() -> Array:
 	var hp := (1.0 + 0.36 * tm + 0.12 * tm * tm + 0.014 * tm * tm * tm) * (1.0 + 0.2 * bets) * (1.0 + 0.25 * dirl("productivisme")) * float(t["hp"])
 	hp *= 1.0 + 0.45 * (players.size() - 1)       # more comrades, tougher capitalists
 	hp *= HORDE_HP
+	if krach: hp *= 1.0 + 0.3 * maxf(0.0, time - ZONE_TIME) / 60.0      # the final horde: a wall for every build
 	return [hp, (1.0 + 0.1 * tm) * (1.0 + 0.25 * dirl("sans_pitie")) * float(t["dmg"])]
 
 func enemy_speed_mult() -> float:
@@ -1014,8 +1017,10 @@ func _pick_kind() -> String:
 	var tm := dtime() / 60.0
 	var total := 0.0
 	var pool := []
+	var commons: Array = tpl.get("commons", [])
 	for row in Data.SPAWN_TABLE + (tpl.get("roster", []) as Array):
 		if dtime() < row[1]: continue
+		if not commons.is_empty() and row in Data.SPAWN_TABLE and not row[0] in commons: continue
 		var w: float = row[2] + row[3] * maxf(0.0, tm - row[1] / 60.0)
 		pool.append([row[0], w]); total += w
 	var r := rng.randf() * total
@@ -1064,15 +1069,14 @@ func _director(d: float):
 		elite_times.pop_front()
 		enemies.spawn("golden", spawn_point(18.0, 22.0), m[0] * (1.05 if dirl("opa") > 0 else 0.7), m[1])
 		_toast_all("UN GOLDEN BOY APPROCHE · IL TRANSPORTE UN COFFRE", 2.5)
-	if not boss_spawned and time >= float(tpl.get("boss_time", BOSS_TIME)):
-		boss_spawned = true
-		var bk: String = tpl["boss"]
-		Snd.music("boss2" if Levels.act(zone) >= 1 else "boss", 2.0); Snd.play("explosion", 0.0, 0.0, 1.0, 0.6)
-		var zl := (1.0 + 1.2 * floorf((zone - 1) / 3.0)) if endless else (1.0 + 0.45 * Levels.act(zone))     # later acts / endless loops: tougher bosses
-		boss = enemies.spawn(bk, spawn_point(20.0, 24.0), (1.0 + 0.2 * bets) * zl * float(Meta.TIERS[tier - 1]["hp"]) * (1.0 + 0.6 * (players.size() - 1)), float(Meta.TIERS[tier - 1]["dmg"]))
-		_toast_all("%s ARRIVE" % Levels.edef(bk)["name"].to_upper(), 3.0)
-		if test_killboss: get_tree().create_timer(3.0, false).timeout.connect(func(): if boss.alive: enemies.kill(boss))
-		shake(0.4)
+	# the boss portal opens at 05:00: the comrades call the boss when they feel ready (Megabonk-style);
+	# at 10:00 it comes anyway, with the Krach. The special level keeps its fixed time.
+	if not boss_spawned and portal == null and not tpl.has("boss_time") and time >= PORTAL_TIME:
+		_open_portal(world.free_spot(30.0, 3.0))
+	if not boss_spawned and time >= float(tpl.get("boss_time", ZONE_TIME)):
+		_spawn_boss()      # it comes to you
+	if bot and portal != null and not boss_spawned and time > PORTAL_TIME + 90.0:
+		_spawn_boss()      # test bots don't walk to the portal: they call the boss after a while
 	if not krach and time >= (420.0 if dirl("surveillance") > 0 else ZONE_TIME):
 		krach = true
 		enemies.spawn("fisc", spawn_point(24.0, 28.0))
@@ -1132,7 +1136,7 @@ func on_enemy_killed(e):
 	if e.last_w != "": kills_by_weapon[e.last_w] = int(kills_by_weapon.get(e.last_w, 0)) + 1
 	if e.elite:
 		elites_killed += 1
-		stamp(e.node.position + Vector3(0, 3.0, 0), ["LIQUIDÉ !", "NATIONALISÉ !", "REDISTRIBUÉ !"][randi() % 3])
+		pass
 	if killer.char_id == "barbudo" and killer.ult_t > 0.0 and not e.boss:
 		var bp: Vector3 = e.node.position
 		killer.weapons._blast(bp, 2.6, 30.0 + 6.0 * level, {"crit": 0.1, "id": ""}, Color(1, 0.4, 0.15), false)
@@ -1356,6 +1360,15 @@ func _update_interactions(d: float):
 		elif p.remote: a = p.net_in.get("act", false); p.net_in["act"] = false
 		elif is_local(p): a = Input.is_action_just_pressed("interact")
 		acts[p] = a
+	# the boss portal: whoever stands in it may call the boss
+	if portal != null and not boss_spawned and not net_client:
+		for p in players:
+			if p.downed: continue
+			if Vector2(p.global_position.x - portal_pos.x, p.global_position.z - portal_pos.z).length() < 3.6:
+				if p.prompt == "": p.prompt = "F / X : APPELER LE BOSS  ·  (il viendra seul à 10:00)"
+				if acts[p] and (not p.bot or time > PORTAL_TIME + 60.0):
+					_spawn_boss(portal_pos)
+					break
 	# chests: whoever stands next to one can open it with the collective's roubles
 	for c in chests:
 		if not c["free"]: c["label"].text = "%d RBL" % chest_price()
@@ -1985,6 +1998,50 @@ func _try_ultimate(p = null):
 			tw.tween_callback(cap.queue_free)
 	shake(0.3)
 
+# ---------------------------------------------------------------- boss portal
+const PORTAL_TIME := 300.0
+var portal: Node3D = null
+var portal_pos := Vector3.INF
+func _open_portal(p: Vector3):
+	if net_host: Net.event_all("portal", [p])
+	print("[game] PORTAL t=%s at %s" % [_fmt(time), p])
+	portal_pos = p
+	portal = Node3D.new(); add_child(portal); portal.global_position = p
+	var gold := Color(1.0, 0.75, 0.2)
+	var ring := U.sprite(portal, "circle_03.png", Vector3(0, 0.08, 0), 7.0, Color(gold.r, gold.g, gold.b, 0.9), 2.5, false, Vector3(-PI / 2, 0, 0))
+	var tw := ring.create_tween().set_loops()
+	tw.tween_property(ring, "scale", Vector3.ONE * 1.08, 0.6); tw.tween_property(ring, "scale", Vector3.ONE, 0.6)
+	_beam(portal, gold, 60.0)
+	for k in 2:
+		var fh := Node3D.new(); portal.add_child(fh); fh.position = Vector3(-2.6 + k * 5.2, 0, 0)
+		U.cyl(fh, 0.06, 4.6, Vector3(0, 2.3, 0), U.solid(Color(0.8, 0.8, 0.82), 0.0, 0.3, 0.9))
+		var cl := Node3D.new(); fh.add_child(cl); cl.position = Vector3(0, 4.0, 0); cl.rotation.y = PI / 2
+		U.flag_cloth(cl, Vector2(1.4, 0.9), Vector3(0, 0, 0.04), "res://assets/textures/flag_soviet.png", float(k))
+	U.sign_panel(portal, "APPEL DU BOSS", Vector2(3.6, 0.8), Vector3(0, 3.3, 0), 0.0, Color(0.12, 0.1, 0.08), gold, true, 0.8)
+	VFX.ps(portal, "spark_04.png", {"n": 18, "life": 1.8, "preprocess": 1.8, "size": 0.25, "ramp": "fade", "curve": "flame",
+		"shape": "ring", "r": 3.2, "spread": 10.0, "vel": [1.2, 2.2], "pos": Vector3(0, 0.2, 0)})
+	_toast_all("LE PORTAIL DU BOSS EST OUVERT · FAISCEAU DORÉ · VAS-Y QUAND TU ES PRÊT", 4.0)
+	Snd.play("evolve", -4.0, 0.0, 1.0)
+
+func _close_portal():
+	if portal: portal.queue_free()
+	portal = null
+
+func _spawn_boss(at := Vector3.INF):
+	if boss_spawned: return
+	boss_spawned = true
+	if net_host: Net.event_all("portal-", [])
+	_close_portal()
+	var bk: String = tpl["boss"]
+	Snd.music("boss2" if Levels.act(zone) >= 1 else "boss", 2.0); Snd.play("explosion", 0.0, 0.0, 1.0, 0.6)
+	var zl := (1.0 + 1.2 * floorf((zone - 1) / 3.0)) if endless else (1.0 + 0.45 * Levels.act(zone))     # later acts / endless loops: tougher bosses
+	var sp: Vector3 = world.resolve(at + Vector3(0, 0, 6.0), 2.0) if at != Vector3.INF else spawn_point(20.0, 24.0)
+	boss = enemies.spawn(bk, sp, (1.0 + 0.2 * bets) * zl * float(Meta.TIERS[tier - 1]["hp"]) * (1.0 + 0.6 * (players.size() - 1)), float(Meta.TIERS[tier - 1]["dmg"]))
+	_toast_all("%s ARRIVE" % Levels.edef(bk)["name"].to_upper(), 3.0)
+	print("[game] BOSS SPAWN t=%s called=%s" % [_fmt(time), at != Vector3.INF])
+	if test_killboss: get_tree().create_timer(3.0, false).timeout.connect(func(): if boss.alive: enemies.kill(boss))
+	shake(0.4)
+
 # ---------------------------------------------------------------- Berlin 1945: the map follows the fight
 var bunker_mode := false
 func berlin_phase(n: int):
@@ -2550,6 +2607,10 @@ func net_event(ev: String, args: Array):
 						c.visible = false
 		"door":
 			if door == null: _open_door(args[0])
+		"portal":
+			if portal == null: _open_portal(args[0])
+		"portal-":
+			_close_portal()
 		"word": stamp(args[0], args[1])
 		"loadout":
 			var q3 = players[clampi(int(args[0]), 0, players.size() - 1)]

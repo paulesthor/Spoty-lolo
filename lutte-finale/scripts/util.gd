@@ -382,6 +382,21 @@ static func fx_material(tex: String, color: Color, energy := 2.0, billboard := t
 	_mats[key] = m
 	return m
 
+# enemy danger visuals: drawn over everything (players' own effects included) so a threat is never hidden
+static var _danger := {}
+static func danger(mi: GeometryInstance3D) -> GeometryInstance3D:
+	var src = mi.material_override
+	if src is BaseMaterial3D:
+		var key: int = src.get_instance_id()
+		if not _danger.has(key):
+			var d: BaseMaterial3D = src.duplicate()
+			d.no_depth_test = true
+			d.render_priority = 20
+			if d.blend_mode == BaseMaterial3D.BLEND_MODE_ADD: d.blend_mode = BaseMaterial3D.BLEND_MODE_MIX
+			_danger[key] = d
+		mi.material_override = _danger[key]
+	return mi
+
 static func sprite(parent: Node, tex: String, pos: Vector3, size: float, color: Color, energy := 2.0, billboard := true, rot := Vector3.ZERO) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	var q := QuadMesh.new(); q.size = Vector2(size, size)
