@@ -9,6 +9,8 @@ func _ready():
 	var items := [["ours_yeti.gltf", 1.8], ["kalach.glb", 0.4], ["scythe.gltf", 1.2], ["guitar_A.gltf", 1.0], ["star_red.gltf", 0.8], ["pickaxe.gltf", 1.0],
 		["furniture/speaker.glb", 0.8], ["graveyard/iron_fence.glb", 1.2], ["pirate/bottle.glb", 0.6], ["weaponpack/rocket.glb", 0.8], ["cage/Cage_Small.gltf", 1.2]]
 	if "bear" in OS.get_cmdline_user_args(): items = [["kk_bear.gltf", 1.6]]
+	if "set2" in OS.get_cmdline_user_args():
+		items = [["treats/kettle.gltf", 0.8], ["treats/teapot.gltf", 0.8], ["furniture/radio.glb", 0.6], ["furniture/speakerSmall.glb", 0.6], ["td/weapon-ammo-bullet.glb", 0.6], ["proto/Bullet.gltf", 0.6], ["kalach.glb", 0.4], ["pickaxe.gltf", 1.0], ["guitar_A.gltf", 1.0], ["furniture/speaker.glb", 0.8], ["../kaykit_props/hammer_A.gltf", 1.0]]
 	for i in items.size():
 		var n := U.place(self, "res://assets/weapons/" + items[i][0], Vector3(-7.5 + i * 1.5 if items.size() > 1 else 0.0, 0, 0), items[i][1], 0.6)
 		if items[i][0].begins_with("ours"):

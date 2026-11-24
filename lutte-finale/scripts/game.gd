@@ -429,6 +429,7 @@ func dv(id: String, p = null) -> float:
 	var ut: float = p.ult_t if p else 0.0
 	if id == "productivite": v += 1.5 * (level - 1)       # "Expérience du Parti": every level makes you hit harder
 	if id == "productivite" and cid == "barbudo": v += minf(30.0, 3.0 * (elites_killed + bosses_killed.size()))
+	if id == "productivite" and cid == "generalissime" and ut > 0.0: v += 25.0 * (1.0 + mods.get("ult_power", 0.0) / 100.0)
 	if id == "cadence":
 		if cid == "stakhanov": v += minf(20.0, floorf(kills / 150.0) * 2.0)
 		if ut > 0.0 and cid == "stakhanov": v = (1.0 + v / 100.0) * (2.0 * (1.0 + mods.get("ult_power", 0.0) / 100.0)) * 100.0 - 100.0
@@ -1448,6 +1449,7 @@ func _activate(s: Dictionary, p = null):
 
 func _open_chest(bonus: int, p = null):
 	if p == null: p = player
+	if p.char_id == "generalissime": p.heal(p.max_hp * 0.15)      # personality cult: every gift is for him
 	var opts := _roll_options(1, 0, bonus, [], p)
 	if opts.is_empty():
 		p.heal(40); player_toast(p, "COFFRE : +40 PV", 2.0)
@@ -1897,6 +1899,18 @@ func _try_ultimate(p = null):
 				var a := TAU * k / 12.0
 				p.weapons._spawn_fire(pp + Vector3(cos(a), 0, sin(a)) * (4.0 + (k % 2) * 4.0), ms)
 			player_toast(p, "GRAND INCENDIE !", 1.5)
+		"generalissime":
+			# the "Stalin's organ": three salvoes on everything in range, then the parade bonus
+			var ks: Dictionary = p.weapons.stats("katioucha") if p.weapons.owned.has("katioucha") else {"dmg": 40.0 + 6.0 * level, "area": 2.6, "crit": 0.1, "id": "katioucha", "count": 6}
+			ks["dmg"] = ks["dmg"] * 1.6 * pw
+			var tg: Array = enemies.in_radius(pp, 24.0)
+			tg.shuffle()
+			for wv in 3:
+				for k in 10:
+					var tp: Vector3 = (tg[(wv * 10 + k) % tg.size()].node.position if not tg.is_empty() else pp + Vector3(randf_range(-14, 14), 0, randf_range(-14, 14)))
+					p.weapons._rocket(Vector3(tp.x, 0, tp.z), ks, 0.15 * k + 0.7 * wv)
+			p.ult_t = 8.0 * pw
+			player_toast(p, "ORGUE DE STALINE ! LE DÉFILÉ COMMENCE", 2.0)
 		"dmitri":
 			var dur2: float = 4.0 * pw
 			for e in enemies.in_radius(pp, 18.0):

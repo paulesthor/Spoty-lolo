@@ -204,13 +204,13 @@ func _refresh():
 	host_box.visible = Net.is_host
 	if Net.is_host:
 		var z: int = int(Net.settings.get("zone", 1))
-		zone_btn.text = "ZONE DE DÉPART : %d · %s" % [z, (Levels.zone(z)["name"] as String).to_upper()]
+		zone_btn.text = "DÉPART · " + Levels.label(z)
 		tier_btn.text = "DIFFICULTÉ : %s" % (Meta.TIERS[int(Net.settings.get("tier", 1)) - 1]["name"] as String).to_upper()
 		start_btn.disabled = Net.lobby.size() < 1
 		start_btn.text = "EN AVANT, CAMARADES ! (%d / 4)" % Net.lobby.size()
 	elif Net.active and not Net.lobby.is_empty():
 		var z2: int = int(Net.settings.get("zone", 1))
-		addr_lbl.text = "L'hôte prépare la partie · zone %d · %s" % [z2, Levels.zone(z2)["name"]]
+		addr_lbl.text = "L'hôte prépare la partie · " + Levels.label(z2).to_lower()
 
 func _process(d: float):
 	t += d

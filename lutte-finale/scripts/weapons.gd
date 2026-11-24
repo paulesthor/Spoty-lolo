@@ -85,6 +85,7 @@ func stats(id: String) -> Dictionary:
 	s["range"] = base.get("range", 0.0) * (1.0 + m.get("range", 0.0))
 	s["duration"] = base.get("duration", 0.0) * (1.0 + m.get("duration", 0.0)) * (1.0 + game.dv("duree", pl) / 100.0)
 	var extra := int(game.dv("collectivisation", pl)) if id in ["kalach", "faucille", "matriochka", "molotov", "tracteur", "vodka", "t34", "katioucha", "balalaika", "tracts", "cigare"] else 0
+	if id == "katioucha" and pl.char_id == "generalissime": extra += 2
 	if id == "ours": extra = int(game.dv("collectivisation", pl)) / 2 + (1 if pl.char_id == "mikhail" else 0) + (3 if pl.char_id == "mikhail" and pl.ult_t > 0.0 else 0)
 	s["count"] = int(base.get("count", 1)) + int(m.get("count", 0.0)) + extra
 	s["pierce"] = int(base.get("pierce", 0)) + int(m.get("pierce", 0.0)) + int(game.dv("perforation", pl))
@@ -152,7 +153,10 @@ func _process(d: float):
 		timers[id] -= d
 		if timers[id] <= 0.0:
 			var s := stats(id)
-			timers[id] = s["cd"] if _fire(id, s) else 0.2
+			var ok := _fire(id, s)
+			timers[id] = s["cd"] if ok else 0.2
+			if ok and comps.has(id): _comp_kick(id)
+	_update_comps(d)
 	if owned.has("spoutnik"): _update_sats(d)
 	if aura_fx: _update_aura_fx(d)
 	if owned.has("ours"): _update_bears(d)
@@ -266,6 +270,18 @@ func on_landed(fall_speed: float):
 
 func _shockwave(center: Vector3, area: float, dmg: float, col: Color, s: Dictionary, stun := false):
 	Snd.play("hammer", -4.0, 0.1, 0.12)
+	# the hammer itself comes down on the ground
+	var hroot := Node3D.new(); add_child(hroot)
+	hroot.global_position = Vector3(center.x, 0, center.z) + pl.facing * 0.8
+	var hm := _model(hroot, "kaykit_props/hammer_A.gltf", clampf(area * 0.55, 1.6, 3.2), true)
+	hm.position.y = hm.scale.y * 1.2
+	hroot.rotation.y = atan2(pl.facing.x, pl.facing.z)
+	hroot.rotation.x = -1.3
+	var htw := hroot.create_tween()
+	htw.tween_property(hroot, "rotation:x", 0.35, 0.12).set_ease(Tween.EASE_IN)
+	htw.tween_interval(0.18)
+	htw.tween_property(hroot, "scale", Vector3.ONE * 0.01, 0.15)
+	htw.tween_callback(hroot.queue_free)
 	for e in game.enemies.in_radius(center, area):
 		_hit(e, dmg, s, center, 8.0)
 		if stun: game.enemies.stun(e, 0.6)
@@ -732,6 +748,72 @@ func _slash_fx(p: Vector3, rad: float, col: Color):
 	tw.tween_callback(fx.queue_free)
 	VFX.impact(self, Vector3(p.x, 0.8, p.z), col, 8)
 
+# ---------------------------------------------------------------- weapon companions
+# weapons with no projectile of their own show their object floating by the comrade, reacting when they fire:
+# [model, size, offset (right, up, back), override colour or null, mode, yaw fix]
+const COMPS := {
+	"kalach": ["weapons/kalach.glb", 0.95, Vector3(0.8, 1.35, 0.15), null, "aim", 0.0],
+	"hautparleur": ["weapons/furniture/radio.glb", 0.7, Vector3(-0.85, 1.55, 0.2), null, "aim", 0.0],
+	"samovar": ["weapons/treats/teapot.gltf", 0.6, Vector3(-0.55, 2.05, 0.45), Color(0.82, 0.47, 0.2), "float", 0.0],
+	"balalaika": ["weapons/guitar_A.gltf", 1.05, Vector3(0.35, 1.45, 0.55), Color(0.72, 0.16, 0.1), "strum", 0.0],
+}
+var comps := {}       # id -> {n, kick, aim}
+var comp_t := 0.0
+
+func _comp_kick(id: String):
+	var c: Dictionary = comps[id]
+	c["kick"] = 1.0
+	var t = game.enemies.nearest(pl.global_position, 28.0)
+	if t != null:
+		var v: Vector3 = t.node.position - pl.global_position; v.y = 0
+		if v.length() > 0.1: c["aim"] = v.normalized()
+
+func _update_comps(d: float):
+	comp_t += d
+	var fwd: Vector3 = pl.facing if pl.facing.length() > 0.1 else Vector3.FORWARD
+	fwd.y = 0; fwd = fwd.normalized()
+	var right := Vector3(-fwd.z, 0, fwd.x)
+	var i := 0
+	for id in COMPS:
+		i += 1
+		if not owned.has(id):
+			if comps.has(id):
+				(comps[id]["n"] as Node3D).queue_free(); comps.erase(id)
+			continue
+		var def: Array = COMPS[id]
+		if not comps.has(id):
+			var root := Node3D.new(); add_child(root)
+			var m := _model(root, def[0], def[1])
+			m.rotation.y = def[5]
+			if def[3] != null:
+				var mat := U.solid(def[3], 0.0, 0.35, 0.8 if id == "samovar" else 0.0)
+				for mi in m.find_children("*", "MeshInstance3D", true, false): (mi as MeshInstance3D).material_override = mat
+			root.global_position = pl.global_position + Vector3(0, def[2].y, 0)
+			comps[id] = {"n": root, "kick": 0.0, "aim": fwd}
+		var c: Dictionary = comps[id]
+		var n: Node3D = c["n"]
+		c["kick"] = maxf(0.0, float(c["kick"]) - d * 4.0)
+		var k: float = c["kick"]
+		var off: Vector3 = def[2]
+		var want: Vector3 = pl.global_position + right * off.x + Vector3(0, off.y + sin(comp_t * 2.2 + i) * 0.07, 0) + fwd * -off.z
+		var aim: Vector3 = c["aim"]
+		match def[4]:
+			"aim": want -= aim * k * 0.3      # recoil
+			"float": want += Vector3(0, k * 0.25, 0)
+		n.global_position = n.global_position.lerp(want, minf(1.0, 14.0 * d))
+		match def[4]:
+			"aim":
+				n.rotation.y = lerp_angle(n.rotation.y, atan2(-aim.x, -aim.z), minf(1.0, 12.0 * d))
+				n.rotation.x = k * 0.35
+				n.scale = Vector3.ONE * (1.0 + k * (0.25 if id == "hautparleur" else 0.0))
+			"float":
+				n.rotation.y += d * 0.8
+				n.rotation.z = sin(comp_t * 1.5) * 0.08 + k * 0.3
+			"strum":
+				n.rotation.y = lerp_angle(n.rotation.y, atan2(-fwd.x, -fwd.z), minf(1.0, 8.0 * d))
+				n.rotation.z = 0.5 + sin(comp_t * 30.0) * 0.12 * k
+		if id == "kalach" and k > 0.9: VFX.muzzle(self, n.global_position + aim * 0.6)
+
 # ---------------------------------------------------------------- asset models (CC0 packs, see assets/weapons/LICENSE.txt)
 # instance a model centred on `parent`, its largest side scaled to `size`; long_y turns its long axis upright
 func _model(parent: Node3D, file: String, size: float, long_y := false, tint := Color.WHITE) -> Node3D:
@@ -854,6 +936,17 @@ func _vodka(from: Vector3, target, s: Dictionary, chain: int, hit: Array, mult: 
 # ---------------------------------------------------------------- piolet
 func _swing(pp: Vector3, dir: Vector3, s: Dictionary, full: bool):
 	Snd.play("slice", -4.0, 0.1, 0.1, 0.8)
+	# the ice axe sweeps the arc (a full turn when evolved)
+	var piv := Node3D.new(); add_child(piv)
+	piv.global_position = Vector3(pp.x, 1.0, pp.z)
+	var ax := _model(piv, "weapons/pickaxe.gltf", clampf(s["area"] * 0.5, 1.1, 2.0), true)
+	ax.rotation.x = -PI / 2
+	ax.position = Vector3(0, 0, -s["area"] * 0.45)
+	var a0 := atan2(-dir.x, -dir.z)
+	piv.rotation.y = a0 + (PI if full else 1.2)
+	var ptw := piv.create_tween()
+	ptw.tween_property(piv, "rotation:y", a0 - (PI if full else 1.2), 0.2)
+	ptw.tween_callback(piv.queue_free)
 	for e in game.enemies.in_radius(pp, s["area"]):
 		var v: Vector3 = e.node.position - pp
 		v.y = 0
@@ -914,9 +1007,12 @@ func _shell(from: Vector3, to: Vector3, s: Dictionary):
 	var n := Node3D.new()
 	add_child(n)
 	n.global_position = from
-	U.sphere(n, 0.22, Vector3.ZERO, U.solid(Color(0.25, 0.27, 0.2), 0.0, 0.4, 0.7))
+	var sh := _model(n, "weapons/td/weapon-ammo-bullet.glb", 0.6, true, Color(0.55, 0.6, 0.4))
+	sh.rotation.x = -PI / 2
 	VFX.smoke_trail(n, 0.7)
 	VFX.muzzle(self, from, Color(1, 0.7, 0.3))
+	var flat_to := Vector3(to.x, from.y, to.z)
+	if flat_to.distance_to(from) > 0.1: n.look_at(flat_to, Vector3.UP)
 	var dist := from.distance_to(to)
 	projectiles.append({"t": "shell", "n": n, "from": from, "to": Vector3(to.x, 0.3, to.z), "age": 0.0, "dur": maxf(0.25, dist / float(s["speed"])), "s": s})
 

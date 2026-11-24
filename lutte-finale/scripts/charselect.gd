@@ -134,7 +134,7 @@ func _ui():
 
 func _refresh_settings():
 	var z: int = settings["zone"]
-	set_btns["zone"].text = "ZONE : %d · %s" % [z, (Levels.zone(z)["name"] as String).to_upper()]
+	set_btns["zone"].text = Levels.label(z)
 	var tr: int = settings["tier"]
 	set_btns["tier"].text = "DIFFICULTÉ : %s" % (Meta.TIERS[tr - 1]["name"] as String).to_upper()
 	set_btns["endless"].text = "MODE : SANS FIN" if settings["endless"] else "MODE : UN ACTE"

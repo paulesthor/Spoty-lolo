@@ -24,6 +24,7 @@ const HEROES := {
 	"svetlana": {"prop": "torch", "body": "Rogue", "acc": ["bandana", "sunglasses"], "weapon_hand": true},
 	"dmitri": {"prop": "spoon", "body": "Mage", "acc": ["flat_cap", "round_glasses", "big_moustache"], "weapon_hand": true},
 	"valentina": {"prop": "staff_C", "body": "Rogue", "acc": ["round_glasses", "scarf"], "weapon_hand": true},
+	"generalissime": {"prop": "map_rolled", "body": "Knight", "acc": ["marshal_cap", "big_moustache", "pipe"], "weapon_hand": true, "uniform": true},
 }
 
 # hero animation names (KayKit)
@@ -49,6 +50,9 @@ static func build_hero(parent: Node, char_id: String, skin := 0) -> Node3D:
 	var n := U.place(parent, KK + def["body"] + ".glb", Vector3.ZERO, 1.9, 0.0)
 	var sk: Array = Meta.SKINS.get(char_id, [["", Color(1, 1, 1), [], 0]])[clampi(skin, 0, 2)]
 	var tint: Color = sk[1]
+	if def.get("uniform", false):
+		_parade_uniform(n, tint)
+		tint = Color(1, 1, 1)
 	for m in n.find_children("*", "MeshInstance3D", true, false):
 		for w in HIDE:
 			if w in str(m.name): (m as MeshInstance3D).visible = false
@@ -197,6 +201,208 @@ static func merge_skinned(n: Node, key: String) -> bool:
 	for i in range(1, parts.size()): (parts[i] as MeshInstance3D).queue_free()
 	return true
 
+# Le Généralissime: plain-coloured parade uniform over the KayKit body (texture dropped: it was armour),
+# gold shoulder boards, gold buttons, a hero's star on the chest, red stripes down the trousers
+static func _parade_uniform(n: Node3D, col: Color):
+	var cloth := U.solid(col, 0.0, 0.75)
+	for m in n.find_children("*", "MeshInstance3D", true, false):
+		var nm := str(m.name)
+		if (m as MeshInstance3D).visible and ("Body" in nm or "Arm" in nm or "Leg" in nm):
+			(m as MeshInstance3D).material_override = cloth
+	var sk := skeleton(n)
+	if sk == null or sk.find_bone("chest") < 0: return
+	var gold := U.solid(Color(1.0, 0.78, 0.3), 0.4, 0.3, 1.0)
+	var red := U.solid(Color(0.78, 0.06, 0.07), 0.0, 0.7)
+	var fc := _on_bone(sk, "chest")
+	for k in 4:
+		var bt := U.cyl(fc, 0.03, 0.02, Vector3(0, 0.56 + k * 0.12, 0.37), gold)
+		bt.rotation.x = PI / 2
+	var st := Label3D.new(); st.text = "★"; st.font = load("res://fonts/Symbols.ttf"); st.font_size = 96; st.pixel_size = 0.0022
+	st.modulate = Color(1.0, 0.8, 0.25); st.outline_size = 0; st.shaded = false; st.double_sided = false
+	st.position = Vector3(0.18, 0.95, 0.375)
+	fc.add_child(st)
+	U.box(fc, Vector3(0.12, 0.035, 0.01), Vector3(0.18, 1.03, 0.372), red)
+	for s in ["l", "r"]:
+		var up := _rest(sk, "upperarm." + s)
+		var shb := _on_bone(sk, "upperarm." + s)
+		var sx := signf(up.x)
+		U.box(shb, Vector3(0.2, 0.05, 0.24), up + Vector3(-sx * 0.02, 0.12, 0), gold)
+		for f in 4:
+			U.cyl(shb, 0.012, 0.07, up + Vector3(sx * 0.08, 0.07, -0.09 + f * 0.06), gold)
+		var leg := _on_bone(sk, "upperleg." + s)
+		var ul := _rest(sk, "upperleg." + s)
+		var ft := _rest(sk, "foot." + s)
+		U.box(leg, Vector3(0.025, ul.y - ft.y + 0.05, 0.05), Vector3(ul.x + sx * 0.11, (ul.y + ft.y) * 0.5, 0.0), red)
+
+# the spy-film poster pose (exaggerated): wide stance with bent knees, chest a bit forward,
+# right arm forward holding the pistol, left hand gripping the jacket lapel, head turned aside.
+# Applied on top of the animation (call it after the AnimationPlayer has advanced).
+# directions in model space (front = +Z, the character's right = -X)
+const OSS_POSE := {
+	"UpperArm.R": Vector3(-0.38, -0.62, 0.68),
+	"LowerArm.R": Vector3(-0.05, 0.04, 1.0),
+	"UpperArm.L": Vector3(0.58, -0.76, 0.3),
+	"LowerArm.L": Vector3(-0.92, 0.22, 0.3),
+	"UpperLeg.R": Vector3(-0.42, -0.86, 0.22),
+	"LowerLeg.R": Vector3(-0.2, -0.92, -0.32),
+	"UpperLeg.L": Vector3(0.48, -0.84, -0.1),
+	"LowerLeg.L": Vector3(0.24, -0.93, -0.28),
+}
+const OSS_LEGS := ["UpperLeg.R", "LowerLeg.R", "UpperLeg.L", "LowerLeg.L"]
+const OSS_DROP := 0.17         # hips lowered (metres) so the bent legs still reach the ground
+const OSS_LEAN := 0.22         # chest forward
+const OSS_HEAD := -0.55        # head turned towards his right
+const OSS_CURL := 1.5          # finger curl of the left fist
+const OSS_CURL_AXIS := Vector3(0, 0, 1)
+const OSS_WRIST_L := -1.0       # left wrist turned: palm against the chest
+
+static func _aim_bone(sk: Skeleton3D, b: String, dir: Vector3):
+	var i := sk.find_bone(b)
+	if i < 0: return
+	var p := sk.get_bone_parent(i)
+	var pg: Transform3D = sk.get_bone_global_pose(p) if p >= 0 else Transform3D.IDENTITY
+	var cur: Basis = (pg * sk.get_bone_pose(i)).basis
+	var y := cur.y.normalized()
+	var want := dir.normalized()
+	var axis := y.cross(want)
+	if axis.length() < 0.0001: return
+	var rot := Basis(axis.normalized(), y.angle_to(want))
+	var g := (rot * cur).orthonormalized()
+	sk.set_bone_pose_rotation(i, (pg.basis.orthonormalized().inverse() * g).get_rotation_quaternion())
+
+static func oss_pose(n: Node3D, legs := true):
+	var sk := skeleton(n)
+	if sk == null or sk.find_bone("UpperArm.R") < 0: return
+	if legs:
+		var hi := sk.find_bone("Hips")
+		if hi >= 0:
+			var hp := sk.get_bone_parent(hi)
+			var pb: Basis = sk.get_bone_global_pose(hp).basis if hp >= 0 else Basis.IDENTITY
+			sk.set_bone_pose_position(hi, sk.get_bone_rest(hi).origin + pb.orthonormalized().inverse() * Vector3(0, -OSS_DROP, 0))
+	var ti := sk.find_bone("Torso")
+	if ti >= 0: sk.set_bone_pose_rotation(ti, sk.get_bone_rest(ti).basis.get_rotation_quaternion() * Quaternion(Vector3.RIGHT, OSS_LEAN))
+	for b in OSS_POSE:
+		if not legs and b in OSS_LEGS: continue
+		_aim_bone(sk, b, OSS_POSE[b])
+	# left fist closed on the lapel
+	for fg in ["Index", "Middle", "Ring", "Pinky"]:
+		for k in [1, 2, 3]:
+			var fi2 := sk.find_bone("%s%d.L" % [fg, k])
+			if fi2 >= 0: sk.set_bone_pose_rotation(fi2, sk.get_bone_rest(fi2).basis.get_rotation_quaternion() * Quaternion(OSS_CURL_AXIS, OSS_CURL))
+	var wl := sk.find_bone("Wrist.L")
+	if wl >= 0: sk.set_bone_pose_rotation(wl, sk.get_bone_pose_rotation(wl) * Quaternion(Vector3.UP, OSS_WRIST_L))
+	if legs:
+		# feet flat on the ground again, pointing where they pointed at rest
+		for f in ["Foot.L", "Foot.R"]:
+			var fi := sk.find_bone(f)
+			if fi < 0: continue
+			# the feet hang from the rig root, not from the shins: put each one back at the end of its shin
+			var li := sk.find_bone("LowerLeg." + f.substr(5))
+			var shin_len := sk.get_bone_global_rest(li).origin.distance_to(sk.get_bone_global_rest(fi).origin)
+			var lg := sk.get_bone_global_pose(li)
+			var ankle: Vector3 = lg.origin + lg.basis.y.normalized() * shin_len
+			var fp := sk.get_bone_parent(fi)
+			var fpg: Transform3D = sk.get_bone_global_pose(fp) if fp >= 0 else Transform3D.IDENTITY
+			var want := Transform3D(sk.get_bone_global_rest(fi).basis.orthonormalized(), ankle)
+			var loc := fpg.affine_inverse() * want
+			sk.set_bone_pose_position(fi, loc.origin)
+			sk.set_bone_pose_rotation(fi, loc.basis.orthonormalized().get_rotation_quaternion())
+	var hd := sk.find_bone("Head")
+	if hd >= 0: sk.set_bone_pose_rotation(hd, sk.get_bone_rest(hd).basis.get_rotation_quaternion() * Quaternion(Vector3.UP, OSS_HEAD))
+
+# Berlin boss: a caricature built from plain pieces fixed to the bones (they follow the animations):
+# a plain red armband (no symbol), riding boots, belt, cross strap, shoulder boards, a few plain medals
+# a frame that follows `b`, in which children are placed in the model's own rest coordinates (metres, front = +Z)
+static func _on_bone(sk: Skeleton3D, b: String) -> Node3D:
+	var i := sk.find_bone(b)
+	var ba := BoneAttachment3D.new()
+	ba.bone_name = b
+	sk.add_child(ba)
+	var fr := Node3D.new()
+	ba.add_child(fr)
+	if i >= 0: fr.transform = sk.get_bone_global_rest(i).affine_inverse()
+	return fr
+
+static func _rest(sk: Skeleton3D, b: String) -> Vector3:
+	var i := sk.find_bone(b)
+	return sk.get_bone_global_rest(i).origin if i >= 0 else Vector3.ZERO
+
+# a cylinder from a to b (model coordinates)
+static func _cyl_between(parent: Node3D, a: Vector3, b: Vector3, r: float, mat: Material) -> MeshInstance3D:
+	var m := U.cyl(parent, r, a.distance_to(b), (a + b) * 0.5, mat)
+	var up := (b - a).normalized()
+	var side := up.cross(Vector3.FORWARD if absf(up.z) < 0.9 else Vector3.RIGHT).normalized()
+	m.basis = Basis(side, up, side.cross(up)).orthonormalized()
+	return m
+
+const CAP_Y := 0.228
+const CAP_Z := 0.045
+const CAP_R := 0.113
+const MOUSTACHE_Y := 0.07
+const MOUSTACHE_Z := 0.14
+static func dress_dictator(n: Node3D):
+	var sk := skeleton(n)
+	if sk == null or sk.find_bone("UpperArm.L") < 0: return
+	var red := U.solid(Color(0.82, 0.05, 0.06), 0.0, 0.8)
+	var leather := U.solid(Color(0.2, 0.12, 0.06), 0.0, 0.45)
+	var boot := U.solid(Color(0.035, 0.035, 0.04), 0.0, 0.22, 0.1)
+	var brass := U.solid(Color(0.85, 0.7, 0.3), 0.3, 0.3, 0.9)
+	var silver := U.solid(Color(0.75, 0.75, 0.78), 0.3, 0.3, 0.9)
+	var khaki := U.solid(Color(0.47, 0.4, 0.27), 0.0, 0.85)
+	# plain red armband on the left upper arm (no symbol at all)
+	var ua := _rest(sk, "UpperArm.L"); var la := _rest(sk, "LowerArm.L")
+	_cyl_between(_on_bone(sk, "UpperArm.L"), ua.lerp(la, 0.42), ua.lerp(la, 0.72), 0.056, red)
+	# the little square moustache and the plastered fringe, fixed on the head bone
+	var fh := _on_bone(sk, "Head")
+	var hd := _rest(sk, "Head")
+	U.box(fh, Vector3(0.046, 0.024, 0.014), Vector3(hd.x, hd.y + MOUSTACHE_Y, hd.z + MOUSTACHE_Z), U.solid(Color(0.05, 0.04, 0.04), 0.0, 1.0))
+	var fringe := U.box(fh, Vector3(0.085, 0.024, 0.014), Vector3(hd.x + 0.03, hd.y + 0.19, hd.z + 0.145), U.solid(Color(0.06, 0.05, 0.05), 0.0, 0.6))
+	fringe.rotation.z = -0.45
+	# the peaked cap, built on the skull itself: band hugging the head just above the brows,
+	# a flat crown resting on it, the visor coming down on the forehead (no insignia)
+	var cap := Node3D.new(); fh.add_child(cap)
+	cap.position = Vector3(hd.x, hd.y + CAP_Y, hd.z + CAP_Z)
+	cap.rotation.x = -0.12      # worn slightly up at the front
+	var grey := U.solid(Color(0.36, 0.38, 0.34), 0.0, 0.8)
+	var band := U.cyl(cap, CAP_R, 0.075, Vector3.ZERO, grey)
+	band.scale = Vector3(1.0, 1.0, 1.12)
+	U.cyl(cap, CAP_R + 0.003, 0.018, Vector3(0, -0.02, 0), U.solid(Color(0.15, 0.15, 0.15), 0.0, 0.5)).scale = Vector3(1.0, 1.0, 1.12)
+	U.cyl(cap, CAP_R + 0.004, 0.01, Vector3(0, 0.012, 0), U.solid(Color(0.8, 0.8, 0.82), 0.0, 0.3, 1.0)).scale = Vector3(1.0, 1.0, 1.12)
+	var crown := U.cyl(cap, CAP_R * 1.28, 0.03, Vector3(0, 0.05, 0.01), grey)
+	crown.scale = Vector3(1.0, 1.0, 1.1)
+	crown.rotation.x = -0.1
+	var visor := U.box(cap, Vector3(CAP_R * 1.5, 0.01, 0.075), Vector3(0, -0.032, CAP_R * 1.12 + 0.025), U.solid(Color(0.04, 0.04, 0.04), 0.0, 0.2))
+	visor.rotation.x = 0.35
+	# black riding boots up to the knee
+	for s in ["L", "R"]:
+		var kn := _rest(sk, "LowerLeg." + s); var ft := _rest(sk, "Foot." + s)
+		var fr := _on_bone(sk, "LowerLeg." + s)
+		_cyl_between(fr, kn.lerp(ft, 0.08), ft + Vector3(0, 0.03, 0), 0.058, boot)
+		_cyl_between(fr, kn.lerp(ft, 0.06), kn.lerp(ft, 0.14), 0.064, boot)      # boot cuff
+	# belt and buckle at the waist
+	var ab := _rest(sk, "Abdomen")
+	var fb := _on_bone(sk, "Abdomen")
+	var belt := U.cyl(fb, 0.165, 0.055, Vector3(ab.x, ab.y + 0.03, ab.z + 0.02), leather)
+	belt.scale = Vector3(1.0, 1.0, 0.82)
+	U.box(fb, Vector3(0.06, 0.05, 0.02), Vector3(ab.x, ab.y + 0.03, ab.z + 0.16), brass)
+	# cross strap over the right shoulder, front and back
+	var fc := _on_bone(sk, "Chest")
+	var ch := _rest(sk, "Chest")
+	_cyl_between(fc, Vector3(-0.13, ab.y + 0.04, 0.175), Vector3(0.11, ch.y + 0.1, 0.15), 0.017, leather)
+	_cyl_between(fc, Vector3(-0.13, ab.y + 0.04, -0.07), Vector3(0.11, ch.y + 0.1, -0.06), 0.017, leather)
+	# three plain medals on the left breast and a ribbon bar
+	for k in 3:
+		var md := U.cyl(fc, 0.017, 0.008, Vector3(0.05 + k * 0.035, ch.y - 0.06, 0.19), brass if k != 1 else silver)
+		md.rotation.x = PI / 2
+	U.box(fc, Vector3(0.1, 0.018, 0.01), Vector3(0.085, ch.y - 0.025, 0.19), red)
+	# collar tabs, shoulder boards and tunic pockets
+	for sx in [-1.0, 1.0]:
+		U.box(fc, Vector3(0.035, 0.022, 0.012), Vector3(sx * 0.045, ch.y + 0.1, 0.15), khaki)
+		U.box(fc, Vector3(0.075, 0.06, 0.012), Vector3(sx * 0.085, ch.y - 0.13, 0.18), khaki)
+	for s in ["L", "R"]:
+		var up := _rest(sk, "UpperArm." + s)
+		U.box(_on_bone(sk, "UpperArm." + s), Vector3(0.09, 0.018, 0.07), up + Vector3(0, 0.035, 0), khaki)
+
 static func build_enemy(parent: Node, kind: String, pos: Vector3, h: float) -> Node3D:
 	var sk: Dictionary = Levels.skin(kind)
 	var looks: Array = sk.get("looks", ENEMY_LOOKS.get(kind, ENEMY_LOOKS["cadre"]))
@@ -206,6 +412,7 @@ static func build_enemy(parent: Node, kind: String, pos: Vector3, h: float) -> N
 	var cols: Dictionary = ENEMY_COLORS.get(kind, {}).duplicate()
 	cols.merge(sk.get("colors", {}), true)
 	recolor(n, cols)
+	if sk.get("dictator", false): dress_dictator(n)
 	# one mesh, one material, one draw call per capitalist (was 10-14): colours go into the vertices
 	if not merge_skinned(n, path + "|" + str(cols)):
 		rim(n, Color(1.0, 0.85, 0.7), 0.45)
@@ -262,7 +469,7 @@ static func is_kaykit(n: Node) -> bool:
 	return sk != null and sk.find_bone("handslot.r") >= 0
 
 # accessories on the head bone, sized from the visible meshes (works for both rigs)
-const HATS := ["officer_cap", "chapka", "kepi", "beret", "flat_cap", "straw_hat", "hard_hat", "mao_cap", "cap", "tank_helmet", "tophat"]
+const HATS := ["marshal_cap", "officer_cap", "chapka", "kepi", "beret", "flat_cap", "straw_hat", "hard_hat", "mao_cap", "cap", "tank_helmet", "tophat"]
 const HAT_SINK := 0.16
 
 static func _is_knight(n: Node) -> bool:

@@ -30,7 +30,18 @@ func _ready():
 			cam.fov = 30
 			cam.global_position = c + Vector3(-0.3, 2.2, 13.0)
 			cam.look_at(c + Vector3(-0.3, 1.2, 0))
+		if "bossfull" in OS.get_cmdline_user_args():
+			kinds = ["boss3"]
+			cam.fov = 26
+			cam.global_position = c + Vector3(-4.4, 1.6, 5.2)
+			cam.look_at(c + Vector3(-5.5, 0.95, 0))
+		if "armclose" in OS.get_cmdline_user_args():
+			kinds = ["boss3"]
+			cam.fov = 18
+			cam.global_position = c + Vector3(-5.1, 1.5, 3.4)
+			cam.look_at(c + Vector3(-5.5, 1.05, 0))
 		if "face" in OS.get_cmdline_user_args():
+
 			cam.fov = 20
 			cam.global_position = c + Vector3(-5.2, 1.75, 2.6)
 			cam.look_at(c + Vector3(-5.5, 1.45, 0))
@@ -42,6 +53,7 @@ func _ready():
 			if not acc.is_empty(): Chars.attach(e, acc)
 			var eap := U.anim_player(e)
 			if eap: eap.play("Idle"); eap.seek(0.3, true); eap.pause()
+			if kind == "boss3" and "hubert" in OS.get_cmdline_user_args(): hubert_nodes.append(e)
 		return
 	if "close" in OS.get_cmdline_user_args():
 		ids = ids.slice(0, 8) if not "back" in OS.get_cmdline_user_args() else ids.slice(8)
@@ -73,8 +85,10 @@ func _ready():
 		e.rotation.y = 0.2
 		var eap := U.anim_player(e)
 		if eap: eap.play("Idle"); eap.seek(0.3, true); eap.pause()
+var hubert_nodes: Array = []
 func _process(_d):
 	frame += 1
+	for hn in hubert_nodes: Chars.oss_pose(hn)
 	if frame == 30:
 		get_viewport().get_texture().get_image().save_png(out)
 		get_tree().quit()

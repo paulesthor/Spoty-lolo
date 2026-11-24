@@ -4,3 +4,7 @@ Weapon models — all CC0 1.0 (public domain), fetched from the series-ai/jam-re
 - cage/: Quaternius, Fantasy Props (Cage_Small), textures downscaled to 512 px
 - scythe, guitar_A, star_red, pickaxe (.gltf/.bin/.png): Kay Lousberg, KayKit (Fantasy Weapons, Mixed Bag 1, Platformer, RPG Tools) — kaylousberg.com
 - speaker.glb, iron_fence.glb, bottle.glb, rocket.glb: Kenney (Furniture Kit, Graveyard Kit, Pirate Kit, Weapon Pack) — kenney.nl
+- treats/ (kettle, teapot): Isa Lousberg, Tiny Treats Collection 1 — CC0 — isalousberg.com
+- furniture/radio.glb, speakerSmall.glb: Kenney Furniture Kit — CC0
+- td/weapon-ammo-bullet.glb: Kenney Tower Defense Kit — CC0
+- proto/Bullet.gltf: Kay Lousberg, KayKit Prototype Bits — CC0

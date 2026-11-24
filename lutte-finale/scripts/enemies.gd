@@ -55,6 +55,7 @@ class Enemy:
 	var combo := 0
 	var hop_dur := 0.45
 	var bphase := ""
+	var pose := ""            # a pose held on top of the animation ("hubert": pistol up by the cheek)
 
 var game
 var list: Array = []
@@ -198,6 +199,7 @@ func spawn(kind: String, pos: Vector3, hp_mult := 1.0, dmg_mult := 1.0) -> Enemy
 	e.knock_res = 0.0
 	e.sig_t = randf_range(0.5, 2.5)
 	e.dashes = 0; e.combo = 0; e.bphase = ""
+	e.pose = "hubert" if Levels.skin(kind).get("dictator", false) else ""
 	if def.has("hint") and not ghost and not game.warming and not seen_kinds.has(kind):
 		seen_kinds[kind] = true
 		game._toast_all("NOUVEAU · %s : %s" % [def["name"].to_upper(), def["hint"]], 3.5)
@@ -396,6 +398,7 @@ func _process(d: float):
 			if (_frame + e.idx) % step == 0:
 				e.ap.advance(e.anim_acc)
 				e.anim_acc = 0.0
+				if e.pose == "hubert" and e.act_t <= 0.0: Chars.oss_pose(e.node, move.length() < 0.05 or spd < 0.3 or e.phase in ["aim", "wind"])
 		var face: Vector3 = dir if e.phase != "dash" else e.dash_dir
 		if dist > 0.1:
 			e.node.rotation.y = lerp_angle(e.node.rotation.y, atan2(face.x, face.z), 10.0 * d)
@@ -1284,5 +1287,7 @@ func _ghost_process(d: float):
 		var p: Vector3 = e.node.position
 		e.node.position = p.lerp(e.gpos, 1.0 - exp(-14.0 * d)) if p.distance_to(e.gpos) < 6.0 else e.gpos
 		e.node.rotation.y = lerp_angle(e.node.rotation.y, e.grot, 12.0 * d)
-		if e.ap: e.ap.advance(d)
+		if e.ap:
+			e.ap.advance(d)
+			if e.pose == "hubert": Chars.oss_pose(e.node, false)
 	_update_hazards(d)

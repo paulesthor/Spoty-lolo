@@ -26,7 +26,14 @@ func tier_unlocked(t: int) -> bool:
 	return t <= int(data.get("tier_max", 1))
 
 func zone_unlocked(z: int) -> bool:
-	return z <= 1 or z == Levels.SPECIAL or int(data.get("bosses", {}).get(str(z - 1), 0)) > 0
+	if z == Levels.SPECIAL: return berlin_unlocked()
+	return z <= 1 or int(data.get("bosses", {}).get(str(z - 1), 0)) > 0
+
+# the bonus map only exists once the 9 zone bosses have all been beaten
+func berlin_unlocked() -> bool:
+	for z in range(1, Levels.count() + 1):
+		if int(data.get("bosses", {}).get(str(z), 0)) <= 0: return false
+	return true
 
 func endless_unlocked() -> bool:
 	return int(data.get("wins", 0)) > 0
@@ -222,13 +229,26 @@ const CHARACTERS := {
 			["Constellation", [["chance", 6], ["ult_charge", 15], ["propagande", 8], ["ult_charge", 15], ["start_level", 2]]],
 		],
 	},
+	"generalissime": {
+		"name": "Le Généralissime", "model": "", "acc": [], "cost": -1, "weapon": "katioucha",
+		"passive": "Culte de la personnalité : chaque coffre ouvert le soigne de 15 % de ses PV, et ses roquettes de l'Orgue tombent par salves plus fournies (+2).",
+		"ult": "Orgue de Staline", "ult_desc": "Trois salves de roquettes s'abattent sur tout ce qui bouge autour de lui, puis +25 % de dégâts pendant 8 s.",
+		"bio": "Le vainqueur de Berlin, en uniforme blanc de parade, médaille épinglée par lui-même. Il a gagné la guerre, réécrit les manuels d'histoire et fait repeindre les photos. Il fume la pipe pour réfléchir ; le Politburo retient son souffle pour la même raison.",
+		"base": {"productivite": 10, "propagande": 10, "aimant": 15, "vitesse": -8, "dodge": -5},
+		"unlock": {"kind": "zone_boss", "zone": 10, "text": "Bonker le Führer de Pacotille dans son bunker (carte bonus)"},
+		"tree": [
+			["Défilé", [["productivite", 6], ["cadence", 5], ["productivite", 8], ["ult_power", 25], ["crit_dmg", 40]]],
+			["Grand uniforme", [["endurance", 25], ["armure", 1], ["regen", 0.3], ["endurance", 30], ["revive", 1]]],
+			["Culte de la personnalité", [["chance", 6], ["rubles_pct", 15], ["ult_charge", 15], ["chest_discount", 15], ["start_level", 2]]],
+		],
+	},
 }
 
 # skins: bought in the Caserne with medals; tint of the KayKit body + extra accessories
 const SKINS := {
 	"stakhanov": [["Bleu de travail", Color(1, 1, 1), [], 0], ["Héros du Travail (doré)", Color(1.25, 1.05, 0.55), ["medal"], 250], ["Mineur de nuit", Color(0.45, 0.45, 0.55), [], 150]],
 	"ilitch": [["Costume trois-pièces", Color(1, 1, 1), [], 0], ["Momie du Mausolée", Color(1.2, 1.15, 0.95), [], 250], ["Exil en Suisse", Color(0.7, 0.85, 1.1), ["sunglasses"], 150]],
-	"moustache": [["Uniforme", Color(1, 1, 1), [], 0], ["Généralissime blanc", Color(1.4, 1.4, 1.35), ["medal"], 250], ["Camouflage d'hiver", Color(0.85, 0.95, 1.05), [], 150]],
+	"moustache": [["Uniforme", Color(1, 1, 1), [], 0], ["Grand uniforme blanc", Color(1.4, 1.4, 1.35), ["medal"], 250], ["Camouflage d'hiver", Color(0.85, 0.95, 1.05), [], 150]],
 	"babouchka": [["Tablier fleuri", Color(1, 1, 1), [], 0], ["Babouchka de combat", Color(0.6, 0.75, 0.5), ["sunglasses"], 200], ["Reine de la datcha", Color(1.3, 0.8, 0.9), [], 150]],
 	"barbudo": [["Treillis", Color(0.72, 0.85, 0.55), [], 0], ["Guérillero de la plage", Color(1.2, 1.1, 0.75), ["sunglasses"], 200], ["Tenue de parade", Color(0.55, 0.65, 0.45), ["medal"], 250]],
 	"youri": [["Combinaison", Color(1, 1, 1), [], 0], ["Combinaison dorée", Color(1.25, 1.05, 0.55), ["medal"], 250], ["Mission martienne", Color(1.3, 0.6, 0.45), [], 200]],
@@ -240,6 +260,7 @@ const SKINS := {
 	"lev": [["Bleu de chantier", Color(0.7, 0.8, 1.1), [], 0], ["Brique rouge", Color(1.2, 0.6, 0.5), [], 150], ["Héros du béton", Color(1.2, 1.05, 0.6), ["medal"], 250]],
 	"svetlana": [["Tenue noire", Color(0.55, 0.5, 0.55), [], 0], ["Braise", Color(1.3, 0.55, 0.35), [], 200], ["Cendres", Color(1.1, 1.1, 1.1), ["sunglasses"], 150]],
 	"dmitri": [["Chemise brodée", Color(1, 1, 1), [], 0], ["Tournée d'été", Color(1.2, 1.1, 0.75), ["sunglasses"], 150], ["Bal de gala", Color(0.6, 0.55, 0.9), ["medal"], 250]],
+	"generalissime": [["Uniforme blanc de la Victoire", Color(0.95, 0.93, 0.86), [], 0], ["Capote de l'hiver 41", Color(0.42, 0.44, 0.37), [], 200], ["Maréchal de bronze (statue)", Color(0.62, 0.46, 0.28), [], 250]],
 	"valentina": [["Blouse de l'observatoire", Color(1.2, 1.2, 1.25), [], 0], ["Nuit étoilée", Color(0.5, 0.55, 1.0), [], 200], ["Médaille d'or", Color(1.25, 1.05, 0.55), ["medal"], 250]],
 }
 
@@ -609,6 +630,7 @@ func challenge_value(c: String, r := {}) -> float:
 		"level_run": v = float(r["level"])
 		"survive_with": v = float(r["time"]) if wl.has(u["weapon"]) else 0.0
 		"boss_with": v = 1.0 if (wl.has(u["weapon"]) and (r.get("bosses", []) as Array).has(int(u.get("zone", 1)))) else 0.0
+		"zone_boss": v = 1.0 if (r.get("bosses", []) as Array).has(int(u.get("zone", 1))) else 0.0
 		"weapon_evo": v = 1.0 if (r.get("evolved", []) as Array).has(u["weapon"]) else 0.0
 	return maxf(best, v)
 
@@ -617,7 +639,7 @@ func challenge_target(c: String) -> float:
 	match u["kind"]:
 		"weapon_level": return float(u["level"])
 		"survive_with": return float(u["time"])
-		"boss_with", "weapon_evo": return 1.0
+		"boss_with", "weapon_evo", "zone_boss": return 1.0
 	return float(u["n"])
 
 func challenge_text(c: String) -> String:
@@ -627,7 +649,7 @@ func challenge_text(c: String) -> String:
 	var prog := ""
 	match u["kind"]:
 		"survive_with": prog = "record %02d:%02d / %02d:%02d" % [int(v) / 60, int(v) % 60, int(tgt) / 60, int(tgt) % 60]
-		"boss_with", "weapon_evo": prog = "pas encore" if v < 1.0 else "fait"
+		"boss_with", "weapon_evo", "zone_boss": prog = "pas encore" if v < 1.0 else "fait"
 		_: prog = "%d / %d" % [int(v), int(tgt)]
 	return "%s  (%s)" % [u["text"], prog]
 
@@ -641,10 +663,13 @@ func end_run(r: Dictionary) -> Dictionary:
 	var medals := int(base * mult)
 	out["lines"].append("Médailles de la run : %d%s" % [medals, (" (x%.2f)" % mult) if mult != 1.0 else ""])
 	if not data.has("bosses"): data["bosses"] = {}
+	var berlin_before := berlin_unlocked()
 	for z in bosses:
 		var first := int(data["bosses"].get(str(z), 0)) == 0
 		data["bosses"][str(z)] = int(data["bosses"].get(str(z), 0)) + 1
 		if first and z < Levels.count(): out["lines"].append("NOUVELLE ZONE DÉBLOQUÉE : %s (départ possible depuis le Kolkhoze)" % Levels.zone(z + 1)["name"])
+	if not berlin_before and berlin_unlocked():
+		out["lines"].append("CARTE BONUS DÉBLOQUÉE : BERLIN 1945 · LE BUNKER DU PETIT MOUSTACHU (au Kolkhoze)")
 	if r["win"] and tier < 3 and tier >= int(data.get("tier_max", 1)):
 		data["tier_max"] = tier + 1
 		out["lines"].append("NOUVELLE DIFFICULTÉ : %s" % TIERS[tier]["name"])

@@ -290,10 +290,11 @@ func _tab_lancer():
 		if int(ls["zone"]) == z: b.add_theme_stylebox_override("normal", _sb(C_RED, C_GOLD, 2))
 		b.pressed.connect(func(): ls["zone"] = z; _refresh())
 		zr.add_child(b)
-	var sb := _btn("★  NIVEAU SPÉCIAL · BERLIN 1945 · LE BUNKER DU PETIT MOUSTACHU", 17)
-	if int(ls["zone"]) == Levels.SPECIAL: sb.add_theme_stylebox_override("normal", _sb(C_RED, C_GOLD, 2))
-	sb.pressed.connect(func(): ls["zone"] = Levels.SPECIAL; _refresh())
-	zc.add_child(sb)
+	if Meta.berlin_unlocked():
+		var sb := _btn("★  CARTE BONUS · BERLIN 1945 · LE BUNKER DU PETIT MOUSTACHU", 17)
+		if int(ls["zone"]) == Levels.SPECIAL: sb.add_theme_stylebox_override("normal", _sb(C_RED, C_GOLD, 2))
+		sb.pressed.connect(func(): ls["zone"] = Levels.SPECIAL; _refresh())
+		zc.add_child(sb)
 	zc.add_child(_lbl("Partir d'une zone plus loin donne des niveaux de rattrapage." if Meta.zone_unlocked(2) else "Bats le boss d'une zone pour pouvoir partir de la suivante.", 15, C_DIM))
 	var tc := _card(srow, C_PANEL)
 	tc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -317,7 +318,7 @@ func _tab_lancer():
 		b.pressed.connect(func(): ls["endless"] = e; _refresh())
 		mr.add_child(b)
 	mc.add_child(_lbl(("Les zones bouclent sans fin, de plus en plus dures. Record : zone %d." % int(Meta.data.get("endless_best", 0))) if Meta.endless_unlocked() else "Débloqué après ta première victoire.", 15, C_DIM))
-	var go := _btn("LANCER LA RUN  ·  ZONE %d : %s" % [int(ls["zone"]), (Levels.zone(int(ls["zone"]))["name"] as String).to_upper()], 34)
+	var go := _btn("LANCER LA RUN  ·  " + Levels.label(int(ls["zone"])), 34)
 	go.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	go.custom_minimum_size = Vector2(0, 80)
 	go.add_theme_stylebox_override("normal", _sb(C_RED, C_GOLD, 2))

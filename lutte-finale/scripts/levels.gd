@@ -381,7 +381,7 @@ const BERLIN := {
 		"golden": {"name": "Maréchal déchu", "looks": [["Suit", "M"]], "colors": {"Suit": Color(0.32, 0.33, 0.3), "Tie": Color(0.75, 0.6, 0.2)}, "acc": ["officer_cap", "monocle"]},
 		"pretorien": {"name": "Garde du bunker"},
 		"touriste": {"name": "Aviateur sans avion", "looks": [["Soldier", "F"], ["Swat", "M"]], "colors": {"Swat": Color(0.35, 0.4, 0.45)}},
-		"boss3": {"name": "Le Führer de Pacotille", "h": 4.4, "looks": [["Suit", "M"]], "colors": {"Suit": Color(0.55, 0.47, 0.32), "Tie": Color(0.08, 0.08, 0.08)}, "acc": ["officer_cap", "toothbrush"]},
+		"boss3": {"name": "Le Führer de Pacotille", "h": 4.4, "looks": [["Suit", "M"]], "colors": {"Suit": Color(0.55, 0.47, 0.32), "Tie": Color(0.08, 0.08, 0.08), "White": Color(0.62, 0.5, 0.33), "Hair": Color(0.06, 0.05, 0.05), "Eyebrows": Color(0.06, 0.05, 0.05)}, "acc": [], "dictator": true},
 	},
 }
 
@@ -403,6 +403,10 @@ static func next_zone(z: int) -> int:
 		var n: int = order[(i + 1 + k) % order.size()]
 		if Meta.zone_unlocked(n): return n
 	return 1
+
+# "ZONE 4 : LE PARADIS FISCAL" or "CARTE BONUS : BERLIN 1945"
+static func label(n: int) -> String:
+	return ("CARTE BONUS : " if n == SPECIAL else "ZONE %d : " % n) + (zone(n)["name"] as String).to_upper()
 
 static func special(n: int) -> bool:
 	return n == SPECIAL
