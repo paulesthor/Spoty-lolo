@@ -120,6 +120,14 @@ Ce fichier garde en mémoire les décisions prises avec le créateur du jeu, pou
 - [x] La carte suit le combat : un peu en ruine → bombardement → duel final dans le bunker
 - [x] Plafond d'ennemis compté en direct (fin des foules incontrôlées sur les images lentes)
 
+## Lot 14 — carte bonus, Généralissime, finitions (24/11/2026)
+- [x] Berlin devient une carte bonus : visible seulement après les 9 boss de zone
+- [x] Boss de Berlin détaillé (casquette sur le crâne, brassard rouge uni, uniforme, bottes) et pose « affiche d'espion »
+- [x] Nouveau camarade « Le Généralissime », débloqué en battant Berlin (Orgue de Staline)
+- [x] Compagnons d'armes en modèles CC0 (AK, radio, samovar, balalaïka), marteau, piolet, obus
+- [x] Berlin : places en guerre, mobilier renversé, cendres, artillerie, bunker meublé qui tremble
+- [ ] Sans modèle CC0 trouvé : spoutnik, matriochka, cigare, tracts (restent en formes simples)
+
 ## Réponses du créateur (questionnaire du 21/11/2026)
 **À faire maintenant :**
 - Personnages : taille des capitalistes inchangée ; ennemis tués = **disparition immédiate** (pas de cadavre) ; pas d'animation de frappe du héros ; je propose les 5e/6e camarades ; **skins débloquables** oui.

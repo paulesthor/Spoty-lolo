@@ -69,6 +69,8 @@ func _ready():
 		var nm: String = Meta.CHARACTERS[ids[i]]["name"]
 		stage.plates[i].text = nm.to_upper() if _unlocked(ids[i]) else "???"
 	sel = maxi(0, ids.find(Meta.run_char))
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("sel="): sel = maxi(0, ids.find(a.substr(4)))
 	settings = Meta.data.get("launch", {"zone": 1, "tier": 1, "endless": false}).duplicate()
 	if not Meta.zone_unlocked(int(settings["zone"])): settings["zone"] = 1
 	if not Meta.tier_unlocked(int(settings["tier"])): settings["tier"] = 1
