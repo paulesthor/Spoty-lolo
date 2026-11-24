@@ -1978,8 +1978,12 @@ func berlin_phase(n: int):
 		if not net_client:
 			enemies.clear_all(true)
 			if boss and boss.alive:
-				boss.node.position = c + Vector3(0, 0, -inner * 0.3)
-				boss.level = -1; boss.hop_t = 0.0
+				# deferred: the enemy loop that triggered this phase writes the boss position back this frame
+				var bp: Vector3 = c + Vector3(0, 0, -inner * 0.12)
+				(func():
+					if boss and boss.alive:
+						boss.node.position = bp
+						boss.level = -1; boss.hop_t = 0.0).call_deferred()
 		for i in players.size():
 			var q = players[i]
 			if not is_local(q): continue
@@ -2253,6 +2257,7 @@ func _bot_tick(d: float):
 		var kc := {}
 		for e in enemies.alive_list(): kc[e.kind] = int(kc.get(e.kind, 0)) + 1
 		print("[bot] KINDS ", kc)
+		if boss and boss.alive: print("[bot] BOSS pos=%s hp=%d/%d vis=%s bunker=%s player=%s" % [boss.node.position, boss.hp, boss.max_hp, boss.node.visible, world.bunker.get("rect", "-"), player.global_position])
 		get_tree().quit()
 
 func _screenshot():

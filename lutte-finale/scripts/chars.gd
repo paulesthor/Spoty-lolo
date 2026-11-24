@@ -241,8 +241,8 @@ static func _parade_uniform(n: Node3D, col: Color):
 const OSS_POSE := {
 	"UpperArm.R": Vector3(-0.38, -0.62, 0.68),
 	"LowerArm.R": Vector3(-0.05, 0.04, 1.0),
-	"UpperArm.L": Vector3(0.58, -0.76, 0.3),
-	"LowerArm.L": Vector3(-0.92, 0.22, 0.3),
+	"UpperArm.L": Vector3(0.78, -0.5, 0.38),
+	"LowerArm.L": Vector3(-0.7, 0.2, 0.69),
 	"UpperLeg.R": Vector3(-0.42, -0.86, 0.22),
 	"LowerLeg.R": Vector3(-0.2, -0.92, -0.32),
 	"UpperLeg.L": Vector3(0.48, -0.84, -0.1),
@@ -254,7 +254,7 @@ const OSS_LEAN := 0.22         # chest forward
 const OSS_HEAD := -0.55        # head turned towards his right
 const OSS_CURL := 1.5          # finger curl of the left fist
 const OSS_CURL_AXIS := Vector3(0, 0, 1)
-const OSS_WRIST_L := -1.0       # left wrist turned: palm against the chest
+const OSS_WRIST_L := -0.4       # left wrist turned: palm against the chest
 
 static func _aim_bone(sk: Skeleton3D, b: String, dir: Vector3):
 	var i := sk.find_bone(b)

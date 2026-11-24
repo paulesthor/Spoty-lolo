@@ -91,19 +91,24 @@ func _street_furniture():
 			if not _free(p, 1.0) or _near_decor(p, 1.0): continue
 			_claim(p, 1.0)
 			w.small_obstacle(p, 0.5)
+			var war: bool = w.template.get("id", "") == "berlin"
 			match rng.randi() % 5:
-				0, 1:  # bench
+				0, 1:  # bench (in Berlin: charred, knocked over, missing its back)
 					var b := Node3D.new(); add_child(b); b.position = p; b.rotation.y = e[1]
-					U.box(b, Vector3(1.8, 0.1, 0.5), Vector3(0, 0.45, 0), bench)
-					U.box(b, Vector3(1.8, 0.45, 0.08), Vector3(0, 0.75, -0.24), bench)
+					var bm: Material = U.solid(Color(0.12, 0.1, 0.09), 0.0, 1.0) if war else bench
+					U.box(b, Vector3(1.8, 0.1, 0.5), Vector3(0, 0.45, 0), bm)
+					if not war: U.box(b, Vector3(1.8, 0.45, 0.08), Vector3(0, 0.75, -0.24), bench)
 					for sx in [-0.8, 0.8]: U.box(b, Vector3(0.08, 0.45, 0.5), Vector3(sx, 0.22, 0), iron)
-				2:  # bin
-					U.cyl(self, 0.28, 0.85, p + Vector3(0, 0.42, 0), U.solid(Color(0.2, 0.35, 0.25), 0.0, 0.6))
+					if war: b.rotation.z = rng.randf_range(-0.5, 0.5)
+				2:  # bin (in Berlin: a dented oil drum lying on its side)
+					var bn := U.cyl(self, 0.28, 0.85, p + Vector3(0, 0.42 if not war else 0.28, 0), U.solid(Color(0.2, 0.35, 0.25) if not war else Color(0.28, 0.26, 0.22), 0.0, 0.6))
+					if war: bn.rotation = Vector3(PI / 2, rng.randf() * TAU, 0)
 				3:  # hydrant
 					U.cyl(self, 0.16, 0.6, p + Vector3(0, 0.3, 0), red)
 					U.sphere(self, 0.17, p + Vector3(0, 0.62, 0), red)
-				4:  # sign
+				4:  # sign (in Berlin: bent by the blast)
 					var sg := U.place(self, U.CR + ["road-sign-stop", "road-sign-warning", "road-sign-street"][rng.randi() % 3] + ".glb", p, 2.4, e[1])
+					if war: sg.rotation.z = rng.randf_range(0.35, 0.8) * (1.0 if rng.randf() < 0.5 else -1.0)
 	# manholes, puddles and litter on the ground
 	var dark := U.solid(Color(0.18, 0.18, 0.2), 0.0, 0.5, 0.6)
 	var puddle := U.solid(Color(0.3, 0.38, 0.48, 0.55), 0.0, 0.05, 0.3)
@@ -422,6 +427,7 @@ func _process(d: float):
 	_update_pigeons(d)
 	if snow and player:
 		snow.global_position = player.global_position + Vector3(0, 14.0, -4.0)
+	if w.template.get("id", "") == "berlin": _berlin_tick(d)
 	if w.template.get("fireworks", false):
 		fw_t -= d
 		if fw_t <= 0.0:
@@ -759,9 +765,128 @@ func _berlin():
 		piv.set_meta("airborne", true)
 		spinners.append({"n": piv, "sp": rng.randf_range(0.15, 0.3) * (1.0 if i % 2 else -1.0)})
 		w.small_obstacle(p, 0.8)
+	# ash drifting down from the burning city
+	snow = CPUParticles3D.new()
+	var aq := QuadMesh.new(); aq.size = Vector2(0.07, 0.07)
+	var am := StandardMaterial3D.new(); am.albedo_color = Color(0.35, 0.33, 0.31, 0.85); am.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	am.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED; am.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	aq.material = am
+	snow.mesh = aq; snow.amount = 260; snow.lifetime = 8.0; snow.preprocess = 8.0
+	snow.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX; snow.emission_box_extents = Vector3(30, 0.5, 30)
+	snow.direction = Vector3(0.4, -1, 0.1); snow.spread = 25.0; snow.gravity = Vector3(0.4, -0.6, 0)
+	snow.initial_velocity_min = 0.4; snow.initial_velocity_max = 1.0
+	snow.local_coords = false
+	snow.set_meta("airborne", true)
+	add_child(snow)
+	_bunker_dressing()
 	# fires still burning in the rubble
 	_scatter(8, 2.0, func(p: Vector3, i: int):
 		VFX.fire(self, p, rng.randf_range(0.8, 1.4))
 		w.small_obstacle(p, 0.8))
 	# Red Army posters and a field kitchen
 	_billboard("BERLIN · AVRIL 1945 · LE BUNKER EST ENCERCLÉ · IL AVAIT PROMIS MILLE ANS · PLUS JAMAIS ÇA · ", Color(1.0, 0.35, 0.25))
+
+# the bunker: entrance, sandbags and barbed wire outside; the room inside (seen once the roof is gone)
+func _bunker_dressing():
+	if w.bunker.is_empty(): return
+	var c: Vector3 = w.bunker["center"]
+	var inner: float = w.bunker["inner"]
+	var half: float = inner * 0.5 + 1.2
+	var sand := U.solid(Color(0.6, 0.53, 0.4), 0.0, 1.0)
+	var conc := U.solid(Color(0.42, 0.42, 0.4), 0.0, 1.0)
+	var wood := U.solid(Color(0.35, 0.24, 0.14), 0.0, 0.9)
+	var iron := U.solid(Color(0.2, 0.2, 0.21), 0.0, 0.5, 0.6)
+	var paper := U.solid(Color(0.9, 0.87, 0.78), 0.0, 1.0)
+	# entrance: a concrete stairwell block on the south side, a sign, sandbags each side
+	var ent := c + Vector3(0, 0, half + 1.6)
+	U.box(self, Vector3(4.0, 2.6, 3.0), ent + Vector3(0, 1.3, 0), conc)
+	U.box(self, Vector3(2.0, 1.9, 0.1), ent + Vector3(0, 0.95, 1.52), U.solid(Color(0.05, 0.05, 0.05)))
+	var sg := U.label(self, "BUNKER · ENTRÉE INTERDITE · MÊME AUX GÉNÉRAUX", ent + Vector3(0, 2.25, 1.53), 64, Color(0.9, 0.85, 0.75), Color(0, 0, 0, 0), false)
+	U.fit_label(sg, 3.8, 0.4)
+	w.add_obstacle(U.box(self, Vector3(4.0, 2.6, 3.0), ent + Vector3(0, 1.3, 0), conc))
+	for sx in [-1.0, 1.0]:
+		for row in 3:
+			for k in 4:
+				U.box(self, Vector3(0.8, 0.32, 0.45), ent + Vector3(sx * (2.6 + k * 0.0), 0.17 + row * 0.32, 1.2 - k * 0.85), sand).rotation.y = PI / 2
+	# barbed wire on X-shaped posts all around
+	for e in 4:
+		var along := Vector3(1, 0, 0) if e < 2 else Vector3(0, 0, 1)
+		var side := Vector3(0, 0, 1) if e < 2 else Vector3(1, 0, 0)
+		var sg2 := 1.0 if e % 2 == 0 else -1.0
+		var k := -half + 1.0
+		while k < half - 1.0:
+			var p: Vector3 = c + side * sg2 * (half + 3.2) + along * k
+			if p.distance_to(ent) > 4.0:
+				for d in [-0.5, 0.5]:
+					var post := U.box(self, Vector3(0.08, 1.2, 0.08), p + Vector3(0, 0.55, 0), wood)
+					post.rotation = Vector3(0, 0, d) if e >= 2 else Vector3(d, 0, 0)
+				U.box(self, Vector3(0.02, 0.02, 2.6) if e >= 2 else Vector3(2.6, 0.02, 0.02), p + Vector3(0, 0.9, 0) + along * 1.3, iron)
+				U.box(self, Vector3(0.02, 0.02, 2.6) if e >= 2 else Vector3(2.6, 0.02, 0.02), p + Vector3(0, 0.5, 0) + along * 1.3, iron)
+			k += 2.6
+	# inside: chairs around the map table, a field radio, filing cabinets, a camp bed, papers everywhere
+	var tc: Vector3 = c + Vector3(0, 0, -inner * 0.25)
+	for k in 6:
+		var a := TAU * k / 6.0
+		var ch := Node3D.new(); add_child(ch); ch.position = tc + Vector3(cos(a) * 3.3, 0, sin(a) * 1.9); ch.rotation.y = -a - PI / 2
+		U.box(ch, Vector3(0.5, 0.06, 0.5), Vector3(0, 0.48, 0), wood)
+		U.box(ch, Vector3(0.5, 0.55, 0.06), Vector3(0, 0.78, -0.24), wood)
+		for q in 4: U.box(ch, Vector3(0.05, 0.48, 0.05), Vector3((q % 2) * 0.4 - 0.2, 0.24, (q / 2) * 0.4 - 0.2), wood)
+		if k == 2: ch.rotation.z = 1.3      # one knocked over in the tantrum
+	var radio := U.place(self, "res://assets/weapons/furniture/radio.glb", tc + Vector3(2.0, 0.9, 0.6), 0.4, 0.4)
+	for k in 3:
+		U.box(self, Vector3(0.9, 1.6, 0.6), c + Vector3(-inner * 0.42, 0.8, -inner * 0.3 + k * 1.0), U.solid(Color(0.3, 0.33, 0.28), 0.0, 0.5, 0.4))
+	var bed := Node3D.new(); add_child(bed); bed.position = c + Vector3(inner * 0.33, 0, inner * 0.28)
+	U.box(bed, Vector3(1.0, 0.1, 2.1), Vector3(0, 0.45, 0), U.solid(Color(0.4, 0.42, 0.33), 0.0, 1.0))
+	U.box(bed, Vector3(0.9, 0.12, 0.4), Vector3(0, 0.55, -0.8), paper)
+	for q in 4: U.box(bed, Vector3(0.05, 0.45, 0.05), Vector3((q % 2) * 0.9 - 0.45, 0.22, (q / 2) * 2.0 - 1.0), iron)
+	for k in 26:
+		var pp := c + Vector3(rng.randf_range(-inner * 0.45, inner * 0.45), 0.08, rng.randf_range(-inner * 0.45, inner * 0.45))
+		U.box(self, Vector3(0.3, 0.01, 0.22), pp, paper, Vector3(0, rng.randf() * TAU, 0)).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	for k in 4:
+		U.place(self, U.CAR + "box.glb", c + Vector3(inner * 0.4, 0.0, -inner * 0.4 + k * 0.9), 0.8, rng.randf() * 0.3)
+	# a portrait torn off the wall, face down on the floor (we will never know who it was)
+	U.box(self, Vector3(1.0, 0.04, 1.3), c + Vector3(-inner * 0.2, 0.08, inner * 0.35), U.solid(Color(0.4, 0.28, 0.12), 0.2, 0.4, 0.6), Vector3(0, 0.4, 0))
+
+# Berlin: distant artillery all along, shells landing nearer during the bombing, dust and flickers in the bunker
+var art_t := 2.0
+var bunk_t := 1.0
+func _berlin_tick(d: float):
+	var ph: int = w.berlin_ph
+	art_t -= d
+	if art_t <= 0.0 and ph < 3:
+		art_t = rng.randf_range(0.6, 1.6) if ph == 2 else rng.randf_range(2.5, 5.5)
+		var c: Vector2 = w.bounds.get_center()
+		var a := rng.randf() * TAU
+		var rad: float = maxf(w.bounds.size.x, w.bounds.size.y) * 0.5 + rng.randf_range(40.0, 90.0)
+		var fp := Vector3(c.x + cos(a) * rad, rng.randf_range(2.0, 10.0), c.y + sin(a) * rad)
+		var fl := U.sprite(self, "light_01.png", fp, rng.randf_range(30.0, 55.0), Color(1.0, 0.6, 0.25, 0.9), 4.0)
+		fl.set_meta("airborne", true)
+		var tw := fl.create_tween()
+		tw.tween_property(fl, "scale", Vector3.ONE * 0.05, 0.35)
+		tw.tween_callback(fl.queue_free)
+		Snd.play("explosion", -24.0 if ph == 1 else -16.0, 0.2, 0.3, 0.5)
+		if ph == 2 and player and rng.randf() < 0.55:
+			# a shell lands in the streets (show only, it does not hurt)
+			var b := rng.randf() * TAU
+			var sp: Vector3 = player.global_position + Vector3(cos(b), 0, sin(b)) * rng.randf_range(22.0, 40.0)
+			if w.inside(sp):
+				VFX.explosion(self, sp + Vector3(0, 0.4, 0), 3.0, Color(1.0, 0.55, 0.2))
+				var cr := U.cyl(self, rng.randf_range(1.2, 2.0), 0.02, Vector3(sp.x, 0.06, sp.z), U.solid(Color(0.1, 0.09, 0.08), 0.0, 1.0))
+				cr.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	if ph == 3 and not w.bunker.is_empty():
+		bunk_t -= d
+		if bunk_t <= 0.0:
+			bunk_t = rng.randf_range(2.0, 4.0)
+			var c3: Vector3 = w.bunker["center"]
+			var inner: float = w.bunker["inner"]
+			# a shell hits above: the lights flicker and dust pours from the ceiling
+			for l in w.bunker["lights"]:
+				var ol := l as OmniLight3D
+				var tw2 := ol.create_tween()
+				tw2.tween_property(ol, "light_energy", 0.3, 0.06); tw2.tween_property(ol, "light_energy", 2.5, 0.1)
+				tw2.tween_property(ol, "light_energy", 0.6, 0.05); tw2.tween_property(ol, "light_energy", 2.5, 0.2)
+			for k in 3:
+				var dp := c3 + Vector3(rng.randf_range(-inner * 0.4, inner * 0.4), 4.0, rng.randf_range(-inner * 0.4, inner * 0.4))
+				var dust := VFX.ps(self, "smoke_05.png", {"n": 16, "life": 1.4, "size": 0.9, "add": false, "ramp": "dust", "curve": "grow", "spread": 12.0, "vel": [1.0, 2.5], "pos": dp, "dir": Vector3.DOWN, "one_shot": true, "explos": 0.6})
+				VFX.free_later(dust, 2.0)
+			Snd.play("explosion", -20.0, 0.1, 0.2, 0.4)

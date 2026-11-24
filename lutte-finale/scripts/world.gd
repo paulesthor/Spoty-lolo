@@ -548,19 +548,22 @@ func _lot_plaza(r: Rect2):
 		if not r.grow(-1.0).has_point(Vector2(tp.x, tp.z)): continue
 		var tl := trees()
 		U.nature(self, tl[rng.randi() % tl.size()], tp, rng.randf_range(5.5, 7.0) * (1.25 if "palm" in tl[0] else 1.0), rng.randf() * TAU)
-		_undergrowth(tp)
+		if template.get("id", "") != "berlin": _undergrowth(tp)
 		obstacles.append(Rect2(tp.x - 0.5, tp.z - 0.5, 1.0, 1.0))      # trunk: nothing else gets placed on it
 
 func trees() -> Array:
 	match template.get("id", ""):
 		"paradis": return ["palm_tree_1", "palm_tree_2", "palm_tree_3", "palm_tree_4"]
 		"ski": return ["pine_tree_1", "pine_tree_2", "pine_tree_3", "pine_tree_4"]
-		"fusee": return ["dead_tree_1", "dead_tree_3", "dead_tree_5", "dead_tree_7"]
+		"fusee", "berlin": return ["dead_tree_1", "dead_tree_3", "dead_tree_5", "dead_tree_7"]
 		"datacenter": return ["dead_tree_2", "dead_tree_4", "birch_tree_2"]
 	return ["maple_tree_1", "maple_tree_2", "maple_tree_4", "birch_tree_1", "maple_tree_1", "maple_tree_4"]
 
 func _lot_square(r: Rect2):
 	var c := _v(r.get_center().x, r.get_center().y)
+	if template.get("id", "") == "berlin":
+		_berlin_square(r, c)
+		return
 	if rng.randf() < 0.5:
 		_matryoshka(c)
 	else:
@@ -579,6 +582,46 @@ func _lot_square(r: Rect2):
 		else:
 			U.nature(self, ["bush_large", "bush_large_flowers", "bush_flowers", "bush"][rng.randi() % 4], tp, rng.randf_range(1.2, 1.8), rng.randf() * TAU)
 			obstacles.append(Rect2(tp.x - 1.0, tp.z - 1.0, 2.0, 2.0))
+		obstacles.append(Rect2(tp.x - 0.5, tp.z - 0.5, 1.0, 1.0))
+
+# Berlin squares: an anti-aircraft gun nest or a shattered fountain, dead trees, burnt-out benches
+func _berlin_square(r: Rect2, c: Vector3):
+	var sand := U.solid(Color(0.6, 0.53, 0.4), 0.0, 1.0)
+	var iron := U.solid(Color(0.24, 0.26, 0.22), 0.0, 0.5, 0.6)
+	var stone := U.solid(Color(0.45, 0.43, 0.4), 0.0, 1.0)
+	if rng.randf() < 0.55:
+		# sandbag ring around a silent anti-aircraft gun
+		for row in 3:
+			for k in 16:
+				var a := TAU * k / 16.0 + row * 0.2
+				var sb := U.box(self, Vector3(0.8, 0.32, 0.45), c + Vector3(cos(a), 0, sin(a)) * 3.3 + Vector3(0, 0.17 + row * 0.32, 0), sand)
+				sb.rotation.y = -a
+		U.cyl(self, 0.9, 0.6, c + Vector3(0, 0.3, 0), iron)
+		var gun := Node3D.new(); add_child(gun); gun.position = c + Vector3(0, 0.9, 0); gun.rotation.y = rng.randf() * TAU
+		U.box(gun, Vector3(1.4, 0.6, 1.0), Vector3(0, 0.2, 0), iron)
+		var barrel := U.cyl(gun, 0.09, 4.2, Vector3(0, 1.5, 1.4), iron)
+		barrel.rotation.x = 0.75
+		U.cyl(gun, 0.16, 0.5, Vector3(0, 0.95, 0.55), iron).rotation.x = 0.75
+		for k in 3: U.cyl(self, 0.12, 0.45, c + Vector3(1.6 + k * 0.28, 0.22, -1.2), U.solid(Color(0.7, 0.55, 0.2), 0.0, 0.3, 0.8))      # shells
+		obstacles.append(Rect2(c.x - 3.6, c.z - 3.6, 7.2, 7.2)); _static_box(c + Vector3(0, 0.5, 0), Vector3(7.2, 1.0, 7.2))
+	else:
+		# the fountain took a shell: cracked basin, broken column, dark water
+		for k in 10:
+			var a := TAU * k / 10.0
+			if k == 3 or k == 4: continue
+			var seg := U.box(self, Vector3(1.9, 0.8 - (k % 3) * 0.15, 0.4), c + Vector3(cos(a), 0, sin(a)) * 2.9 + Vector3(0, 0.35, 0), stone)
+			seg.rotation.y = -a + PI / 2
+		U.cyl(self, 2.7, 0.06, c + Vector3(0, 0.3, 0), U.solid(Color(0.12, 0.14, 0.15), 0.0, 0.05))
+		var col := U.cyl(self, 0.3, 1.4, c + Vector3(0.6, 0.5, 0.3), stone)
+		col.rotation = Vector3(1.2, 0, 0.3)
+		for k in 6: U.box(self, Vector3(0.6, 0.35, 0.5), c + Vector3(rng.randf_range(-2, 2), 0.2, rng.randf_range(-2, 2)), stone, Vector3(rng.randf(), rng.randf() * TAU, rng.randf()))
+		obstacles.append(Rect2(c.x - 3, c.z - 3, 6, 6)); _static_box(c + Vector3(0, 0.4, 0), Vector3(6, 0.8, 6))
+	for i in 5:
+		var a := rng.randf() * TAU
+		var tp := c + Vector3(cos(a), 0, sin(a)) * rng.randf_range(7.0, minf(r.size.x, r.size.y) * 0.45)
+		if _blocked(tp, 1.5): continue
+		var tl := trees()
+		U.nature(self, tl[rng.randi() % tl.size()], tp, rng.randf_range(4.5, 6.0), rng.randf() * TAU)
 		obstacles.append(Rect2(tp.x - 0.5, tp.z - 0.5, 1.0, 1.0))
 
 func _matryoshka(mp: Vector3):
@@ -1215,7 +1258,9 @@ func _lot_bunker(r: Rect2):
 	bunker = {"rect": rect, "center": c, "roof": roof, "block": block, "lights": lights, "inner": inner}
 
 # Berlin special level: the map follows the boss fight. 2: the bombing brings the city down. 3: the bunker opens.
+var berlin_ph := 1
 func berlin_phase(n: int):
+	berlin_ph = n
 	if n == 2:
 		for rr in ruins:
 			for t in rr["top"]:
