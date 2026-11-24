@@ -1232,10 +1232,22 @@ func _toast_all(t: String, dur := 2.0):
 	if Net.active: Net.event_all("toast", [t, dur])
 
 func _drop_gem(p: Vector3, val: int):
-	if gems.size() > 350:
-		var g0: Dictionary = gems[rng.randi() % gems.size()]
-		g0["v"] += val
-		return
+	# never drop inside a wall or a prop (out of reach), and when the ground is full of gems the XP joins
+	# the gem closest to the kill (it grows) instead of a random one somewhere else on the map
+	if world and world.inside(p) and p.y < 0.5: p = world.resolve(p, 0.3)
+	if gems.size() > 600:
+		var best = null
+		var bd := 1e9
+		for g in gems:
+			var dd: float = (g["n"] as Node3D).global_position.distance_squared_to(p)
+			if dd < bd: bd = dd; best = g
+		if best != null:
+			best["v"] += val
+			var gm: MeshInstance3D = best["n"]
+			var sm0 := gm.mesh as SphereMesh
+			if sm0: sm0.radius = 0.16 + 0.04 * minf(float(best["v"]), 8.0); sm0.height = sm0.radius * 2.4
+			if bd > 64.0: gm.global_position = Vector3(p.x, p.y + 0.35, p.z); best["y0"] = p.y + 0.35
+			return
 	var mi := MeshInstance3D.new()
 	var sm := SphereMesh.new(); sm.radius = 0.16 + 0.04 * minf(val, 5); sm.height = sm.radius * 2.4; sm.radial_segments = 4; sm.rings = 2
 	mi.mesh = sm
