@@ -523,11 +523,11 @@ func _lot_containers(r: Rect2):
 
 func _lot_market(r: Rect2):
 	var foods := ["bread", "cheese", "apple", "burger", "carrot", "cake", "donut", "fish", "banana"]
-	var cols := maxi(1, int(r.size.x / 9.0))
-	var rows := maxi(1, int(r.size.y / 10.0))
+	var cols := maxi(1, int(r.size.x / 6.5))
+	var rows := maxi(1, int(r.size.y / 7.0))
 	for ix in cols:
 		for iz in rows:
-			if rng.randf() < 0.2: continue
+			if rng.randf() < 0.12: continue
 			var p := _v(r.position.x + (ix + 0.5) * r.size.x / cols, r.position.y + (iz + 0.5) * r.size.y / rows)
 			# a real market stall (Kenney, CC0) with produce on its counter
 			var counter := U.place(self, U.PROPS + "k_fantasy_town_kit/" + ["stall-red", "stall-green"][(ix + iz) % 2] + ".glb", p, 3.0, PI)
@@ -541,6 +541,10 @@ func _lot_market(r: Rect2):
 				if ResourceLoader.exists(path):
 					U.place(self, path, p + Vector3(-ca.size.x * 0.3 + f * ca.size.x * 0.3, ca.size.y * 0.36, ca.size.z * 0.1), 0.3, rng.randf() * TAU)
 			add_obstacle(counter)
+			# stock behind the stall
+			for k in rng.randi_range(1, 3):
+				var sp := p + Vector3(rng.randf_range(-1.4, 1.4), 0, -ca.size.z * 0.5 - 0.7)
+				U.place(self, U.PROPS + "kk_resource_bits/" + ["Containers_Crate_Medium_Wood.gltf", "Fuel_A_Barrel_Dirty.gltf"][rng.randi() % 4 / 3], sp, 0.7, rng.randf() * TAU)
 
 func _lot_plaza(r: Rect2):
 	var c := _v(r.get_center().x, r.get_center().y)
@@ -567,9 +571,7 @@ func _lot_square(r: Rect2):
 	if template.get("id", "") == "berlin":
 		_berlin_square(r, c)
 		return
-	if rng.randf() < 0.5:
-		_matryoshka(c)
-	else:
+	if true:
 		var fo := U.place(self, U.PROPS + "k_fantasy_town_kit/fountain-round-detail.glb", c, 2.0, rng.randf() * TAU)
 		var fa := U.world_aabb(fo)
 		fo.scale *= 6.2 / maxf(fa.size.x, fa.size.z)
@@ -577,6 +579,22 @@ func _lot_square(r: Rect2):
 		VFX.ps(self, "smoke_05.png", {"n": 10, "life": 1.2, "preprocess": 1.2, "size": 0.6, "add": false, "ramp": "steam", "curve": "grow",
 			"spread": 25.0, "vel": [2.0, 3.0], "grav": Vector3(0, -3.0, 0), "pos": c + Vector3(0, fa.size.y * 0.9, 0)})      # spray
 		obstacles.append(Rect2(c.x - 3, c.z - 3, 6, 6)); _static_box(c + Vector3(0, 0.4, 0), Vector3(6, 0.8, 6))
+	# benches facing the fountain, lamp posts between them, flower beds
+	for k in 8:
+		var a := TAU * k / 8.0
+		var bp := c + Vector3(cos(a), 0, sin(a)) * 5.2
+		if k % 2 == 0:
+			U.place(self, U.CAT + "k_graveyard_kit/bench.glb", bp, 0.8, -a + PI / 2)
+			small_obstacle(bp, 0.8)
+		else:
+			U.place(self, U.CR + "light-curved.glb", bp, 5.0, -a)
+			small_obstacle(bp, 0.3)
+	for k in 4:
+		var a2 := TAU * k / 4.0 + PI / 4
+		var fb := c + Vector3(cos(a2), 0, sin(a2)) * 7.5
+		if _blocked(fb, 1.0): continue
+		U.nature(self, ["bush_flowers", "bush_large_flowers"][k % 2], fb, 1.3, rng.randf() * TAU)
+		small_obstacle(fb, 0.8)
 	for i in 6:
 		var a := rng.randf() * TAU
 		var tp := c + Vector3(cos(a), 0, sin(a)) * rng.randf_range(7.0, minf(r.size.x, r.size.y) * 0.45)
@@ -660,7 +678,48 @@ func _lot_station(r: Rect2):
 	add_obstacle(shop)
 
 func _lot_empty(r: Rect2, start := false):
-	for i in (2 if start else 5):
+	var c := _v(r.get_center().x, r.get_center().y)
+	if start:
+		# the Party's square: trees and benches around the edge, lamp posts, flags; the middle stays clear
+		var e := 3.0
+		var pts := []
+		var x := r.position.x + e
+		while x < r.end.x - e: pts.append(_v(x, r.position.y + e)); pts.append(_v(x, r.end.y - e)); x += 6.0
+		var z := r.position.y + e + 6.0
+		while z < r.end.y - e - 3.0: pts.append(_v(r.position.x + e, z)); pts.append(_v(r.end.x - e, z)); z += 6.0
+		for i in pts.size():
+			var p: Vector3 = pts[i]
+			if p.distance_to(c) < 9.0 or _blocked(p, 1.0): continue
+			var rot := atan2(c.x - p.x, c.z - p.z)
+			match i % 4:
+				0:
+					var tl := trees()
+					U.nature(self, tl[rng.randi() % tl.size()], p, rng.randf_range(5.0, 6.5), rng.randf() * TAU)
+					_undergrowth(p); obstacles.append(Rect2(p.x - 0.5, p.z - 0.5, 1.0, 1.0))
+				1, 3:
+					U.place(self, U.CAT + "k_graveyard_kit/bench.glb", p, 0.8, rot)
+					small_obstacle(p, 0.8)
+				2:
+					U.place(self, U.CR + "light-curved.glb", p, 5.0, rot)
+					small_obstacle(p, 0.3)
+		return
+	# vacant lot: pallets, crates, drums, rubbish bags, cones and barriers, a dumped car
+	var junk := [[U.CAT + "k_retro_urban_kit/pallet.glb", 0.16], [U.PROPS + "kk_resource_bits/Containers_Crate_Medium_Wood.gltf", 0.8],
+		[U.PROPS + "kk_resource_bits/Fuel_A_Barrel_Dirty.gltf", 1.0], [U.PROPS + "kk_city_builder/trash_A.gltf", 0.6], [U.PROPS + "kk_city_builder/trash_B.gltf", 0.6],
+		[U.CAT + "q_zombie_apocalypse/TrafficBarrier_1.gltf", 1.0], [U.CR + "construction-cone.glb", 0.7], [U.CAT + "k_furniture_kit/cardboardBoxClosed.glb", 0.5]]
+	for i in int(r.size.x * r.size.y / 45.0):
+		var cp := _v(rng.randf_range(r.position.x + 1.5, r.end.x - 1.5), rng.randf_range(r.position.y + 1.5, r.end.y - 1.5))
+		if _blocked(cp, 0.9): continue
+		var j: Array = junk[rng.randi() % junk.size()]
+		var it := U.place(self, j[0], cp, j[1], rng.randf() * TAU)
+		if j[1] >= 0.8: add_obstacle(it, true, 0.1)
+		else: small_obstacle(cp, 0.4)
+	var wp := _v(rng.randf_range(r.position.x + 4, r.end.x - 4), rng.randf_range(r.position.y + 4, r.end.y - 4))
+	if not _blocked(wp, 2.5):
+		var car := U.place(self, U.CAR + ["sedan", "van", "hatchback-sports"][rng.randi() % 3] + ".glb", wp, 1.5, rng.randf() * TAU)
+		car.rotation.z = 0.08
+		add_obstacle(car)
+	for i in 0:
 		var cp := _v(rng.randf_range(r.position.x, r.end.x), rng.randf_range(r.position.y, r.end.y))
 		if _blocked(cp, 0.8): continue
 		U.place(self, U.CR + "construction-cone.glb", cp, 0.7, rng.randf() * TAU)

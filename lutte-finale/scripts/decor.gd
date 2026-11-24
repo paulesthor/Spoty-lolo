@@ -33,7 +33,9 @@ func build(world):
 	_street_furniture()
 	_flags(int(10 * w.area_k * (2.5 if id == "grandsoir" else 1.0)))
 	_pigeon_flocks(int(5 * w.area_k))
-	if not id in ["ski", "fusee", "datacenter", "berlin"]: _city_details()
+	if not id in ["ski", "fusee", "datacenter", "berlin"]:
+		_city_details()
+		_street_life()
 	if w.template.get("blimp", "x") != "": _blimp(id)
 	_hoardings(id)
 	match id:
@@ -95,8 +97,8 @@ func _street_furniture():
 			var war: bool = w.template.get("id", "") == "berlin"
 			match rng.randi() % 5:
 				0, 1:  # bench (in Berlin: charred, knocked over, missing its back)
-					var bp: String = "k_graveyard_kit/bench-damaged.glb" if war else ["../_catalog/k_holiday_kit/bench.glb", "kk_city_builder/bench.gltf"][rng.randi() % 2]
-					var b := U.place(self, U.PROPS + bp, p, 0.7 if war else 0.75, e[1] + PI)
+					var bp: String = "k_graveyard_kit/bench-damaged.glb" if war else "../_catalog/k_graveyard_kit/bench.glb"
+					var b := U.place(self, U.PROPS + bp, p, 0.7 if war else 0.8, e[1] + PI)
 					if war: b.rotation.z = rng.randf_range(-0.4, 0.4)
 				2:  # bin (in Berlin: a dented oil drum lying on its side)
 					if war:
@@ -960,3 +962,31 @@ func _city_details():
 		if nr % 2 == 0: U.place(self, U.PROPS + "kk_city_builder/watertower.gltf", rp, 4.5, rng.randf() * TAU)
 		else: U.place(self, U.CAT + "k_space_kit/satelliteDish.glb", rp, 1.8, rng.randf() * TAU)
 		nr += 1
+
+# avenues: street trees in square pits along the sidewalks, cars parked along the kerb
+func _street_life():
+	var cars := ["sedan", "suv", "taxi", "hatchback-sports", "van", "delivery", "sedan-sports"]
+	var pit := U.solid(Color(0.28, 0.22, 0.16), 0.0, 1.0)
+	for l in w.lots:
+		var r: Rect2 = l[0]
+		for e in _edge_points(r, 7.0, 2.6):
+			var p: Vector3 = e[0]
+			if rng.randf() < 0.5 or not w.inside(p) or w._blocked(p, 1.2) or _near_decor(p, 1.4) or p.distance_to(w.player_start) < 6.0: continue
+			_claim(p, 1.2)
+			var tl: Array = w.trees()
+			U.nature(self, tl[rng.randi() % tl.size()], p, rng.randf_range(5.0, 6.5), rng.randf() * TAU)
+			U.box(self, Vector3(1.2, 0.04, 1.2), p + Vector3(0, 0.04, 0), pit).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			w.small_obstacle(p, 0.5)
+		for e in _edge_points(r, 6.0, 4.6):
+			var p: Vector3 = e[0]
+			if rng.randf() < 0.72 or not w.inside(p) or w._blocked(p, 1.6) or _near_decor(p, 2.0) or p.distance_to(w.player_start) < 10.0 or _in_lot(p): continue
+			_claim(p, 2.0)
+			var car := U.place(self, U.CAR + cars[rng.randi() % cars.size()] + ".glb", p, 1.5, float(e[1]) + PI / 2 + (PI if rng.randf() < 0.5 else 0.0))
+			w.add_obstacle(car)
+
+func _in_lot(p: Vector3) -> bool:
+	for l in w.lots:
+		if (l[0] as Rect2).grow(0.5).has_point(Vector2(p.x, p.z)): return true
+	for b in w.blocks:
+		if (b as Rect2).grow(0.5).has_point(Vector2(p.x, p.z)): return true
+	return false
