@@ -1075,7 +1075,7 @@ func _director(d: float):
 		_open_portal(world.free_spot(30.0, 3.0))
 	if not boss_spawned and time >= float(tpl.get("boss_time", ZONE_TIME)):
 		_spawn_boss()      # it comes to you
-	if bot and portal != null and not boss_spawned and time > PORTAL_TIME + 90.0:
+	if bot and portal != null and not boss_spawned and time > PORTAL_TIME + 90.0 and not "noportal" in OS.get_cmdline_user_args():
 		_spawn_boss()      # test bots don't walk to the portal: they call the boss after a while
 	if not krach and time >= (420.0 if dirl("surveillance") > 0 else ZONE_TIME):
 		krach = true

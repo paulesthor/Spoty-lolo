@@ -55,6 +55,8 @@ func can_fuse(f: String) -> bool:
 	var b: String = Data.FUSIONS[f]["b"]
 	if not owned.has(a) or not owned.has(b): return false
 	if owned[a].get("fusion", "") != "": return false
+	for k in owned:
+		if owned[k].get("fusion", "") != "": return false      # one fusion per run
 	return owned[a]["lv"] >= Data.EVO_MIN_LV and owned[b]["lv"] >= Data.EVO_MIN_LV
 
 func fuse(f: String):
@@ -71,7 +73,13 @@ func evolve(id: String):
 
 func can_evolve(id: String) -> bool:
 	if not owned.has(id) or owned[id]["evo"]: return false
+	for k in owned:
+		if owned[k]["evo"]: return false      # one evolved weapon per run
 	return owned[id]["lv"] >= Data.EVO_MIN_LV and game.decret_lv(Data.WEAPONS[id]["evo"]) > 0
+
+const DMG_SOFT := 3.0
+const CADENCE_CAP := 2.5
+const COUNT_CAP := 4
 
 func stats(id: String) -> Dictionary:
 	var base: Dictionary = Data.WEAPONS[id]
@@ -79,15 +87,19 @@ func stats(id: String) -> Dictionary:
 	var m: Dictionary = w["mods"]
 	var evo: bool = w["evo"]
 	var s := {}
-	s["dmg"] = base["dmg"] * (1.0 + m.get("dmg", 0.0)) * (1.0 + game.dv("productivite", pl) / 100.0)
-	s["cd"] = base["cd"] / ((1.0 + m.get("cd", 0.0)) * (1.0 + game.dv("cadence", pl) / 100.0))
+	# build caps (Megabonk-style walls): damage bonuses past +200 % count for 40 %, fire rate +150 % at most,
+	# +4 extra projectiles at most: a strong build stays strong but cannot break the game
+	var dm: float = (1.0 + m.get("dmg", 0.0)) * (1.0 + game.dv("productivite", pl) / 100.0)
+	if dm > DMG_SOFT: dm = DMG_SOFT + (dm - DMG_SOFT) * 0.4
+	s["dmg"] = base["dmg"] * dm
+	s["cd"] = base["cd"] / minf((1.0 + m.get("cd", 0.0)) * (1.0 + game.dv("cadence", pl) / 100.0), CADENCE_CAP)
 	s["area"] = base.get("area", 0.0) * minf(1.0 + m.get("area", 0.0), 1.8) * minf(1.0 + game.dv("expansion", pl) / 100.0, 1.6)
 	s["range"] = base.get("range", 0.0) * (1.0 + m.get("range", 0.0))
 	s["duration"] = base.get("duration", 0.0) * (1.0 + m.get("duration", 0.0)) * (1.0 + game.dv("duree", pl) / 100.0)
 	var extra := int(game.dv("collectivisation", pl)) if id in ["kalach", "faucille", "matriochka", "molotov", "tracteur", "vodka", "t34", "katioucha", "balalaika", "tracts", "cigare"] else 0
 	if id == "katioucha" and pl.char_id == "generalissime": extra += 2
 	if id == "ours": extra = int(game.dv("collectivisation", pl)) / 2 + (1 if pl.char_id == "mikhail" else 0) + (3 if pl.char_id == "mikhail" and pl.ult_t > 0.0 else 0)
-	s["count"] = int(base.get("count", 1)) + int(m.get("count", 0.0)) + extra
+	s["count"] = int(base.get("count", 1)) + mini(int(m.get("count", 0.0)) + extra, COUNT_CAP)
 	s["pierce"] = int(base.get("pierce", 0)) + int(m.get("pierce", 0.0)) + int(game.dv("perforation", pl))
 	s["split"] = int(base.get("split", 0)) + int(m.get("split", 0.0))
 	s["depth"] = int(base.get("depth", 0))
