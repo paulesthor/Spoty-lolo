@@ -77,18 +77,17 @@ func _plage(r: Rect2):
 	w._lot_sign(_v(r.get_center().x, r.position.y + 2.0), "PLAGE PRIVÉE · PAUVRES INTERDITS", Color(1, 0.85, 0.3))
 
 func yacht(p: Vector3, rot: float, s := 1.0) -> Node3D:
-	var y := Node3D.new(); w.add_child(y); y.position = p; y.rotation.y = rot; y.scale = Vector3.ONE * s
-	var hull := U.solid(Color(0.96, 0.96, 0.95), 0.1, 0.3, 0.6)
-	var dark := U.solid(Color(0.1, 0.18, 0.3), 0.0, 0.4)
-	U.box(y, Vector3(2.6, 0.9, 7.0), Vector3(0, 0.35, 0), hull)
-	U.box(y, Vector3(2.65, 0.25, 7.05), Vector3(0, 0.0, 0), dark)
-	var bow := U.box(y, Vector3(1.85, 0.9, 1.85), Vector3(0, 0.35, 3.5), hull, Vector3(0, PI / 4, 0))
-	U.box(y, Vector3(2.0, 0.8, 3.0), Vector3(0, 1.2, -0.6), hull)
-	U.box(y, Vector3(2.05, 0.3, 3.05), Vector3(0, 1.25, -0.6), U.solid(Color(0.1, 0.12, 0.15), 0.3, 0.1, 0.5))
-	U.box(y, Vector3(1.4, 0.6, 1.6), Vector3(0, 1.9, -0.9), hull)
-	U.cyl(y, 0.05, 2.2, Vector3(0, 3.2, -0.9), U.solid(Color(0.7, 0.7, 0.72), 0.0, 0.3, 0.8))
-	var l := U.label(y, "LIQUIDITÉS III", Vector3(1.31, 0.45, -1.5), 50, Color(0.1, 0.18, 0.3), Color(0, 0, 0, 0), false)
-	U.fit_label(l, 4.0, 0.5)
+	# a speedboat or a sailing yacht (Kenney Watercraft, CC0), stretched to millionaire size
+	var y := Node3D.new(); w.add_child(y); y.position = p; y.rotation.y = rot
+	var m := U.place(y, U.PROPS + "k_watercraft_pack/" + ["boat-speed-c", "boat-speed-a", "boat-sail-a"][int(absf(p.x + p.z)) % 3] + ".glb", Vector3.ZERO, 2.6 * s, 0.0)
+	var a := U.world_aabb(m)
+	var long: float = maxf(a.size.x, a.size.z)
+	if a.size.x > a.size.z: m.rotation.y += PI / 2
+	m.scale *= 7.0 * s / maxf(long, 0.1)      # about 7 m long
+	var a2 := U.world_aabb(m)
+	m.global_position += Vector3(p.x - a2.get_center().x, p.y - a2.position.y, p.z - a2.get_center().z)
+	var l := U.label(y, "LIQUIDITÉS III", Vector3(a2.size.x * 0.5 + 0.02, a2.size.y * 0.3, 0), 50, Color(0.1, 0.18, 0.3), Color(0, 0, 0, 0), false)
+	U.fit_label(l, a2.size.z * 0.5, 0.5)
 	l.rotation.y = PI / 2; l.outline_size = 0
 	return y
 
@@ -147,9 +146,12 @@ func _chill(r: Rect2):
 		var p := _rand_in(r, 2.0)
 		if w._blocked(p, 1.2): continue
 		match i % 4:
-			0, 1:  # beanbags
+			0:  # beanbags
 				U.sphere(w, 0.6, p + Vector3(0, 0.3, 0), U.solid(cols[i % 4], 0.0, 0.9), 0.65)
 				w.small_obstacle(p, 0.5)
+			1:  # design sofas (Kenney, CC0)
+				var so := U.place(w, U.PROPS + "k_furniture_kit/" + ["loungeSofa", "loungeDesignSofa", "loungeSofaCorner"][(i / 4) % 3] + ".glb", p, 0.9, w.rng.randf() * TAU)
+				w.add_obstacle(so)
 			2:  # table football
 				var t := Node3D.new(); w.add_child(t); t.position = p; t.rotation.y = w.rng.randf() * TAU
 				U.box(t, Vector3(1.4, 0.3, 0.8), Vector3(0, 0.85, 0), U.solid(Color(0.15, 0.45, 0.2)))

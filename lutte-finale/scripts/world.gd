@@ -529,14 +529,17 @@ func _lot_market(r: Rect2):
 		for iz in rows:
 			if rng.randf() < 0.2: continue
 			var p := _v(r.position.x + (ix + 0.5) * r.size.x / cols, r.position.y + (iz + 0.5) * r.size.y / rows)
-			var counter := U.box(self, Vector3(3.2, 1.0, 1.2), p + Vector3(0, 0.5, 0), U.solid(Color(0.55, 0.38, 0.22)))
-			U.box(self, Vector3(3.6, 0.12, 2.0), p + Vector3(0, 2.6, 0.2), U.solid(Color(0.8, 0.12, 0.12) if (ix + iz) % 2 == 0 else Color(0.9, 0.85, 0.75)))
-			for pole in [-1.6, 1.6]:
-				U.box(self, Vector3(0.1, 2.6, 0.1), p + Vector3(pole, 1.3, 1.0), U.solid(Color(0.3, 0.3, 0.3)))
+			# a real market stall (Kenney, CC0) with produce on its counter
+			var counter := U.place(self, U.PROPS + "k_fantasy_town_kit/" + ["stall-red", "stall-green"][(ix + iz) % 2] + ".glb", p, 3.0, PI)
+			var ca0 := U.world_aabb(counter)
+			counter.scale *= 3.4 / maxf(maxf(ca0.size.x, ca0.size.z), 0.1)      # about 3.4 m wide whatever the model's units
+			var ca := U.world_aabb(counter)
+			counter.position += Vector3(p.x - ca.get_center().x, -ca.position.y, p.z - ca.get_center().z)
+			ca = U.world_aabb(counter)
 			for f in 3:
 				var path: String = U.FOOD + foods[rng.randi() % foods.size()] + ".glb"
 				if ResourceLoader.exists(path):
-					U.place(self, path, p + Vector3(-1.05 + f * 1.05, 1.0, 0), 0.3, rng.randf() * TAU)
+					U.place(self, path, p + Vector3(-ca.size.x * 0.3 + f * ca.size.x * 0.3, ca.size.y * 0.36, ca.size.z * 0.1), 0.3, rng.randf() * TAU)
 			add_obstacle(counter)
 
 func _lot_plaza(r: Rect2):
@@ -893,17 +896,19 @@ func _lot_coffre(r: Rect2):
 
 # hanging sign over a lot: readable from afar, never a giant billboard in the camera's face
 func _lot_sign(c: Vector3, text: String, col: Color):
-	# a real sign: board on two posts, text on both faces
-	var wdt := 0.42 * text.length() * 0.55 + 1.0
-	var steel := U.solid(Color(0.3, 0.3, 0.32), 0.0, 0.4, 0.8)
+	# a real sign: steel posts with caps and feet, a framed board, the text painted on both faces
+	var wdt := 0.42 * text.length() * 0.55 + 1.4
+	var steel := U.solid(Color(0.28, 0.29, 0.31), 0.0, 0.35, 0.8)
+	var frame := U.solid(Color(0.13, 0.13, 0.15), 0.0, 0.5, 0.5)
 	for sx in [-1.0, 1.0]:
-		U.box(self, Vector3(0.14, 3.0, 0.14), c + Vector3(sx * (wdt * 0.5 - 0.2), 1.5, 0), steel)
-	U.box(self, Vector3(wdt, 0.9, 0.1), c + Vector3(0, 3.2, 0), U.solid(Color(0.08, 0.08, 0.1)))
-	for f in [1.0, -1.0]:
-		var l := U.label(self, text, c + Vector3(0, 3.2, 0.06 * f), 52, col, Color(0, 0, 0, 0), false)
-		l.outline_size = 0
-		l.rotation.y = 0.0 if f > 0.0 else PI
-		U.fit_label(l, wdt - 0.25, 0.75)
+		var px: float = sx * (wdt * 0.5 - 0.25)
+		U.cyl(self, 0.07, 3.3, c + Vector3(px, 1.65, 0), steel)
+		U.cyl(self, 0.16, 0.12, c + Vector3(px, 0.06, 0), steel)      # foot plate
+		U.sphere(self, 0.1, c + Vector3(px, 3.35, 0), steel)            # cap
+	U.box(self, Vector3(wdt + 0.12, 1.12, 0.1), c + Vector3(0, 2.95, 0), frame)
+	var bg := col.darkened(0.75) if col.get_luminance() > 0.45 else Color(0.93, 0.9, 0.82)
+	U.sign_panel(self, text, Vector2(wdt, 1.0), c + Vector3(0, 2.95, 0.06), 0.0, bg, col if col.get_luminance() > 0.45 else Color(0.1, 0.1, 0.12), false)
+	U.sign_panel(self, text, Vector2(wdt, 1.0), c + Vector3(0, 2.95, -0.06), PI, bg, col if col.get_luminance() > 0.45 else Color(0.1, 0.1, 0.12), false)
 	small_obstacle(c, 0.4)
 
 # facades for raised platforms: base band, pillars, window strips or hazard stripes
@@ -1056,11 +1061,15 @@ func _dress(n: Node3D, face: Vector3):
 		if wall < -1e8: return
 		var lateral := Vector3(c.x, 0, c.z) - face * Vector3(c.x, 0, c.z).dot(face)
 		var sp := lateral + face * (wall + 0.06) + Vector3(0, a.position.y + 3.4, 0)
-		U.box(self, Vector3(minf(half * 1.7, 8.0), 1.0, 0.16), sp, U.solid(col, 0.25 if ambiance == "nuit" else 0.0, 0.6), Vector3(0, rot, 0))
-		var l := U.label(self, txt, sp + face * 0.09, 64, Color(1, 0.95, 0.85), Color(0, 0, 0, 0), false, U.font_main)
-		l.rotation.y = rot; l.outline_size = 0; l.pixel_size = 0.009
-		l.autowrap_mode = TextServer.AUTOWRAP_OFF
-		U.fit_label(l, minf(half * 1.7, 8.0) - 0.4, 0.8)
+		# the enamel shop sign: a frame box, the painted plate, two little lamps over it
+		var sw := minf(half * 1.7, 8.0)
+		U.box(self, Vector3(sw + 0.14, 1.14, 0.16), sp, U.solid(Color(0.12, 0.12, 0.13), 0.0, 0.4, 0.6), Vector3(0, rot, 0))
+		U.sign_panel(self, txt, Vector2(sw, 1.0), sp + face * 0.085, rot, col, Color(1, 0.94, 0.8), false, 0.6 if ambiance == "nuit" else 0.0)
+		var side := Vector3(face.z, 0, -face.x)
+		for k in [-1.0, 1.0]:
+			var lp: Vector3 = sp + side * k * sw * 0.32 + Vector3(0, 0.75, 0) + face * 0.25
+			U.box(self, Vector3(0.05, 0.05, 0.35), lp - face * 0.12, U.solid(Color(0.15, 0.15, 0.15)), Vector3(0, rot, 0))
+			U.cyl(self, 0.09, 0.12, lp + Vector3(0, -0.04, 0), U.solid(Color(1.0, 0.9, 0.6), 2.0 if ambiance == "nuit" else 0.4))
 	# rooftop items stand on the highest roof part (setbacks would leave them hovering)
 	var best_top := -1.0
 	var top := Vector3(c.x, a.end.y, c.z)

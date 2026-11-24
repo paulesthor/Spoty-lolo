@@ -22,6 +22,7 @@ static func fonts():
 		font_num = load("res://fonts/Oswald.woff2")
 		_sym_font = load("res://fonts/Symbols.ttf")
 
+const PROPS := "res://assets/props/"      # CC0 map props (see assets/props/LICENSE.txt)
 static func scene(path: String) -> PackedScene:
 	if not _scenes.has(path):
 		_scenes[path] = load(path)
@@ -214,6 +215,115 @@ static func solid(color: Color, emissive := 0.0, rough := 0.8, metal := 0.0) -> 
 		m.emission_energy_multiplier = emissive
 	_mats[key] = m
 	return m
+
+# ---------------------------------------------------------------- painted signs
+# the text of a sign painted into a texture (rendered once in a small 2D viewport, then kept):
+# coloured enamel plate, double rim, little stars, a top-to-bottom wear gradient, text sized to fit
+static var _sign_tex := {}
+static func sign_tex(text: String, bg: Color, fg: Color, aspect := 5.0, stars := true) -> Texture2D:
+	var key := "%s|%s|%s|%.1f|%s" % [text, bg.to_html(), fg.to_html(), aspect, stars]
+	if _sign_tex.has(key): return _sign_tex[key]
+	fonts()
+	var h := 160
+	var w := int(clampf(h * aspect, 256.0, 1600.0))
+	var vp := SubViewport.new()
+	vp.size = Vector2i(w, h)
+	vp.disable_3d = true
+	vp.transparent_bg = false
+	vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+	(Engine.get_main_loop() as SceneTree).root.add_child(vp)
+	var plate := Panel.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = bg
+	sb.border_color = fg.lerp(bg, 0.15); sb.set_border_width_all(7)
+	sb.set_corner_radius_all(14)
+	plate.add_theme_stylebox_override("panel", sb)
+	plate.size = Vector2(w, h)
+	vp.add_child(plate)
+	var inner := Panel.new()
+	var sb2 := StyleBoxFlat.new()
+	sb2.bg_color = Color(0, 0, 0, 0)
+	sb2.border_color = fg.lerp(bg, 0.45); sb2.set_border_width_all(2)
+	sb2.set_corner_radius_all(9)
+	inner.add_theme_stylebox_override("panel", sb2)
+	inner.position = Vector2(14, 14); inner.size = Vector2(w - 28, h - 28)
+	vp.add_child(inner)
+	# wear: lighter at the top, a little grime at the bottom
+	var wear := TextureRect.new()
+	var gt := GradientTexture2D.new()
+	var gr := Gradient.new()
+	gr.offsets = PackedFloat32Array([0.0, 0.45, 1.0])
+	gr.colors = PackedColorArray([Color(1, 1, 1, 0.1), Color(1, 1, 1, 0.0), Color(0, 0, 0, 0.22)])
+	gt.gradient = gr; gt.fill_from = Vector2(0, 0); gt.fill_to = Vector2(0, 1); gt.width = 8; gt.height = 64
+	wear.texture = gt; wear.size = Vector2(w, h); wear.stretch_mode = TextureRect.STRETCH_SCALE
+	wear.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	vp.add_child(wear)
+	var pad := 70 if stars else 34
+	if stars:
+		for sx in [0, 1]:
+			var st := Label.new(); st.text = "★"
+			st.add_theme_font_override("font", _sym_font); st.add_theme_font_size_override("font_size", 54)
+			st.add_theme_color_override("font_color", fg)
+			st.position = Vector2(22 if sx == 0 else w - 74, h * 0.5 - 40)
+			vp.add_child(st)
+	var l := Label.new()
+	l.text = text.to_upper()
+	l.add_theme_font_override("font", font_main)
+	l.add_theme_color_override("font_color", fg)
+	l.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.35))
+	l.add_theme_constant_override("shadow_offset_x", 3); l.add_theme_constant_override("shadow_offset_y", 3)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	var fs := 104
+	while fs > 22 and font_main.get_string_size(l.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > w - pad * 2: fs -= 2
+	l.add_theme_font_size_override("font_size", fs)
+	l.position = Vector2(pad, 0); l.size = Vector2(w - pad * 2, h)
+	vp.add_child(l)
+	var tex := vp.get_texture()
+	_sign_tex[key] = tex
+	return tex
+
+# a flat painted panel (both faces when `back`), its centre at pos, facing +Z rotated by rot_y
+static func sign_panel(parent: Node, text: String, size: Vector2, pos: Vector3, rot_y: float, bg: Color, fg: Color, back := false, glow := 0.0) -> Node3D:
+	var root := Node3D.new(); parent.add_child(root)
+	root.position = pos; root.rotation.y = rot_y
+	var tex := sign_tex(text, bg, fg, size.x / maxf(size.y, 0.01))
+	var m := StandardMaterial3D.new()
+	m.albedo_texture = tex
+	m.roughness = 0.55
+	if glow > 0.0:
+		m.emission_enabled = true; m.emission_texture = tex; m.emission_energy_multiplier = glow
+	for f in ([1.0, -1.0] if back else [1.0]):
+		var q := MeshInstance3D.new()
+		var qm := QuadMesh.new(); qm.size = size
+		q.mesh = qm; q.material_override = m
+		q.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		root.add_child(q)
+		q.position = Vector3(0, 0, 0.012 * f)
+		if f < 0.0: q.rotation.y = PI
+	return root
+
+# a cloth flag that really waves (shaders/flag.gdshader): its pole edge is at `pos`, it flies towards +Z
+static var _flag_mats := {}
+static func flag_cloth(parent: Node, size: Vector2, pos: Vector3, tex_path := "res://assets/textures/flag_soviet.png", phase := 0.0) -> MeshInstance3D:
+	var key := "%s_%d" % [tex_path, int(phase * 10.0) % 8]
+	if not _flag_mats.has(key):
+		var m := ShaderMaterial.new()
+		m.shader = load("res://shaders/flag.gdshader")
+		m.set_shader_parameter("tex", load(tex_path))
+		m.set_shader_parameter("phase", float(int(phase * 10.0) % 8))
+		_flag_mats[key] = m
+	var pm := PlaneMesh.new()
+	pm.size = Vector2(size.x, size.y)
+	pm.orientation = PlaneMesh.FACE_X
+	pm.subdivide_width = 14; pm.subdivide_depth = 3
+	var mi := MeshInstance3D.new()
+	mi.mesh = pm
+	mi.material_override = _flag_mats[key]
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	parent.add_child(mi)
+	mi.position = pos + Vector3(0, 0, size.x * 0.5)
+	return mi
 
 static func box(parent: Node, size: Vector3, pos: Vector3, mat: Material, rot := Vector3.ZERO) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()

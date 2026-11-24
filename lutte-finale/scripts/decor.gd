@@ -94,18 +94,16 @@ func _street_furniture():
 			var war: bool = w.template.get("id", "") == "berlin"
 			match rng.randi() % 5:
 				0, 1:  # bench (in Berlin: charred, knocked over, missing its back)
-					var b := Node3D.new(); add_child(b); b.position = p; b.rotation.y = e[1]
-					var bm: Material = U.solid(Color(0.12, 0.1, 0.09), 0.0, 1.0) if war else bench
-					U.box(b, Vector3(1.8, 0.1, 0.5), Vector3(0, 0.45, 0), bm)
-					if not war: U.box(b, Vector3(1.8, 0.45, 0.08), Vector3(0, 0.75, -0.24), bench)
-					for sx in [-0.8, 0.8]: U.box(b, Vector3(0.08, 0.45, 0.5), Vector3(sx, 0.22, 0), iron)
-					if war: b.rotation.z = rng.randf_range(-0.5, 0.5)
+					var b := U.place(self, U.PROPS + ("k_graveyard_kit/bench-damaged.glb" if war else "kk_city_builder/bench.gltf"), p, 0.7 if war else 0.55, e[1] + PI)
+					if war: b.rotation.z = rng.randf_range(-0.4, 0.4)
 				2:  # bin (in Berlin: a dented oil drum lying on its side)
-					var bn := U.cyl(self, 0.28, 0.85, p + Vector3(0, 0.42 if not war else 0.28, 0), U.solid(Color(0.2, 0.35, 0.25) if not war else Color(0.28, 0.26, 0.22), 0.0, 0.6))
-					if war: bn.rotation = Vector3(PI / 2, rng.randf() * TAU, 0)
+					if war:
+						var bn := U.place(self, U.PROPS + "kk_resource_bits/Fuel_A_Barrel_Dirty.gltf", p, 1.0, rng.randf() * TAU)
+						bn.rotation = Vector3(PI / 2, rng.randf() * TAU, 0); bn.position.y += 0.3
+					else:
+						U.place(self, U.PROPS + "kk_city_builder/" + ["trash_A", "trash_B"][rng.randi() % 2] + ".gltf", p, 1.0, e[1])
 				3:  # hydrant
-					U.cyl(self, 0.16, 0.6, p + Vector3(0, 0.3, 0), red)
-					U.sphere(self, 0.17, p + Vector3(0, 0.62, 0), red)
+					U.place(self, U.PROPS + "kk_city_builder/firehydrant.gltf", p, 0.8, rng.randf() * TAU)
 				4:  # sign (in Berlin: bent by the blast)
 					var sg := U.place(self, U.CR + ["road-sign-stop", "road-sign-warning", "road-sign-street"][rng.randi() % 3] + ".glb", p, 2.4, e[1])
 					if war: sg.rotation.z = rng.randf_range(0.35, 0.8) * (1.0 if rng.randf() < 0.5 else -1.0)
@@ -117,7 +115,9 @@ func _street_furniture():
 		if p == Vector3.INF: continue
 		_claim(p, 0.5)
 		match i % 3:
-			0: U.cyl(self, 0.5, 0.03, p + Vector3(0, 0.015, 0), dark)
+			0:
+				U.cyl(self, 0.5, 0.03, p + Vector3(0, 0.015, 0), dark)
+				if i % 9 == 0 and w.template.get("id", "") != "ski": _steam(p)      # a manhole breathing steam
 			1:
 				var pd := U.cyl(self, rng.randf_range(0.8, 1.8), 0.02, p + Vector3(0, 0.012, 0), puddle)
 				pd.scale = Vector3(1, 1, rng.randf_range(0.5, 1.0))
@@ -150,10 +150,7 @@ func _flags(n: int):
 		U.cyl(root, 0.05, 4.4, Vector3(0, 2.2, 0), pole)
 		U.sphere(root, 0.1, Vector3(0, 4.45, 0), U.solid(Color(1, 0.8, 0.2), 0.5, 0.3, 1.0))
 		var fl := Node3D.new(); root.add_child(fl); fl.position = Vector3(0, 3.85, 0)
-		var cloth := U.box(fl, Vector3(0.04, 0.9, 1.4), Vector3(0, 0, 0.73), red)
-		var s := Label3D.new(); s.text = "☭"; s.font = sym; s.font_size = 128; s.pixel_size = 0.005
-		s.modulate = Color(1, 0.8, 0.25); s.outline_size = 0; s.position = Vector3(0.03, 0.05, 0.6); s.rotation.y = PI / 2; s.pixel_size = 0.0038
-		fl.add_child(s)
+		U.flag_cloth(fl, Vector2(1.5, 0.95), Vector3(0, 0, 0.04), "res://assets/textures/flag_soviet.png", rng.randf() * 8.0)      # waving cloth (shader)
 		fl.rotation.y = rng.randf() * TAU
 		flags.append({"n": fl, "ph": rng.randf() * TAU, "base": fl.rotation.y})
 
@@ -414,16 +411,9 @@ func _process(d: float):
 		var rad: float = w.bounds.size.x * 0.45
 		blimp.position = Vector3(c.x + cos(blimp_a) * rad, 30.0 + sin(t * 0.3) * 1.5, c.y + sin(blimp_a) * rad)
 		blimp.rotation.y = -blimp_a
-	smoke_t -= d
-	if smoke_t <= 0.0 and not smokes.is_empty():
-		smoke_t = 0.6
-		for s in smokes:
-			var k: float = s.get("s", 3.0) / 3.0
-			var sp := U.sprite(self, "smoke_04.png", s["p"], 3.0 * k, Color(0.6, 0.58, 0.55, 0.45), 1.0)
-			var tw := sp.create_tween().set_parallel()
-			tw.tween_property(sp, "position", s["p"] + Vector3(rng.randf_range(2, 5), 12, 0) * k, 6.0)
-			tw.tween_property(sp, "scale", Vector3.ONE * 3.0, 6.0)
-			tw.chain().tween_callback(sp.queue_free)
+	if smoke_t == 0.0:
+		smoke_t = 1.0
+		_smoke_columns()
 	_update_pigeons(d)
 	if snow and player:
 		snow.global_position = player.global_position + Vector3(0, 14.0, -4.0)
@@ -739,8 +729,7 @@ func _berlin():
 		U.cyl(hall, 6.4, 0.5, Vector3(0, 9.3, 0), dark)
 		U.cyl(hall, 0.09, 6.0, Vector3(0, 18.0, 0), U.solid(Color(0.3, 0.3, 0.3)))
 		var flag := Node3D.new(); hall.add_child(flag); flag.position = Vector3(0, 20.0, 0)
-		var cloth := U.box(flag, Vector3(0.06, 1.9, 3.0), Vector3(0, 0, 1.5), U.solid(Color(0.8, 0.05, 0.07), 0.6, 0.9))
-		cloth.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		U.flag_cloth(flag, Vector2(3.2, 2.0), Vector3(0, -0.2, 0.05))
 		flags.append({"n": flag, "base": 0.0, "ph": 0.3})
 		hall.rotation.y = rng.randf() * TAU
 		w.add_obstacle(hall)
@@ -827,23 +816,18 @@ func _bunker_dressing():
 	var tc: Vector3 = c + Vector3(0, 0, -inner * 0.25)
 	for k in 6:
 		var a := TAU * k / 6.0
-		var ch := Node3D.new(); add_child(ch); ch.position = tc + Vector3(cos(a) * 3.3, 0, sin(a) * 1.9); ch.rotation.y = -a - PI / 2
-		U.box(ch, Vector3(0.5, 0.06, 0.5), Vector3(0, 0.48, 0), wood)
-		U.box(ch, Vector3(0.5, 0.55, 0.06), Vector3(0, 0.78, -0.24), wood)
-		for q in 4: U.box(ch, Vector3(0.05, 0.48, 0.05), Vector3((q % 2) * 0.4 - 0.2, 0.24, (q / 2) * 0.4 - 0.2), wood)
-		if k == 2: ch.rotation.z = 1.3      # one knocked over in the tantrum
+		var ch := U.place(self, U.PROPS + "kk_furniture/chair_A_wood.gltf", tc + Vector3(cos(a) * 3.3, 0, sin(a) * 1.9), 1.0, -a + PI / 2)
+		if k == 2: ch.rotation.z = 1.3; ch.position.y += 0.25      # one knocked over in the tantrum
 	var radio := U.place(self, "res://assets/weapons/furniture/radio.glb", tc + Vector3(2.0, 0.9, 0.6), 0.4, 0.4)
 	for k in 3:
 		U.box(self, Vector3(0.9, 1.6, 0.6), c + Vector3(-inner * 0.42, 0.8, -inner * 0.3 + k * 1.0), U.solid(Color(0.3, 0.33, 0.28), 0.0, 0.5, 0.4))
-	var bed := Node3D.new(); add_child(bed); bed.position = c + Vector3(inner * 0.33, 0, inner * 0.28)
-	U.box(bed, Vector3(1.0, 0.1, 2.1), Vector3(0, 0.45, 0), U.solid(Color(0.4, 0.42, 0.33), 0.0, 1.0))
-	U.box(bed, Vector3(0.9, 0.12, 0.4), Vector3(0, 0.55, -0.8), paper)
-	for q in 4: U.box(bed, Vector3(0.05, 0.45, 0.05), Vector3((q % 2) * 0.9 - 0.45, 0.22, (q / 2) * 2.0 - 1.0), iron)
+	U.place(self, U.PROPS + "kk_furniture/bed_single_A.gltf", c + Vector3(inner * 0.33, 0, inner * 0.28), 0.9, 0.0)
+	U.place(self, U.PROPS + "kk_furniture/armchair.gltf", c + Vector3(-inner * 0.3, 0, inner * 0.1), 1.0, PI * 0.6)
 	for k in 26:
 		var pp := c + Vector3(rng.randf_range(-inner * 0.45, inner * 0.45), 0.08, rng.randf_range(-inner * 0.45, inner * 0.45))
 		U.box(self, Vector3(0.3, 0.01, 0.22), pp, paper, Vector3(0, rng.randf() * TAU, 0)).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	for k in 4:
-		U.place(self, U.CAR + "box.glb", c + Vector3(inner * 0.4, 0.0, -inner * 0.4 + k * 0.9), 0.8, rng.randf() * 0.3)
+		U.place(self, U.PROPS + "kk_resource_bits/Containers_Crate_Medium_Wood.gltf", c + Vector3(inner * 0.4, 0.0, -inner * 0.4 + k * 1.0), 0.8, rng.randf() * 0.3)
 	# a portrait torn off the wall, face down on the floor (we will never know who it was)
 	U.box(self, Vector3(1.0, 0.04, 1.3), c + Vector3(-inner * 0.2, 0.08, inner * 0.35), U.solid(Color(0.4, 0.28, 0.12), 0.2, 0.4, 0.6), Vector3(0, 0.4, 0))
 
@@ -890,3 +874,32 @@ func _berlin_tick(d: float):
 				var dust := VFX.ps(self, "smoke_05.png", {"n": 16, "life": 1.4, "size": 0.9, "add": false, "ramp": "dust", "curve": "grow", "spread": 12.0, "vel": [1.0, 2.5], "pos": dp, "dir": Vector3.DOWN, "one_shot": true, "explos": 0.6})
 				VFX.free_later(dust, 2.0)
 			Snd.play("explosion", -20.0, 0.1, 0.2, 0.4)
+
+# ---------------------------------------------------------------- ambient smoke and steam (continuous particles)
+# chimney plumes (factories, ruins, the skyline) and a few rooftop chimneys on ordinary buildings
+func _smoke_columns():
+	for s in smokes:
+		var k: float = s.get("s", 3.0) / 3.0
+		VFX.ps(self, ["smoke_01.png", "smoke_05.png", "smoke_07.png"][rng.randi() % 3], {"n": 12, "life": 7.0, "preprocess": 7.0, "size": 2.6 * k,
+			"add": false, "ramp": "smoke", "curve": "grow", "spread": 8.0, "vel": [1.6 * k, 2.4 * k], "grav": Vector3(0.45, 0.2, 0.1),
+			"angvel": 12.0, "pos": s["p"]})
+	var id: String = w.template.get("id", "")
+	if id in ["berlin", "datacenter", "fusee"]: return
+	var cands: Array = w.occluders.duplicate()
+	cands.shuffle()
+	var brick := U.solid(Color(0.5, 0.3, 0.24), 0.0, 1.0)
+	var n := 0
+	for o in cands:
+		if n >= 6: break
+		var a: AABB = o["aabb"]
+		if a.size.y < 9.0 or a.size.y > 40.0: continue
+		var cp := Vector3(a.position.x + a.size.x * rng.randf_range(0.25, 0.75), a.end.y - 0.3, a.position.z + a.size.z * rng.randf_range(0.25, 0.75))
+		U.box(self, Vector3(0.7, 1.8, 0.7), cp + Vector3(0, 0.9, 0), brick).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		U.box(self, Vector3(0.85, 0.15, 0.85), cp + Vector3(0, 1.85, 0), brick).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		VFX.ps(self, "smoke_05.png", {"n": 8, "life": 5.0, "preprocess": 5.0, "size": 1.4, "add": false, "ramp": "smoke_light", "curve": "grow",
+			"spread": 10.0, "vel": [1.0, 1.6], "grav": Vector3(0.4, 0.15, 0.1), "angvel": 15.0, "pos": cp + Vector3(0, 2.1, 0)})
+		n += 1
+
+func _steam(p: Vector3):
+	VFX.ps(self, "smoke_05.png", {"n": 6, "life": 2.6, "preprocess": 2.6, "size": 0.8, "add": false, "ramp": "steam", "curve": "grow",
+		"spread": 12.0, "vel": [0.6, 1.1], "grav": Vector3(0.15, 0.1, 0), "angvel": 20.0, "pos": p + Vector3(0, 0.1, 0), "shape": "sphere", "r": 0.25})

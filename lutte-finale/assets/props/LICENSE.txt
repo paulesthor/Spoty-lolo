@@ -1,0 +1,3 @@
+Map props — all CC0 1.0 (public domain), via the series-ai/jam-ready-assets mirror:
+- kk_city_builder, kk_furniture, kk_mixed_bag_1, kk_resource_bits: Kay Lousberg, KayKit — kaylousberg.com
+- k_fantasy_town_kit, k_furniture_kit, k_graveyard_kit, k_watercraft_pack: Kenney — kenney.nl
