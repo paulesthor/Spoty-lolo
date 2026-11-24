@@ -3,7 +3,8 @@ extends Node
 # per-sound rate limiting (a horde must not turn into noise), pitch variation, volume options.
 
 const MUSIC := {"march": true, "battle": true, "boss": true, "victory": false, "defeat": false, "folk": true, "techno_bourse": true,
-	"lounge": true, "pop": true, "techno_data": true, "valse": true, "cosmos": true, "hymne": true}
+	"lounge": true, "pop": true, "techno_data": true, "valse": true, "cosmos": true, "hymne": true,
+	"titre": true, "kolkhoze": true, "caserne": true, "radio": true, "battle2": true, "boss2": true}
 var players: Array = []
 var next_p := 0
 var last := {}

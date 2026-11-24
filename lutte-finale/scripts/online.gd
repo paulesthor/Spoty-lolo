@@ -48,7 +48,7 @@ func _ready():
 	Net.lobby_changed.connect(_refresh)
 	Net.status_changed.connect(_refresh)
 	UIK.fade_in(self)
-	Snd.music("hymne", 0.6)
+	Snd.music("radio", 0.6)
 	for a in OS.get_cmdline_user_args():
 		if a == "online=host": _host()
 		elif a.begins_with("online=join:"): ip_edit.text = a.substr(12); _join()

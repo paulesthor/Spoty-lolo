@@ -22,7 +22,7 @@ var credits: Control
 var menu: VBoxContainer
 
 func _ready():
-	Snd.music("march")
+	Snd.music("titre")
 	stage = load("res://scripts/stage.gd").new()
 	add_child(stage)
 	stage.build(1)

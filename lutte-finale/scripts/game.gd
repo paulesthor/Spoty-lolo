@@ -810,7 +810,9 @@ func _show_menu():
 
 func start():
 	state = "play"
-	Snd.music(tpl.get("music", "battle"))
+	# the zone's own theme, or now and then the second battle theme so a zone never sounds the same twice
+	var zm: String = tpl.get("music", "battle")
+	Snd.music("battle2" if (zm == "battle" and randf() < 0.5) or randf() < 0.2 else zm)
 	hud.hide_screen()
 	hud.set_hud_visible(true)
 	if not bot: Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
@@ -1048,7 +1050,7 @@ func _director(d: float):
 	if not boss_spawned and time >= float(tpl.get("boss_time", BOSS_TIME)):
 		boss_spawned = true
 		var bk: String = tpl["boss"]
-		Snd.music("boss", 2.0); Snd.play("explosion", 0.0, 0.0, 1.0, 0.6)
+		Snd.music("boss2" if Levels.act(zone) >= 1 else "boss", 2.0); Snd.play("explosion", 0.0, 0.0, 1.0, 0.6)
 		var zl := (1.0 + 1.2 * floorf((zone - 1) / 3.0)) if endless else (1.0 + 0.45 * Levels.act(zone))     # later acts / endless loops: tougher bosses
 		boss = enemies.spawn(bk, spawn_point(20.0, 24.0), (1.0 + 0.2 * bets) * zl * float(Meta.TIERS[tier - 1]["hp"]) * (1.0 + 0.6 * (players.size() - 1)), float(Meta.TIERS[tier - 1]["dmg"]))
 		_toast_all("%s ARRIVE" % Levels.edef(bk)["name"].to_upper(), 3.0)

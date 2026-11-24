@@ -58,7 +58,7 @@ var settings := {}
 var set_btns := {}
 
 func _ready():
-	Snd.music("march")
+	Snd.music("caserne")
 	ids = Meta.CHARACTERS.keys()
 	stage = load("res://scripts/stage.gd").new()
 	add_child(stage)

@@ -37,7 +37,7 @@ func _ready():
 		elif a == "nospend": bot_nospend = true
 		elif a.begins_with("hubshots="): shots_dir = a.substr(9)
 	theme = _make_theme()
-	Snd.music("march")
+	Snd.music("kolkhoze")
 	tab = Meta.hub_tab
 	Meta.hub_tab = "lancer"
 	var bg := ColorRect.new()
