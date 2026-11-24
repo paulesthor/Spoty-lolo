@@ -75,7 +75,9 @@ var by_nid := {}
 var _nid := 0
 var _snap_n := 0
 var _nest := 0
-var seen_kinds := {}       # zone signature enemies already introduced by a toast
+var seen_kinds := {}
+var shot_budget := 4.0     # ranged attacks allowed right now (refills): never a hail from everywhere
+const SHOOTER_AI := ["ranged", "lobber", "fan", "beamer", "roller", "leaper"]       # zone signature enemies already introduced by a toast
 var shells: Array = []     # Paradis Fiscal boss: its nominees (the boss is untouchable while they live)
 const KINDS: Array = []
 const ANIMS := ["Walk", "Run", "Idle", "Run_Back", "Run_Left", "Run_Right", "HitRecieve", "HitRecieve_2", "Death", "Punch_Right", "Punch_Left",
@@ -141,6 +143,8 @@ func spawn(kind: String, pos: Vector3, hp_mult := 1.0, dmg_mult := 1.0) -> Enemy
 			e.tag.pixel_size = 0.0005 if not (def.get("elite", false) or def.get("boss", false)) else 0.00062
 			if not (def.get("elite", false) or def.get("boss", false) or def.get("invincible", false)):
 				e.tag.visibility_range_end = 22.0      # support enemies: name only when close, their aura shows from afar
+		if def.get("ai", "chase") in SHOOTER_AI:
+			U.sprite(e.node, "circle_03.png", Vector3(0, 0.06 / e.node.scale.y, 0), 2.2 / e.node.scale.x, Color(1.0, 0.2, 0.15, 0.55), 1.6, false, Vector3(-PI / 2, 0, 0))
 		if def.get("shield_aura", false):
 			var ring := U.sprite(e.node, "circle_03.png", Vector3(0, 0.05, 0), 10.0 / e.node.scale.x, Color(0.7, 0.5, 1.0, 0.18), 1.2, false, Vector3(-PI / 2, 0, 0))
 		e.ap = U.anim_player(e.node)
@@ -160,7 +164,7 @@ func spawn(kind: String, pos: Vector3, hp_mult := 1.0, dmg_mult := 1.0) -> Enemy
 	e.vuln_t = 0.0
 	e.level = -1
 	e.r = def["r"]
-	e.xp = def["xp"]
+	e.xp = def["xp"] if def.get("boss", false) else int(ceil(def["xp"] * 2.0))      # fewer enemies, each worth more
 	e.ai = def.get("ai", "chase")
 	e.elite = def.get("elite", false)
 	e.boss = def.get("boss", false)
@@ -260,6 +264,7 @@ func _process(d: float):
 		return
 	if game.state != "play": return
 	_frame += 1
+	shot_budget = minf(4.0, shot_budget + d * 1.6)
 	var grid := {}
 	const CELL := 1.6
 	var slow_world: float = game.enemy_speed_mult()
@@ -302,6 +307,7 @@ func _process(d: float):
 		e.knock_res = maxf(0.0, e.knock_res - 0.3 * d)
 		e.slow_t = maxf(0.0, e.slow_t - d)
 		e.sig_t -= d
+		if e.ai in SHOOTER_AI: _warn(e, e.t_act < 0.6 and e.t_act > -0.1 and dist < 20.0 and e.stun_t <= 0.0)
 		e.vuln_t = maxf(0.0, e.vuln_t - d)
 		var spd: float = e.speed * slow_world * (0.6 if e.slow_t > 0.0 else 1.0)
 		var move := dir
@@ -457,11 +463,38 @@ func _ai_charger(e: Enemy, dir: Vector3, dist: float, d: float, aim := 0.7, reac
 			return e.dash_dir
 	return dir
 
+# a ranged attack is allowed only from a capitalist on screen, and only a few at a time
+func _may_shoot(e: Enemy) -> bool:
+	if ghost: return false
+	var cam: Camera3D = game.cam
+	var ok := shot_budget >= 1.0
+	if ok and cam != null:
+		var p: Vector3 = e.node.position + Vector3(0, 1.0, 0)
+		ok = cam.is_position_in_frustum(p)
+		if ok:
+			var sp := cam.unproject_position(p)
+			var vs := get_viewport().get_visible_rect().size
+			ok = sp.x > vs.x * 0.04 and sp.x < vs.x * 0.96 and sp.y > vs.y * 0.06 and sp.y < vs.y * 0.94
+	if not ok:
+		e.t_act = 0.55      # retry soon, with the "!" warning shown again
+		return false
+	shot_budget -= 1.0
+	return true
+
+# "!" over a shooter about to fire
+func _warn(e: Enemy, on: bool):
+	var w: Label3D = e.node.get_node_or_null("warn")
+	if w == null:
+		if not on: return
+		w = U.label(e.node, "!", Vector3(0, (e.def["h"] + 0.75) / e.node.scale.y, 0), 120, Color(1, 0.2, 0.15), Color(0, 0, 0, 1))
+		w.name = "warn"; w.fixed_size = true; w.pixel_size = 0.0011
+	w.visible = on
+
 # ---------------------------------------------------------------- zone signature enemies
 # Hypermarché: price tags thrown in a fan of three
 func _ai_fan(e: Enemy, dir: Vector3, dist: float, d: float) -> Vector3:
 	e.t_act -= d
-	if e.t_act <= 0.0 and dist < 16.0:
+	if e.t_act <= 0.0 and dist < 16.0 and _may_shoot(e):
 		e.t_act = randf_range(2.6, 3.4)
 		for k in 3:
 			_shoot(e.node.position + Vector3(0, 1.1, 0), dir.rotated(Vector3.UP, (k - 1) * 0.32), e.dmg, "")
@@ -489,7 +522,7 @@ func _ai_bullbear(e: Enemy, dir: Vector3, dist: float, d: float) -> Vector3:
 # Data center: scans you, then fires a beam along the red line
 func _ai_beamer(e: Enemy, dir: Vector3, dist: float, d: float) -> Vector3:
 	e.t_act -= d
-	if e.t_act <= 0.0 and dist < 16.0:
+	if e.t_act <= 0.0 and dist < 16.0 and _may_shoot(e):
 		e.t_act = randf_range(4.0, 5.0)
 		_beam(e.node.position, dir, 18.0, 1.0, e.dmg, "le rayon d'un Modérateur IA")
 		_act(e, "Idle_Gun_Shoot", 1.0, 1.0)
@@ -500,7 +533,7 @@ func _ai_beamer(e: Enemy, dir: Vector3, dist: float, d: float) -> Vector3:
 # Ski: rolls a snowball at you
 func _ai_roller(e: Enemy, dir: Vector3, dist: float, d: float) -> Vector3:
 	e.t_act -= d
-	if e.t_act <= 0.0 and dist < 18.0:
+	if e.t_act <= 0.0 and dist < 18.0 and _may_shoot(e):
 		e.t_act = randf_range(3.5, 4.5)
 		_ball(e.node.position + dir * 1.2, dir, 9.0, 0.7, e.dmg, 2.6, 0.6, "snow", "une boule de neige d'un Moniteur")
 		_act(e, "Punch_Left", 0.5, 1.2)
@@ -511,7 +544,7 @@ func _ai_roller(e: Enemy, dir: Vector3, dist: float, d: float) -> Vector3:
 # Fusée: a zero-g leap that lands on where you stood
 func _ai_leaper(e: Enemy, dir: Vector3, dist: float, d: float) -> Vector3:
 	e.t_act -= d
-	if e.phase == "" and e.t_act <= 0.0 and dist < 12.0 and dist > 3.0 and e.level < 0:
+	if e.phase == "" and e.t_act <= 0.0 and dist < 12.0 and dist > 3.0 and e.level < 0 and _may_shoot(e):
 		e.phase = "aim"; e.t_act = 0.8
 		var tgt: Vector3 = game.world.resolve(Vector3(e.tgt.global_position.x, 0, e.tgt.global_position.z), e.r)
 		_telegraph_circle(tgt, 2.6, 0.8 + HOP_TIME * 2.0)
@@ -531,7 +564,7 @@ func _ai_leaper(e: Enemy, dir: Vector3, dist: float, d: float) -> Vector3:
 
 func _ai_ranged(e: Enemy, dir: Vector3, dist: float, d: float, keep: float, cd: float) -> Vector3:
 	e.t_act -= d
-	if e.t_act <= 0.0 and dist < 20.0:
+	if e.t_act <= 0.0 and dist < 20.0 and _may_shoot(e):
 		e.t_act = cd + randf_range(-0.3, 0.3)
 		_shoot(e.node.position + Vector3(0, 1.1, 0), dir, e.dmg, e.def.get("shot", ""))
 		_act(e, "Idle_Gun_Shoot", 0.5, 1.4)
@@ -540,7 +573,7 @@ func _ai_ranged(e: Enemy, dir: Vector3, dist: float, d: float, keep: float, cd: 
 	return Vector3(-dir.z, 0, dir.x) * 0.6
 func _ai_lobber(e: Enemy, dir: Vector3, dist: float, d: float) -> Vector3:
 	e.t_act -= d
-	if e.t_act <= 0.0 and dist < 18.0:
+	if e.t_act <= 0.0 and dist < 18.0 and _may_shoot(e):
 		e.t_act = randf_range(3.5, 4.5)
 		var target: Vector3 = e.tgt.global_position + e.tgt.velocity * 0.5
 		target.y = 0

@@ -417,7 +417,7 @@ func default_save() -> Dictionary:
 		"weapons": {"marteau": true, "kalach": true, "faucille": true, "molotov": true},
 		"mastery": {}, "modules": {}, "kills": {},
 		"plan": {}, "plan_no": 0, "directives_best": 0, "last_char": "stakhanov", "lifetime": 0,
-		"options": {"numbers": 2, "fx": 100, "shake": 100},
+		"options": {"numbers": 1, "fx": 75, "shake": 100},
 	}
 
 func load_save():
@@ -436,7 +436,7 @@ func load_save():
 
 func opt(k: String) -> float:
 	var o: Dictionary = data.get("options", {})
-	return float(o.get(k, {"numbers": 2, "fx": 100, "shake": 100, "minimap": 1, "music": 70, "sfx": 80, "quality": 2}.get(k, 0)))
+	return float(o.get(k, {"numbers": 1, "fx": 75, "shake": 100, "minimap": 1, "music": 70, "sfx": 80, "quality": 2}.get(k, 0)))
 
 func set_opt(k: String, v: float):
 	if not data.has("options"): data["options"] = {}

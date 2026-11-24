@@ -194,6 +194,14 @@ static func merge_skinned(n: Node, key: String) -> bool:
 		_merged_mat.vertex_color_use_as_albedo = true
 		_merged_mat.roughness = 0.8
 		_merged_mat.rim_enabled = true; _merged_mat.rim = 0.45; _merged_mat.rim_tint = 0.6
+		# a faint red silhouette that shows through walls and props: nobody hides behind the decor
+		var xr := StandardMaterial3D.new()
+		xr.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		xr.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		xr.no_depth_test = true
+		xr.albedo_color = Color(1.0, 0.25, 0.2, 0.13)
+		xr.render_priority = -1
+		_merged_mat.next_pass = xr
 	var keep: MeshInstance3D = parts[0]
 	keep.mesh = mesh
 	keep.material_override = null

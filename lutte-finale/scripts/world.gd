@@ -1566,7 +1566,9 @@ func update_ghosts(cam_pos: Vector3, target: Vector3, d: float):
 		var hide := false
 		if Vector2(c.x - target.x, c.z - target.z).length() < reach:
 			var ab: AABB = o["aabb"]
-			hide = ab.intersects_segment(cam_pos, t2) or ab.intersects_segment(cam_pos, target + Vector3(0, 2.2, 0)) or ab.has_point(cam_pos)
+			var side := (t2 - cam_pos).cross(Vector3.UP).normalized() * 4.0
+			hide = ab.intersects_segment(cam_pos, t2) or ab.intersects_segment(cam_pos, target + Vector3(0, 2.2, 0)) or ab.has_point(cam_pos) \
+				or ab.intersects_segment(cam_pos, t2 + side) or ab.intersects_segment(cam_pos, t2 - side)
 		if hide == o["ghost"]: continue
 		o["ghost"] = hide
 		(o["occ"] as OccluderInstance3D).visible = not hide

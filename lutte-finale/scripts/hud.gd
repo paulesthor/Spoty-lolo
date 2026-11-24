@@ -244,7 +244,54 @@ func _label(parent: Control, t: String, size: int, col: Color) -> Label:
 	return l
 
 # ---------------------------------------------------------------- per-frame
+# ---------------------------------------------------------------- off-screen threats
+# red arrows on the screen edge for what can hurt you from outside the view: projectiles and lobs on
+# their way, rolling balls, elites and the boss
+var _marks: Array = []
+func _threats():
+	if game == null or game.cam == null or game.player == null: return
+	var cam: Camera3D = game.cam
+	var vs := root.get_viewport_rect().size
+	var pp: Vector3 = game.player.global_position
+	var pts := []
+	for h in game.enemies.hazards:
+		if not is_instance_valid(h["n"]): continue
+		var hp: Vector3 = h["to"] if h["t"] == "lob" else (h["n"] as Node3D).global_position
+		if h["t"] in ["shot", "lob", "ball"] and hp.distance_to(pp) < 30.0: pts.append([hp, Color(1, 0.25, 0.2)])
+	for e in game.enemies.alive_list():
+		if (e.elite or e.boss) and e.node.position.distance_to(pp) < 45.0: pts.append([e.node.position + Vector3(0, 1.5, 0), Color(1, 0.8, 0.25)])
+	var used := 0
+	var cx := vs * 0.5
+	for it in pts:
+		if used >= 10: break
+		var wp: Vector3 = it[0]
+		var behind := not cam.is_position_in_frustum(wp)
+		var sp := cam.unproject_position(wp)
+		if not behind and sp.x > 30 and sp.x < vs.x - 30 and sp.y > 30 and sp.y < vs.y - 30: continue
+		var dir := sp - cx
+		if behind: dir = -dir
+		if dir.length() < 1.0: continue
+		dir = dir.normalized()
+		var k := minf((vs.x * 0.5 - 40) / maxf(absf(dir.x), 0.001), (vs.y * 0.5 - 40) / maxf(absf(dir.y), 0.001))
+		if used >= _marks.size():
+			var l := Label.new(); l.text = "▲"
+			l.add_theme_font_override("font", load("res://fonts/Symbols.ttf")); l.add_theme_font_size_override("font_size", 34)
+			l.add_theme_color_override("font_outline_color", Color(0, 0, 0)); l.add_theme_constant_override("outline_size", 6)
+			l.size = Vector2(40, 40); l.pivot_offset = Vector2(20, 20)
+			l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			root.add_child(l); _marks.append(l)
+		var m: Label = _marks[used]
+		m.visible = true
+		m.position = cx + dir * k - Vector2(20, 20)
+		m.rotation = dir.angle() + PI / 2
+		m.add_theme_color_override("font_color", it[1])
+		m.modulate.a = 0.6 + 0.4 * absf(sin(Time.get_ticks_msec() / 120.0))
+		used += 1
+	for i in range(used, _marks.size()): (_marks[i] as Label).visible = false
+
 func _process(d: float):
+	_threats()
 	if game == null: return
 	var p = game.player
 	_update_allies()

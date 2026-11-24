@@ -10,10 +10,10 @@ const CAM_OFFSET := Vector3(0, 7.5, 10.5)
 const CAM_LOOK := Vector3(0, 0.3, -6.5)
 const PITCH_MIN := 0.3     # ~17°: low, looking ahead
 const PITCH_MAX := 1.15    # ~66°: nearly top-down
-var cam_pitch := atan2(7.5, 10.5)
+var cam_pitch := 0.86      # ~49°: higher and more top-down than before, less hidden behind the decor
 
 # camera offset/look target for the current pitch (same distance as the default framing)
-const CAM_DIST := 17.0     # was 12.9: the horde and the weapon effects need room
+const CAM_DIST := 19.0     # was 12.9 then 17: the horde and the weapon effects need room
 func cam_offset() -> Vector3:
 	var dist := CAM_DIST
 	return Vector3(0, sin(cam_pitch) * dist, cos(cam_pitch) * dist)
@@ -87,6 +87,7 @@ var shake_amt := 0.0
 var cam_k := 1.0
 var spawn_acc := 0.0
 var next_wave := 60.0
+var in_lull := false
 var elite_times := [120.0, 240.0, 330.0, 420.0, 540.0]
 var next_event := 85.0
 var event_name := ""
@@ -986,12 +987,16 @@ func mults() -> Array:
 	var t: Dictionary = Meta.TIERS[tier - 1]
 	var hp := (1.0 + 0.36 * tm + 0.12 * tm * tm + 0.014 * tm * tm * tm) * (1.0 + 0.2 * bets) * (1.0 + 0.25 * dirl("productivisme")) * float(t["hp"])
 	hp *= 1.0 + 0.45 * (players.size() - 1)       # more comrades, tougher capitalists
+	hp *= HORDE_HP
 	return [hp, (1.0 + 0.1 * tm) * (1.0 + 0.25 * dirl("sans_pitie")) * float(t["dmg"])]
 
 func enemy_speed_mult() -> float:
 	return 0.55 if event_name == "greve" else 1.0
 
 # the horde stays mowable (fodder scales slower) and shooters are capped, so the player keeps hunting
+const HORDE_HP := 1.7        # fewer enemies on screen than before, each one sturdier
+const WAVE_PERIOD := 70.0    # pressure, then a lull to explore, open chests, use shrines
+const WAVE_LULL := 22.0
 const FODDER := ["stagiaire", "cadre"]
 const SHOOTERS := ["influenceur", "banquier"]
 func _spawn_picked(p: Vector3, m: Array):
@@ -1020,7 +1025,8 @@ func _pick_kind() -> String:
 	return "stagiaire"
 
 func enemy_cap() -> int:
-	return (260 if not krach else 320) + 70 * (players.size() - 1)
+	# a readable horde: fewer capitalists on screen, each one tougher and worth more (see mults, enemies.spawn)
+	return (110 if not krach else 150) + 35 * (players.size() - 1)
 
 func _director(d: float):
 	if bunker_mode: return      # Berlin, phase 3: a duel in the bunker, nobody else comes in
@@ -1029,6 +1035,17 @@ func _director(d: float):
 	var cap := enemy_cap()
 	var rate := (1.1 + 0.9 * tm + 0.19 * tm * tm) * (1.0 + 0.15 * bets) * (1.0 + 0.25 * dirl("cadence")) * float(Meta.TIERS[tier - 1]["rate"]) * (1.0 + 0.55 * (players.size() - 1))
 	if krach: rate *= 2.2
+	rate *= 0.5      # half the old flow: the cap is lower and every enemy is sturdier
+	# pressure / lull cycle (not during the Krach or a boss fight)
+	var lull := false
+	if not krach and (boss == null or not boss.alive) and time > 40.0:
+		var ph := fmod(time - 40.0, WAVE_PERIOD)
+		lull = ph > WAVE_PERIOD - WAVE_LULL
+		if lull != in_lull:
+			in_lull = lull
+			if lull: _toast_all("ACCALMIE · LE CAPITAL REPREND SON SOUFFLE", 2.5)
+			else: _toast_all("LA HORDE REVIENT", 2.0)
+	if lull: rate *= 0.12
 	spawn_acc = minf(spawn_acc + rate * d, 12.0)      # a hitch must not dump a crowd in one frame
 	while spawn_acc >= 1.0:
 		spawn_acc -= 1.0
@@ -1036,7 +1053,7 @@ func _director(d: float):
 		_spawn_picked(spawn_point(20.0, 30.0), m)
 	if time >= next_wave and time < ZONE_TIME:
 		next_wave += 60.0
-		var n := int(12 + tm * 5)
+		var n := int(6 + tm * 2.5)
 		_toast_all("VAGUE DE STAGIAIRES", 1.5)
 		for i in n:
 			if enemies.count() >= cap + 40: break
