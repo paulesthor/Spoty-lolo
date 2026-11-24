@@ -239,10 +239,10 @@ static func _parade_uniform(n: Node3D, col: Color):
 # Applied on top of the animation (call it after the AnimationPlayer has advanced).
 # directions in model space (front = +Z, the character's right = -X)
 const OSS_POSE := {
-	"UpperArm.R": Vector3(-0.38, -0.62, 0.68),
+	"UpperArm.R": Vector3(-0.32, -0.94, 0.08),
 	"LowerArm.R": Vector3(-0.05, 0.04, 1.0),
-	"UpperArm.L": Vector3(0.78, -0.5, 0.38),
-	"LowerArm.L": Vector3(-0.7, 0.2, 0.69),
+	"UpperArm.L": Vector3(0.86, -0.36, 0.36),
+	"LowerArm.L": Vector3(-0.52, 0.16, 0.84),
 	"UpperLeg.R": Vector3(-0.42, -0.86, 0.22),
 	"LowerLeg.R": Vector3(-0.2, -0.92, -0.32),
 	"UpperLeg.L": Vector3(0.48, -0.84, -0.1),
