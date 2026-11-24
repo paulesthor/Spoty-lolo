@@ -680,6 +680,7 @@ func _lot_station(r: Rect2):
 func _lot_empty(r: Rect2, start := false):
 	var c := _v(r.get_center().x, r.get_center().y)
 	if start:
+		_spawn_altar(player_start)
 		# the Party's square: trees and benches around the edge, lamp posts, flags; the middle stays clear
 		var e := 3.0
 		var pts := []
@@ -724,6 +725,39 @@ func _lot_empty(r: Rect2, start := false):
 		if _blocked(cp, 0.8): continue
 		U.place(self, U.CR + "construction-cone.glb", cp, 0.7, rng.randf() * TAU)
 		small_obstacle(cp, 0.4)
+
+# where the comrades appear: a low marble disc with a painted red star, four flags, four lanterns,
+# a plaque, a soft red glow and sparks rising from the centre. Walkable: nothing blocks the middle.
+func _spawn_altar(c: Vector3):
+	var marble := U.pbr("Marble012", 0.4, Color(0.85, 0.83, 0.8), 0.35)
+	var disc := U.cyl(self, 4.2, 0.12, c + Vector3(0, 0.06, 0), marble)
+	disc.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	U.cyl(self, 4.35, 0.08, c + Vector3(0, 0.04, 0), U.solid(Color(1.0, 0.78, 0.3), 0.3, 0.3, 1.0)).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	U.cyl(self, 2.9, 0.125, c + Vector3(0, 0.065, 0), U.solid(Color(0.72, 0.06, 0.08), 0.0, 0.5)).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var star := Label3D.new(); star.text = "★"; star.font = load("res://fonts/Symbols.ttf"); star.font_size = 256
+	star.pixel_size = 0.018; star.modulate = Color(1.0, 0.8, 0.25); star.outline_size = 0; star.shaded = true
+	star.position = c + Vector3(0, 0.135, 0); star.rotation = Vector3(-PI / 2, 0, 0)
+	add_child(star)
+	for k in 4:
+		var a := TAU * k / 4.0 + PI / 4
+		var fp := c + Vector3(cos(a), 0, sin(a)) * 3.75
+		U.cyl(self, 0.05, 4.0, fp + Vector3(0, 2.0, 0), U.solid(Color(0.8, 0.8, 0.82), 0.0, 0.3, 0.9))
+		U.sphere(self, 0.1, fp + Vector3(0, 4.05, 0), U.solid(Color(1, 0.8, 0.2), 0.4, 0.3, 1.0))
+		var fh := Node3D.new(); add_child(fh); fh.position = fp + Vector3(0, 3.5, 0); fh.rotation.y = a + PI / 2
+		U.flag_cloth(fh, Vector2(1.3, 0.85), Vector3(0, 0, 0.04), "res://assets/textures/flag_soviet.png", float(k) * 2.0)
+		var lp := c + Vector3(cos(a + PI / 4), 0, sin(a + PI / 4)) * 3.75
+		U.place(self, U.PROPS + "k_fantasy_town_kit/lantern.glb", lp, 1.6, a)
+		var ol := OmniLight3D.new(); ol.light_color = Color(1.0, 0.75, 0.4); ol.light_energy = 0.8; ol.omni_range = 4.0
+		ol.position = lp + Vector3(0, 1.4, 0); add_child(ol)
+		small_obstacle(fp, 0.2); small_obstacle(lp, 0.3)
+	# plaque on the south edge, lying slightly tilted like a lectern
+	var pl := U.sign_panel(self, "POINT DE DÉPART DU PEUPLE", Vector2(2.6, 0.5), c + Vector3(0, 0.45, 4.7), 0.0, Color(0.55, 0.35, 0.15), Color(1.0, 0.85, 0.45))
+	pl.rotation.x = -0.6
+	U.box(self, Vector3(0.15, 0.4, 0.15), c + Vector3(0, 0.2, 4.6), U.solid(Color(0.3, 0.3, 0.32), 0.0, 0.4, 0.8))
+	var glow := OmniLight3D.new(); glow.light_color = Color(1.0, 0.25, 0.15); glow.light_energy = 1.2; glow.omni_range = 6.0
+	glow.position = c + Vector3(0, 1.0, 0); add_child(glow)
+	VFX.ps(self, "spark_04.png", {"n": 14, "life": 2.2, "preprocess": 2.2, "size": 0.18, "ramp": "fade", "curve": "flame",
+		"shape": "sphere", "r": 1.6, "spread": 15.0, "vel": [0.6, 1.2], "grav": Vector3(0, 0.3, 0), "pos": c + Vector3(0, 0.3, 0)})
 
 func _build_plateau(i: int):
 	var pl: Dictionary = plateaus[i]
