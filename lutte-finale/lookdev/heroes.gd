@@ -35,6 +35,11 @@ func _ready():
 			cam.fov = 26
 			cam.global_position = c + Vector3(-4.4, 1.6, 5.2)
 			cam.look_at(c + Vector3(-5.5, 0.95, 0))
+		if "hands" in OS.get_cmdline_user_args():
+			kinds = ["boss3"]
+			cam.fov = 14
+			cam.global_position = c + Vector3(-5.5, 1.25, 3.2)
+			cam.look_at(c + Vector3(-5.5, 0.95, 0))
 		if "front" in OS.get_cmdline_user_args():
 			kinds = ["boss3"]
 			cam.fov = 24

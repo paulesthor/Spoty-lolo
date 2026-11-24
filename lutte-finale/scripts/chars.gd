@@ -252,16 +252,16 @@ const OSS_LEGS := ["UpperLeg.R", "LowerLeg.R", "UpperLeg.L", "LowerLeg.L"]
 const OSS_DROP := 0.17         # hips lowered (metres) so the bent legs still reach the ground
 const OSS_LEAN := 0.22         # chest forward
 const OSS_HEAD := -0.55        # head turned towards his right
-const OSS_CURL := 1.5          # finger curl of the left fist
-const OSS_CURL_AXIS := Vector3(0, 0, 1)
-const OSS_WRIST_L := -0.4       # left wrist turned: palm against the chest
+const OSS_CURL := 1.5         # finger curl of the fists (per joint)
+const OSS_CURL_SIGN := -1.0
+const OSS_WRIST_L := 1.4      # left wrist rolled: palm against the chest, knuckles forward
 
 static func _aim_bone(sk: Skeleton3D, b: String, dir: Vector3):
 	var i := sk.find_bone(b)
 	if i < 0: return
 	var p := sk.get_bone_parent(i)
 	var pg: Transform3D = sk.get_bone_global_pose(p) if p >= 0 else Transform3D.IDENTITY
-	var cur: Basis = (pg * sk.get_bone_pose(i)).basis
+	var cur: Basis = (pg * sk.get_bone_rest(i)).basis      # from the rest pose: the result never accumulates
 	var y := cur.y.normalized()
 	var want := dir.normalized()
 	var axis := y.cross(want)
@@ -269,6 +269,19 @@ static func _aim_bone(sk: Skeleton3D, b: String, dir: Vector3):
 	var rot := Basis(axis.normalized(), y.angle_to(want))
 	var g := (rot * cur).orthonormalized()
 	sk.set_bone_pose_rotation(i, (pg.basis.orthonormalized().inverse() * g).get_rotation_quaternion())
+
+# close a hand: each finger joint turns about the knuckle line (index -> pinky), towards the palm
+static func _fist(sk: Skeleton3D, side: String, amount: float):
+	var i1 := sk.find_bone("Index1." + side); var p1 := sk.find_bone("Pinky1." + side)
+	if i1 < 0 or p1 < 0: return
+	var hinge := (sk.get_bone_global_rest(p1).origin - sk.get_bone_global_rest(i1).origin).normalized()
+	var sg := OSS_CURL_SIGN * (1.0 if side == "L" else -1.0)
+	for fg in ["Index", "Middle", "Ring", "Pinky"]:
+		for k in [2, 3, 4]:      # bone 1 is the metacarpal (it starts at the wrist): bending it folds the whole palm
+			var fi := sk.find_bone("%s%d.%s" % [fg, k, side])
+			if fi < 0: continue
+			var axis: Vector3 = (sk.get_bone_global_rest(fi).basis.orthonormalized().inverse() * hinge).normalized()
+			sk.set_bone_pose_rotation(fi, sk.get_bone_rest(fi).basis.get_rotation_quaternion() * Quaternion(axis, amount * sg))
 
 static func oss_pose(n: Node3D, legs := true):
 	var sk := skeleton(n)
@@ -285,12 +298,12 @@ static func oss_pose(n: Node3D, legs := true):
 		if not legs and b in OSS_LEGS: continue
 		_aim_bone(sk, b, OSS_POSE[b])
 	# left fist closed on the lapel
-	for fg in ["Index", "Middle", "Ring", "Pinky"]:
-		for k in [1, 2, 3]:
-			var fi2 := sk.find_bone("%s%d.L" % [fg, k])
-			if fi2 >= 0: sk.set_bone_pose_rotation(fi2, sk.get_bone_rest(fi2).basis.get_rotation_quaternion() * Quaternion(OSS_CURL_AXIS, OSS_CURL))
+	_fist(sk, "L", OSS_CURL)
+	_fist(sk, "R", OSS_CURL * 0.8)      # fingers round the pistol grip
+	var ll := sk.find_bone("LowerArm.L")
+	if ll >= 0: sk.set_bone_pose_rotation(ll, sk.get_bone_pose_rotation(ll) * Quaternion(Vector3.UP, OSS_WRIST_L))
 	var wl := sk.find_bone("Wrist.L")
-	if wl >= 0: sk.set_bone_pose_rotation(wl, sk.get_bone_pose_rotation(wl) * Quaternion(Vector3.UP, OSS_WRIST_L))
+	if wl >= 0: _aim_bone(sk, "Wrist.L", OSS_POSE["LowerArm.L"])      # hand in line with the forearm
 	if legs:
 		# feet flat on the ground again, pointing where they pointed at rest
 		for f in ["Foot.L", "Foot.R"]:
