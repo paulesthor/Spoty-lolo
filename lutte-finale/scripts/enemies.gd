@@ -641,6 +641,12 @@ func _ai_slammer(e: Enemy, dir: Vector3, dist: float, d: float) -> Vector3:
 			return Vector3.ZERO
 	return dir
 
+func shells_hp() -> int:
+	var t := 0.0
+	for s in shells:
+		if s.alive and s.kind == "pretenom": t += s.hp
+	return int(t)
+
 func _shells_alive() -> int:
 	var n := 0
 	for s in shells:
@@ -775,14 +781,14 @@ func _boss_special(e: Enemy, pat: String, dir: Vector3, dist: float) -> bool:
 			var alive := _shells_alive()
 			guard.visible = alive > 0
 			if alive == 0 and e.tp_t <= 0.0:
-				e.tp_t = 22.0
+				e.tp_t = 26.0
 				shells.clear()
 				game._toast_all("SOCIÉTÉS-ÉCRANS ! %s EST INTOUCHABLE TANT QUE SES PRÊTE-NOMS TIENNENT" % e.def["name"].to_upper(), 3.0)
 				_act(e, "Wave", 1.0, 1.2)
 				for i in 3:
 					var a := TAU * i / 3.0 + randf()
-					# each nominee holds 5 % of the boss: a clear target, not a second boss (the horde multiplier doesn't apply)
-					shells.append(spawn("pretenom", game.world.resolve(e.tgt.global_position + Vector3(cos(a), 0, sin(a)) * 8.0, 0.6), e.max_hp * 0.05 / 260.0, m[1]))
+					# each nominee holds 4 % of the boss: a clear target, not a second boss (the horde multiplier doesn't apply)
+					shells.append(spawn("pretenom", game.world.resolve(e.tgt.global_position + Vector3(cos(a), 0, sin(a)) * 8.0, 0.6), e.max_hp * 0.04 / 260.0, m[1]))
 		"pivot":
 			# the Unicorn pivots: hyper-growth (three charges) or a fundraising (a spiral of cash)
 			if e.tp_t <= 0.0 and e.phase == "":
@@ -1212,6 +1218,12 @@ func _pool(e: Enemy):
 	pools[e.kind].append(e)
 
 func nearest(pos: Vector3, max_d: float, exclude: Array = []) -> Enemy:
+	# a boss within close range gets the aimed shots: the horde doesn't soak a whole boss fight
+	var b = game.boss
+	if b != null and b.alive and b.node.visible and not exclude.has(b):
+		var bv: Vector3 = b.node.position - pos
+		bv.y = 0
+		if bv.length() < minf(max_d, 13.0) and _shells_alive() == 0: return b
 	var best: Enemy = null
 	var bd := max_d * max_d
 	for e in _alive_cache:

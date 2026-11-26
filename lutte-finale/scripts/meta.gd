@@ -18,8 +18,8 @@ var hub_tab := "lancer"       # tab the Kolkhoze opens on              # run sta
 
 const TIERS := [
 	{"name": "Camarade", "hp": 1.0, "dmg": 1.0, "rate": 1.0, "medals": 1.0, "desc": "La difficulté normale."},
-	{"name": "Commissaire", "hp": 1.6, "dmg": 1.3, "rate": 1.15, "medals": 1.6, "desc": "Ennemis +60 % PV, +30 % dégâts, plus nombreux. Médailles x1.6."},
-	{"name": "Héros de l'Union", "hp": 2.5, "dmg": 1.6, "rate": 1.3, "medals": 2.4, "desc": "Ennemis x2.5 PV, +60 % dégâts, encore plus nombreux. Médailles x2.4."},
+	{"name": "Commissaire", "hp": 1.4, "dmg": 1.4, "rate": 1.3, "medals": 1.6, "desc": "Ennemis +40 % PV, +40 % dégâts, +30 % d'ennemis. Médailles x1.6."},
+	{"name": "Héros de l'Union", "hp": 1.9, "dmg": 1.95, "rate": 1.6, "medals": 2.4, "desc": "Ennemis x1.9 PV, x1.95 dégâts, +60 % d'ennemis. Médailles x2.4."},
 ]
 
 func tier_unlocked(t: int) -> bool:

@@ -1012,11 +1012,22 @@ func mults() -> Array:
 	var hp := (1.0 + 0.36 * tm + 0.12 * tm * tm + 0.014 * tm * tm * tm) * zone_power() * (1.0 + 0.2 * bets) * (1.0 + 0.25 * dirl("productivisme")) * float(t["hp"])
 	hp *= 1.0 + 0.45 * (players.size() - 1)       # more comrades, tougher capitalists
 	hp *= HORDE_HP
-	if krach: hp *= 1.0 + 0.3 * maxf(0.0, time - ZONE_TIME) / 60.0      # the final horde: a wall for every build
-	return [hp, (1.0 + 0.1 * tm) * (1.0 + ZONE_DMG_STEP * zone_index()) * (1.0 + 0.25 * dirl("sans_pitie")) * float(t["dmg"])]
+	if krach: hp *= pow(1.6, krach_min())      # the final horde: a wall for every build (x1.6 per minute)
+	var dm := (1.0 + 0.13 * tm) * (1.0 + ZONE_DMG_STEP * zone_index())
+	if krach: dm *= pow(1.3, krach_min())
+	return [hp, dm * (1.0 + 0.25 * dirl("sans_pitie")) * float(t["dmg"])]
 
+# the horde gets quicker over a zone and from zone to zone (capped at +30 %)
 func enemy_speed_mult() -> float:
-	return 0.55 if event_name == "greve" else 1.0
+	var sp := minf(1.3, 1.0 + 0.02 * time / 60.0 + 0.03 * zone_index())
+	return sp * (0.55 if event_name == "greve" else 1.0)
+
+func krach_min() -> float:
+	return maxf(0.0, time - ZONE_TIME) / 60.0
+
+# the horde's HP curve inside a zone (without the zone power), used to price the boss call
+func horde_curve(tm: float) -> float:
+	return 1.0 + 0.36 * tm + 0.12 * tm * tm + 0.014 * tm * tm * tm
 
 # the horde stays mowable (fodder scales slower) and shooters are capped, so the player keeps hunting
 const HORDE_HP := 1.7        # fewer enemies on screen than before, each one sturdier
@@ -1053,7 +1064,7 @@ func _pick_kind() -> String:
 
 func enemy_cap() -> int:
 	# a readable horde: fewer capitalists on screen, each one tougher and worth more (see mults, enemies.spawn)
-	var base := 150 if krach else (75 if boss != null and boss.alive else 110)      # the boss fight stays readable
+	var base := 150 if krach else (50 if boss != null and boss.alive else 110)      # the boss fight stays readable
 	return base + 35 * (players.size() - 1)
 
 func _director(d: float):
@@ -1074,7 +1085,7 @@ func _director(d: float):
 			if lull: _toast_all("ACCALMIE · LE CAPITAL REPREND SON SOUFFLE", 2.5)
 			else: _toast_all("LA HORDE REVIENT", 2.0)
 	if lull: rate *= 0.12
-	if boss != null and boss.alive and not krach: rate *= 0.35      # the boss fight: the horde thins out
+	if boss != null and boss.alive and not krach: rate *= 0.25      # the boss fight: the horde thins out
 	spawn_acc = minf(spawn_acc + rate * d, 12.0)      # a hitch must not dump a crowd in one frame
 	while spawn_acc >= 1.0:
 		spawn_acc -= 1.0
@@ -2087,7 +2098,8 @@ func _spawn_boss(at := Vector3.INF):
 	var bk: String = tpl["boss"]
 	Snd.music("boss2" if Levels.act(zone) >= 1 else "boss", 2.0); Snd.play("explosion", 0.0, 0.0, 1.0, 0.6)
 	# zone power, and (Megabonk-style) the longer you wait to call it, the tougher it is: x0.85 at 05:00, x1.15 at 10:00
-	var zl := pow(zone_power(), 0.8) * (0.55 + 0.6 * clampf(time / ZONE_TIME, 0.5, 1.0))
+	# like the horde: the later you call it, the tougher it is (x0.85 at 05:00, ~x1.1 at 06:30, ~x1.7 at 10:00)
+	var zl := pow(zone_power(), 0.8) * 0.85 * sqrt(horde_curve(maxf(time, PORTAL_TIME) / 60.0) / horde_curve(PORTAL_TIME / 60.0))
 	var sp: Vector3 = world.resolve(at + Vector3(0, 0, 6.0), 2.0) if at != Vector3.INF else spawn_point(20.0, 24.0)
 	boss = enemies.spawn(bk, sp, (1.0 + 0.2 * bets) * zl * float(Meta.TIERS[tier - 1]["hp"]) * (1.0 + 0.6 * (players.size() - 1)), float(Meta.TIERS[tier - 1]["dmg"]))
 	_toast_all("%s ARRIVE" % Levels.edef(bk)["name"].to_upper(), 3.0)
@@ -2367,7 +2379,7 @@ func _bot_tick(d: float):
 		for id in weapons.owned: wl.append("%s%d%s" % [id.substr(0, 4), weapons.owned[id]["lv"], "*" if weapons.owned[id]["evo"] else ""])
 		var dl := []
 		for id in decrets: dl.append("%s%d" % [id.substr(0, 4), decrets[id]["n"]])
-		print("[bot] t=%s lvl=%d hp=%d/%d kills=%d enemies=%d rub=%d fps=%d w=%s d=%s bets=%d state=%s%s" % [_fmt(time), level, player.hp, player.max_hp, kills, enemies.count(), rubles, Engine.get_frames_per_second(), ",".join(wl), ",".join(dl), bets, state, (" boss=%d/%d d=%d sh=%d" % [boss.hp, boss.max_hp, boss.node.position.distance_to(player.global_position), enemies._shells_alive()]) if boss != null and boss.alive else ""])
+		print("[bot] t=%s lvl=%d hp=%d/%d kills=%d enemies=%d rub=%d fps=%d w=%s d=%s bets=%d state=%s%s" % [_fmt(time), level, player.hp, player.max_hp, kills, enemies.count(), rubles, Engine.get_frames_per_second(), ",".join(wl), ",".join(dl), bets, state, (" boss=%d/%d d=%d sh=%d/%d" % [boss.hp, boss.max_hp, boss.node.position.distance_to(player.global_position), enemies._shells_alive(), enemies.shells_hp()]) if boss != null and boss.alive else ""])
 		print("[prof] " + Perf.report())
 		print("[perf] dc=%d obj=%d prims=%d proc_ms=%.1f phys_ms=%.1f nodes=%d" % [Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME), Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME), Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0, Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0, Performance.get_monitor(Performance.OBJECT_NODE_COUNT)])
 	if shot_every > 0.0:
