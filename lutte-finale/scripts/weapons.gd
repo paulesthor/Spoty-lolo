@@ -55,8 +55,10 @@ func can_fuse(f: String) -> bool:
 	var b: String = Data.FUSIONS[f]["b"]
 	if not owned.has(a) or not owned.has(b): return false
 	if owned[a].get("fusion", "") != "": return false
+	var nf := 0
 	for k in owned:
-		if owned[k].get("fusion", "") != "": return false      # one fusion per run
+		if owned[k].get("fusion", "") != "": nf += 1
+	if nf / 2 >= fusion_limit(): return false      # one fusion per run, a second one in the last act
 	return owned[a]["lv"] >= Data.EVO_MIN_LV and owned[b]["lv"] >= Data.EVO_MIN_LV
 
 func fuse(f: String):
@@ -73,9 +75,17 @@ func evolve(id: String):
 
 func can_evolve(id: String) -> bool:
 	if not owned.has(id) or owned[id]["evo"]: return false
+	var ne := 0
 	for k in owned:
-		if owned[k]["evo"]: return false      # one evolved weapon per run
+		if owned[k]["evo"]: ne += 1
+	if ne >= evo_limit(): return false      # one evolution per act: the build keeps growing over 9 zones
 	return owned[id]["lv"] >= Data.EVO_MIN_LV and game.decret_lv(Data.WEAPONS[id]["evo"]) > 0
+
+func evo_limit() -> int:
+	return 1 + Levels.act(game.zone)
+
+func fusion_limit() -> int:
+	return 2 if Levels.act(game.zone) >= 2 else 1
 
 const DMG_SOFT := 3.0
 const CADENCE_CAP := 2.5
@@ -157,6 +167,11 @@ func stats(id: String) -> Dictionary:
 	return s
 
 func _process(d: float):
+	var _pt := Time.get_ticks_usec()
+	__process_inner(d)
+	Perf.add("weapons", Time.get_ticks_usec() - _pt)
+
+func __process_inner(d: float):
 	if game == null or game.state != "play": return
 	d = minf(d, 0.05)
 	slam_cd = maxf(0.0, slam_cd - d)

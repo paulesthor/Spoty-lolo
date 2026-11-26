@@ -82,6 +82,10 @@ func setup(g):
 	_at(zone_label, Control.PRESET_CENTER_TOP, Vector2(-420, 122), Vector2(840, 56))
 	zone_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
 	zone_label.add_theme_constant_override("outline_size", 8)
+	var zsb := StyleBoxFlat.new()      # a dark band: the objective stays readable over pale pavements
+	zsb.bg_color = Color(0.05, 0.03, 0.03, 0.5)
+	zsb.set_corner_radius_all(6)
+	zone_label.add_theme_stylebox_override("normal", zsb)
 	# HP
 	var hp_box := _panel(root, C_BG, 2, 1)
 	hp_box.position = Vector2(24, 40); hp_box.size = Vector2(380, 54)
@@ -259,7 +263,7 @@ func _threats():
 		var hp: Vector3 = h["to"] if h["t"] == "lob" else (h["n"] as Node3D).global_position
 		if h["t"] in ["shot", "lob", "ball"] and hp.distance_to(pp) < 30.0: pts.append([hp, Color(1, 0.25, 0.2)])
 	for e in game.enemies.alive_list():
-		if (e.elite or e.boss) and e.node.position.distance_to(pp) < 45.0: pts.append([e.node.position + Vector3(0, 1.5, 0), Color(1, 0.8, 0.25)])
+		if (e.elite or e.boss or e.kind == "pretenom") and e.node.position.distance_to(pp) < 45.0: pts.append([e.node.position + Vector3(0, 1.5, 0), Color(1, 0.8, 0.25)])
 	if game.portal != null: pts.append([game.portal_pos + Vector3(0, 1.0, 0), Color(0.4, 1.0, 0.5)])
 	var used := 0
 	var cx := vs * 0.5
@@ -292,6 +296,11 @@ func _threats():
 	for i in range(used, _marks.size()): (_marks[i] as Label).visible = false
 
 func _process(d: float):
+	var _pt := Time.get_ticks_usec()
+	__process_inner(d)
+	Perf.add("hud", Time.get_ticks_usec() - _pt)
+
+func __process_inner(d: float):
 	_threats()
 	if game == null: return
 	var p = game.player

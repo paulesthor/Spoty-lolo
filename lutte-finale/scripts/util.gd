@@ -176,6 +176,7 @@ static func nature(parent: Node, prefab: String, pos: Vector3, height: float, ro
 	n.scale = Vector3.ONE * (height / maxf(a.size.y, 0.001))
 	var b := world_aabb(n)
 	n.position += Vector3(pos.x - b.get_center().x, pos.y - b.position.y, pos.z - b.get_center().z)
+	if height >= 3.5: n.set_meta("fade_tree", true)      # big trees turn see-through when they hide the comrade
 	return n
 
 # Static batching: merge the primitive meshes that are direct children of `root` into one mesh per

@@ -522,7 +522,8 @@ func _update_revives(d: float):
 			for q in players: player_toast(q, "%s EST DE RETOUR AU COMBAT" % Meta.CHARACTERS[p.char_id]["name"].to_upper(), 2.0)
 
 func weapon_slots() -> int:
-	return Data.WEAPON_SLOTS + int(mods.get("weapon_slot", 0.0))
+	# one more weapon slot per act (4 / 5 / 6)
+	return mini(Data.WEAPON_SLOTS + Levels.act(zone) + int(mods.get("weapon_slot", 0.0)), Data.MAX_SLOTS)
 
 func chest_price() -> int:
 	return int(chest_cost * (1.5 if dirl("penurie") > 0 else 1.0) * (1.0 - mods.get("chest_discount", 0.0) / 100.0))
@@ -835,10 +836,10 @@ func start():
 					if pw.can_fuse(f): pw.fuse(f)
 	var sl := int(mods.get("start_level", 0.0))
 	if carried or test_nocatch: sl = 0
-	elif zone > 1: sl += 12 * Levels.slot(zone) + 6 * Levels.act(zone)     # starting directly in a later zone: catch-up levels
+	elif zone > 1: sl += catchup_levels()     # starting directly in a later zone: a ready-made kit
 	if sl > 0:
 		level += sl
-		_queue_levels(sl)
+		_auto_levels(sl)
 
 func _unhandled_input(ev: InputEvent):
 	if ev is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and state == "play":
@@ -846,6 +847,11 @@ func _unhandled_input(ev: InputEvent):
 		cam_pitch = clampf(cam_pitch + clampf(ev.relative.y, -60.0, 60.0) * 0.0022, PITCH_MIN, PITCH_MAX)
 
 func _process(d: float):
+	var _pt := Time.get_ticks_usec()
+	__process_inner(d)
+	Perf.add("game", Time.get_ticks_usec() - _pt)
+
+func __process_inner(d: float):
 	if cam_rig == null or player == null or hud == null: return
 	var rd := minf(d, 0.05)
 	if net_client and state in ["play", "hold", "choice", "menu"]:
@@ -984,14 +990,30 @@ func dtime() -> float:
 	# inside an act each zone is a step harder; later acts start harder too
 	return time + Levels.slot(zone) * ZONE_OFFSET + Levels.act(zone) * ACT_OFFSET
 
+# zone power: each zone crossed multiplies the capitalists' toughness. The build grows between
+# zones (levels, slots, evolutions per act), so this replaces the old inflated difficulty clock.
+const ZONE_HP_STEP := 1.24
+const ZONE_DMG_STEP := 0.12
+func zone_index() -> int:
+	if endless: return zone - 1
+	if Levels.special(zone): return 9
+	return clampi(zone - 1, 0, 8)
+
+func zone_power() -> float:
+	return pow(ZONE_HP_STEP, zone_index())
+
+# arriving in a zone: the horde builds up over the first 40 s instead of filling the screen at once
+func arrival_ramp() -> float:
+	return clampf(0.25 + 0.75 * time / 40.0, 0.25, 1.0)
+
 func mults() -> Array:
-	var tm := dtime() / 60.0
+	var tm := time / 60.0
 	var t: Dictionary = Meta.TIERS[tier - 1]
-	var hp := (1.0 + 0.36 * tm + 0.12 * tm * tm + 0.014 * tm * tm * tm) * (1.0 + 0.2 * bets) * (1.0 + 0.25 * dirl("productivisme")) * float(t["hp"])
+	var hp := (1.0 + 0.36 * tm + 0.12 * tm * tm + 0.014 * tm * tm * tm) * zone_power() * (1.0 + 0.2 * bets) * (1.0 + 0.25 * dirl("productivisme")) * float(t["hp"])
 	hp *= 1.0 + 0.45 * (players.size() - 1)       # more comrades, tougher capitalists
 	hp *= HORDE_HP
 	if krach: hp *= 1.0 + 0.3 * maxf(0.0, time - ZONE_TIME) / 60.0      # the final horde: a wall for every build
-	return [hp, (1.0 + 0.1 * tm) * (1.0 + 0.25 * dirl("sans_pitie")) * float(t["dmg"])]
+	return [hp, (1.0 + 0.1 * tm) * (1.0 + ZONE_DMG_STEP * zone_index()) * (1.0 + 0.25 * dirl("sans_pitie")) * float(t["dmg"])]
 
 func enemy_speed_mult() -> float:
 	return 0.55 if event_name == "greve" else 1.0
@@ -1031,14 +1053,15 @@ func _pick_kind() -> String:
 
 func enemy_cap() -> int:
 	# a readable horde: fewer capitalists on screen, each one tougher and worth more (see mults, enemies.spawn)
-	return (110 if not krach else 150) + 35 * (players.size() - 1)
+	var base := 150 if krach else (75 if boss != null and boss.alive else 110)      # the boss fight stays readable
+	return base + 35 * (players.size() - 1)
 
 func _director(d: float):
 	if bunker_mode: return      # Berlin, phase 3: a duel in the bunker, nobody else comes in
-	var tm := dtime() / 60.0
+	var tm := time / 60.0
 	var m := mults()
 	var cap := enemy_cap()
-	var rate := (1.1 + 0.9 * tm + 0.19 * tm * tm) * (1.0 + 0.15 * bets) * (1.0 + 0.25 * dirl("cadence")) * float(Meta.TIERS[tier - 1]["rate"]) * (1.0 + 0.55 * (players.size() - 1))
+	var rate := (1.1 + 0.9 * tm + 0.19 * tm * tm) * (1.0 + 0.15 * bets) * (1.0 + 0.25 * dirl("cadence")) * float(Meta.TIERS[tier - 1]["rate"]) * (1.0 + 0.55 * (players.size() - 1)) * (1.0 + 0.1 * zone_index()) * arrival_ramp()
 	if krach: rate *= 2.2
 	rate *= 0.5      # half the old flow: the cap is lower and every enemy is sturdier
 	# pressure / lull cycle (not during the Krach or a boss fight)
@@ -1051,6 +1074,7 @@ func _director(d: float):
 			if lull: _toast_all("ACCALMIE · LE CAPITAL REPREND SON SOUFFLE", 2.5)
 			else: _toast_all("LA HORDE REVIENT", 2.0)
 	if lull: rate *= 0.12
+	if boss != null and boss.alive and not krach: rate *= 0.35      # the boss fight: the horde thins out
 	spawn_acc = minf(spawn_acc + rate * d, 12.0)      # a hitch must not dump a crowd in one frame
 	while spawn_acc >= 1.0:
 		spawn_acc -= 1.0
@@ -1717,6 +1741,31 @@ func _queue_levels(k: int):
 		for i in k: p.choices.append({"source": "level"})
 	_enter_choice()
 
+# levels a comrade would have reached by playing the zones before (an act start is a fresh run, a bit ahead)
+const CATCHUP := [0, 28, 42, 18, 40, 55, 36, 52, 66, 70]
+func catchup_levels() -> int:
+	if endless: return mini(10 * (zone - 1), 80)
+	return CATCHUP[zone_index()]
+
+# starting straight in a later zone: the Party hands over a ready-made kit (the catch-up levels are
+# picked automatically, the way a comrade who played the earlier zones would have), then one summary
+func _auto_levels(k: int):
+	for p in players:
+		var before: Dictionary = {}
+		for id in p.weapons.slot_ids(): before[id] = p.weapons.level(id)
+		for i in k:
+			var opts := _roll_options(3, 0, 0, [], p)
+			if opts.is_empty(): break
+			p.cur_choice = {"source": "level", "opts": opts}
+			_apply(opts[_bot_pick(p)], p)
+			p.cur_choice = null
+		p.hp = p.max_hp
+		var names: Array = []
+		for id in p.weapons.slot_ids(): names.append("%s %d" % [Data.WEAPONS[id]["name"] if Data.WEAPONS.has(id) else id, p.weapons.level(id)])
+		player_toast(p, "PAQUETAGE DU PARTI · NIVEAU %d · %s" % [level, ", ".join(names).to_upper()], 4.0)
+		_sync_loadout(p)
+	if net_host: _sync_team()
+
 func _choices(p) -> Array:
 	return p.choices
 
@@ -1749,7 +1798,10 @@ func _pump_choices():
 					p.heal(30)
 					continue
 				e["opts"] = opts
-				e["title"] = "NIVEAU %d · LE PARTI TE RÉCOMPENSE" % level
+				var left := 0
+				for q in p.choices:
+					if q["source"] == "level": left += 1
+				e["title"] = "NIVEAU %d · LE PARTI TE RÉCOMPENSE" % (level - left)
 				e["leave"] = ""
 			cur = e
 			p.cur_choice = e
@@ -2034,7 +2086,8 @@ func _spawn_boss(at := Vector3.INF):
 	_close_portal()
 	var bk: String = tpl["boss"]
 	Snd.music("boss2" if Levels.act(zone) >= 1 else "boss", 2.0); Snd.play("explosion", 0.0, 0.0, 1.0, 0.6)
-	var zl := (1.0 + 1.2 * floorf((zone - 1) / 3.0)) if endless else (1.0 + 0.45 * Levels.act(zone))     # later acts / endless loops: tougher bosses
+	# zone power, and (Megabonk-style) the longer you wait to call it, the tougher it is: x0.85 at 05:00, x1.15 at 10:00
+	var zl := pow(zone_power(), 0.8) * (0.55 + 0.6 * clampf(time / ZONE_TIME, 0.5, 1.0))
 	var sp: Vector3 = world.resolve(at + Vector3(0, 0, 6.0), 2.0) if at != Vector3.INF else spawn_point(20.0, 24.0)
 	boss = enemies.spawn(bk, sp, (1.0 + 0.2 * bets) * zl * float(Meta.TIERS[tier - 1]["hp"]) * (1.0 + 0.6 * (players.size() - 1)), float(Meta.TIERS[tier - 1]["dmg"]))
 	_toast_all("%s ARRIVE" % Levels.edef(bk)["name"].to_upper(), 3.0)
@@ -2296,7 +2349,7 @@ func _bot_pick(p = null) -> int:
 		match o["kind"]:
 			"evo", "fusion": sc += 10.0
 			"surcharge", "surplus": sc += 1.2
-			"weapon_new": sc += 3.0 if weapons.slot_ids().size() < 3 else 1.0
+			"weapon_new": sc += 3.0 if weapons.slot_ids().size() < weapon_slots() else 1.0
 			"weapon_up": sc += 2.0
 			"decret":
 				sc += 2.5 if o["id"] in ["productivite", "cadence", "endurance", "armure", "collectivisation", "expansion"] else 0.5
@@ -2314,7 +2367,8 @@ func _bot_tick(d: float):
 		for id in weapons.owned: wl.append("%s%d%s" % [id.substr(0, 4), weapons.owned[id]["lv"], "*" if weapons.owned[id]["evo"] else ""])
 		var dl := []
 		for id in decrets: dl.append("%s%d" % [id.substr(0, 4), decrets[id]["n"]])
-		print("[bot] t=%s lvl=%d hp=%d/%d kills=%d enemies=%d rub=%d fps=%d w=%s d=%s bets=%d state=%s" % [_fmt(time), level, player.hp, player.max_hp, kills, enemies.count(), rubles, Engine.get_frames_per_second(), ",".join(wl), ",".join(dl), bets, state])
+		print("[bot] t=%s lvl=%d hp=%d/%d kills=%d enemies=%d rub=%d fps=%d w=%s d=%s bets=%d state=%s%s" % [_fmt(time), level, player.hp, player.max_hp, kills, enemies.count(), rubles, Engine.get_frames_per_second(), ",".join(wl), ",".join(dl), bets, state, (" boss=%d/%d d=%d sh=%d" % [boss.hp, boss.max_hp, boss.node.position.distance_to(player.global_position), enemies._shells_alive()]) if boss != null and boss.alive else ""])
+		print("[prof] " + Perf.report())
 		print("[perf] dc=%d obj=%d prims=%d proc_ms=%.1f phys_ms=%.1f nodes=%d" % [Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME), Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME), Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0, Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0, Performance.get_monitor(Performance.OBJECT_NODE_COUNT)])
 	if shot_every > 0.0:
 		shot_t += d

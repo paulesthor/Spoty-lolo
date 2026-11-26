@@ -67,6 +67,11 @@ func _batch():
 	var n1 := U.batch_static(self, keep)
 	var n2 := U.batch_static(decor, keep) if decor else 0
 	print("[world] batched %d static meshes · bounds %s" % [n1 + n2, bounds])
+	var nt := 0
+	for t in find_children("*", "Node3D", true, false):
+		if t.has_meta("fade_tree"):
+			register_occluder(t, false, 3.5); nt += 1
+	print("[world] fading trees: %d" % nt)
 	# small props are not drawn beyond what the gameplay camera can make out
 	var culled := 0
 	for g in find_children("*", "GeometryInstance3D", true, false):
@@ -564,7 +569,8 @@ func trees() -> Array:
 		"ski": return ["pine_tree_1", "pine_tree_2", "pine_tree_3", "pine_tree_4"]
 		"fusee", "berlin": return ["dead_tree_1", "dead_tree_3", "dead_tree_5", "dead_tree_7"]
 		"datacenter": return ["dead_tree_2", "dead_tree_4", "birch_tree_2"]
-	return ["maple_tree_1", "maple_tree_2", "maple_tree_4", "birch_tree_1", "maple_tree_1", "maple_tree_4"]
+	# green trees: the red autumn maples blended with the red-and-orange capitalists
+	return ["normal_tree_1", "normal_tree_2", "normal_tree_3", "birch_tree_1", "normal_tree_4", "birch_tree_3"]
 
 func _lot_square(r: Rect2):
 	var c := _v(r.get_center().x, r.get_center().y)
@@ -916,8 +922,27 @@ func _pick_spots():
 		breakable_spots.append(free_spot(5.0, 1.6))
 
 # push a point out of obstacles (for ground enemies); returns corrected position
-func resolve(p: Vector3, r: float) -> Vector3:
+# obstacles in a coarse spatial grid: hundreds of enemies resolve against a handful of nearby rects
+# instead of every obstacle of the map (rebuilt whenever the obstacle list changes size)
+const OB_CELL := 8.0
+const OB_PAD := 3.0      # covers the biggest radius anybody resolves with
+var _ob_grid := {}
+var _ob_n := -1
+func _ob_build():
+	_ob_grid.clear()
+	_ob_n = obstacles.size()
 	for o in obstacles:
+		var g: Rect2 = (o as Rect2).grow(OB_PAD)
+		for cx in range(floori(g.position.x / OB_CELL), floori(g.end.x / OB_CELL) + 1):
+			for cz in range(floori(g.position.y / OB_CELL), floori(g.end.y / OB_CELL) + 1):
+				var k := Vector2i(cx, cz)
+				if not _ob_grid.has(k): _ob_grid[k] = []
+				_ob_grid[k].append(o)
+
+func resolve(p: Vector3, r: float) -> Vector3:
+	if obstacles.size() != _ob_n: _ob_build()
+	var near: Array = _ob_grid.get(Vector2i(floori(p.x / OB_CELL), floori(p.z / OB_CELL)), []) if r <= OB_PAD else obstacles
+	for o in near:
 		var g: Rect2 = (o as Rect2).grow(r)
 		if g.has_point(Vector2(p.x, p.z)):
 			var dl := p.x - g.position.x
@@ -1410,6 +1435,7 @@ func berlin_phase(n: int):
 		if is_instance_valid(roof): roof.queue_free()
 		if is_instance_valid(bunker["block"]): (bunker["block"] as Node).queue_free()
 		obstacles.erase(bunker["rect"])
+		_ob_n = -1
 		for l in bunker["lights"]: (l as OmniLight3D).visible = true
 		if env:
 			env.ambient_light_energy *= 0.55
@@ -1532,14 +1558,17 @@ func _launch_tower(pos: Vector3, h: float) -> Node3D:
 	return root
 
 # ---------------------------------------------------------------- see-through when a tall piece hides the player
-func register_occluder(n: Node3D):
+func register_occluder(n: Node3D, cull := true, min_h := 6.0):
 	var a := U.world_aabb(n)
-	if a.size.y < 6.0: return
+	if a.size.y < min_h: return
 	var meshes := []
 	for m in n.find_children("*", "MeshInstance3D", true, false):
 		if m.is_queued_for_deletion(): continue
 		meshes.append([m, (m as MeshInstance3D).material_override, (m as MeshInstance3D).cast_shadow])
 	if meshes.is_empty(): return
+	if not cull:      # foliage: fades like a building, but never hides what's behind it from the renderer
+		occluders.append({"aabb": a.grow(0.3), "c": a.get_center(), "meshes": meshes, "occ": null, "ghost": false})
+		return
 	# real occlusion culling behind big pieces (what's behind a block isn't drawn)
 	var occ := OccluderInstance3D.new()
 	var bo := BoxOccluder3D.new()
@@ -1571,7 +1600,7 @@ func update_ghosts(cam_pos: Vector3, target: Vector3, d: float):
 				or ab.intersects_segment(cam_pos, t2 + side) or ab.intersects_segment(cam_pos, t2 - side)
 		if hide == o["ghost"]: continue
 		o["ghost"] = hide
-		(o["occ"] as OccluderInstance3D).visible = not hide
+		if o["occ"] != null: (o["occ"] as OccluderInstance3D).visible = not hide
 		for pair in o["meshes"]:
 			if not is_instance_valid(pair[0]): continue
 			var mi: MeshInstance3D = pair[0]

@@ -52,6 +52,8 @@ class Enemy:
 	var knock_res := 0.0      # knockback diminishing returns: repeated pushes hurt but push less
 	var sig_t := 0.0          # zone signature enemies: their own trick's timer (blink, bull/bear...)
 	var dashes := 0           # bosses: charges left in a combo
+	var stuck_t := 0.0        # bosses: time spent far away without getting closer
+	var stuck_d := 0.0
 	var combo := 0
 	var hop_dur := 0.45
 	var bphase := ""
@@ -160,12 +162,12 @@ func spawn(kind: String, pos: Vector3, hp_mult := 1.0, dmg_mult := 1.0) -> Enemy
 	e.max_hp = e.hp
 	e.speed = def["speed"] * randf_range(0.92, 1.08)
 	e.dmg = def["dmg"] * dmg_mult
-	e.armor = def.get("armor", 0.0) * (1.0 + 0.12 * game.dtime() / 60.0) + 2.0 * game.dirl("lutte")
+	e.armor = def.get("armor", 0.0) * (1.0 + 0.12 * game.time / 60.0) * (1.0 + 0.08 * game.zone_index()) + 2.0 * game.dirl("lutte")
 	e.last_w = ""
 	e.vuln_t = 0.0
 	e.level = -1
 	e.r = def["r"]
-	e.xp = def["xp"] if def.get("boss", false) else int(ceil(def["xp"] * 2.0))      # fewer enemies, each worth more
+	e.xp = def["xp"] if def.get("boss", false) else int(ceil(def["xp"] * 2.0 * (1.0 + 0.4 * game.zone_index())))      # fewer enemies, each worth more; later zones pay more
 	e.ai = def.get("ai", "chase")
 	e.elite = def.get("elite", false)
 	e.boss = def.get("boss", false)
@@ -251,6 +253,11 @@ func _give_affix(e: Enemy, a: String):
 	e.affix_fx = fx      # the coloured ring says it: no floating word over the crowd
 
 func _process(d: float):
+	var _pt := Time.get_ticks_usec()
+	__process_inner(d)
+	Perf.add("enemies", Time.get_ticks_usec() - _pt)
+
+func __process_inner(d: float):
 	if game == null: return
 	d = minf(d, 0.05)
 	_alive_cache.clear()
@@ -365,7 +372,7 @@ func _process(d: float):
 			if e.level >= 0 and e.level < w.plateaus.size():
 				var pr0: Rect2 = w.plateaus[e.level]["rect"]
 				if not pr0.grow(-minf(e.r + 0.3, minf(pr0.size.x, pr0.size.y) * 0.45)).has_point(Vector2(p.x, p.z)):
-					var out := Vector3(p.x, 0, p.z) + dir * 1.6
+					var out: Vector3 = Vector3(p.x, 0, p.z) + dir * (e.r + 1.0)      # past the edge, even for a big boss
 					if pl_player >= 0 and pl_player < w.plateaus.size():
 						var pr1: Rect2 = w.plateaus[pl_player]["rect"]
 						if pr1.grow(e.r + 1.8).has_point(Vector2(p.x, p.z)):
@@ -422,6 +429,24 @@ func _process(d: float):
 				if e.affix == "vampire": e.hp = minf(e.max_hp, e.hp + e.max_hp * 0.3)
 				var eff: String = e.def.get("on_hit", "")
 				if eff != "": e.tgt.apply_status(eff)
+		# no pathfinding: a boss stuck behind a building or on a roof would never come back. If it stays far
+		# without getting closer, it drops back in near its target (with a warning on the ground)
+		if e.boss and e.node.visible and e.hop_t <= 0.0 and not game.bunker_mode:
+			if dist > 24.0:
+				e.stuck_t += d
+				if e.stuck_t > 4.0:
+					if e.stuck_d - dist < 3.0:
+						var dest: Vector3 = game.world.resolve(pp - dir * 11.0, e.r)
+						e.level = -1
+						_telegraph_circle(dest, e.r + 1.5, 1.0)
+						var en: Enemy = e
+						get_tree().create_timer(1.0, false).timeout.connect(func():
+							if en.alive: en.node.position = dest)
+						game._toast_all("%s REVIENT À LA CHARGE" % e.def["name"].to_upper(), 1.5)
+						print("[game] BOSS UNSTUCK t=%s" % game._fmt(game.time))
+					e.stuck_t = 0.0; e.stuck_d = dist
+			else:
+				e.stuck_t = 0.0; e.stuck_d = dist
 		if dist > 55.0 and not e.boss and not e.invincible and (not multi or game.nearest_player(p).global_position.distance_to(p) > 55.0):
 			e.node.position = game.spawn_point(22.0, 30.0)
 	# separation
@@ -756,7 +781,8 @@ func _boss_special(e: Enemy, pat: String, dir: Vector3, dist: float) -> bool:
 				_act(e, "Wave", 1.0, 1.2)
 				for i in 3:
 					var a := TAU * i / 3.0 + randf()
-					shells.append(spawn("pretenom", game.world.resolve(pos + Vector3(cos(a), 0, sin(a)) * 10.0, 0.6), m[0] * 1.5, m[1]))
+					# each nominee holds 5 % of the boss: a clear target, not a second boss (the horde multiplier doesn't apply)
+					shells.append(spawn("pretenom", game.world.resolve(e.tgt.global_position + Vector3(cos(a), 0, sin(a)) * 8.0, 0.6), e.max_hp * 0.05 / 260.0, m[1]))
 		"pivot":
 			# the Unicorn pivots: hyper-growth (three charges) or a fundraising (a spiral of cash)
 			if e.tp_t <= 0.0 and e.phase == "":

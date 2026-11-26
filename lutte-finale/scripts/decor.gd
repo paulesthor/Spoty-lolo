@@ -377,6 +377,11 @@ func _billboard(text: String, col: Color):
 
 # ---------------------------------------------------------------- animation
 func _process(d: float):
+	var _pt := Time.get_ticks_usec()
+	__process_inner(d)
+	Perf.add("decor", Time.get_ticks_usec() - _pt)
+
+func __process_inner(d: float):
 	t += d
 	if player == null:
 		var g = get_parent().get_parent() if get_parent() else null

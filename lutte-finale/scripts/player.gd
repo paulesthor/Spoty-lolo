@@ -322,7 +322,7 @@ func _bot_input(d: float) -> Array:
 		v.y = 0
 		var dist := v.length()
 		if dist < 4.5 and dist > 0.01:
-			flee += v / dist * (4.5 - dist) * (3.0 if e.boss else 1.0)
+			flee += v / dist * (4.5 - dist) * (1.5 if e.boss else 1.0)
 	var best_c = null
 	var bd := 40.0
 	for c in game.chests:
@@ -334,6 +334,12 @@ func _bot_input(d: float) -> Array:
 	var g = game.nearest_gem(global_position, 14.0)
 	if g != null:
 		want = want * 0.3 + (g - global_position) * 1.5
+	# Paradis Fiscal: go and knock down the boss's nominees (it is untouchable while they stand)
+	for e in game.enemies.alive_list():
+		if e.kind == "pretenom":
+			want = e.node.global_position - global_position
+			want.y = 0
+			break
 	if game.door != null:
 		want = game.door.global_position - global_position
 		want.y = 0
